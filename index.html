@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -11,7 +11,7 @@
 <title>My Depot Master</title>
 <script>
 (function(){
-  const m={name:"FRA Satellite Depot",short_name:"FRA Depot",start_url:".",display:"standalone",orientation:"portrait",background_color:"#0a1628",theme_color:"#0a1628",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='80' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='210' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]};
+  const m={name:"FRA Satellite Depot",short_name:"FRA Depot",start_url:".",display:"standalone",background_color:"#0a1628",theme_color:"#0a1628",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='80' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='210' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]};
   const b=new Blob([JSON.stringify(m)],{type:'application/json'});
   const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(b);document.head.appendChild(l);
 })();
@@ -29,6 +29,22 @@
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden;}
 #app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;}
+
+/* Landscape: allow content to scroll, shrink nav */
+@media (orientation:landscape) and (max-height:500px){
+  #app{height:100dvh;}
+  .nav{padding-bottom:0;}
+  .nb{padding:6px 2px;font-size:9px;gap:1px;}
+  .nb svg{width:16px;height:16px;}
+  .content{padding:10px 14px;}
+  .hdr{padding:7px 14px;}
+}
+
+/* Small phones (≤360px wide) — squeeze nav labels */
+@media (max-width:360px){
+  .nb{font-size:9px;padding:8px 2px;gap:2px;}
+  .nb svg{width:18px;height:18px;}
+}
 
 /* Login */
 #login-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));background:linear-gradient(160deg,#0a1628,#0c2040);z-index:999;}
@@ -67,8 +83,8 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .content{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}
 
 /* Nav */
-.nav{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border:none;background:transparent;color:var(--muted);font-family:var(--fb);font-size:10px;font-weight:600;cursor:pointer;border-top:2px solid transparent;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.nav{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);min-height:52px;}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;border:none;background:transparent;color:var(--muted);font-family:var(--fb);font-size:10px;font-weight:600;cursor:pointer;border-top:2px solid transparent;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:0;overflow:hidden;}
 .nb.act{color:var(--green);border-top-color:var(--green);}
 
 /* Cards */
