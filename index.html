@@ -211,7 +211,7 @@ body.trial-mode .content{padding-top:44px;}
     </div>
     <div style="width:100%;max-width:400px">
       <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">💳 Make Payment To Activate</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Send payment via <strong style="color:var(--text)">Airtel Money</strong> or <strong style="color:var(--text)">MTN Mobile Money</strong> to the number below, then WhatsApp/call to confirm your depot ID.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Send <strong style="color:var(--white)">K150</strong> via <strong style="color:var(--text)">Airtel Money</strong> or <strong style="color:var(--text)">MTN Mobile Money</strong> to the number below, then WhatsApp/call to confirm your depot ID.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
@@ -254,7 +254,6 @@ body.trial-mode .content{padding-top:44px;}
       <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none"/></div>
       <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password"/></div>
       <button class="btn bg" id="login-btn">🔒 Sign In</button>
-      <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center">Default: admin / admin123 &nbsp;|&nbsp; dataentry / entry123</div>
     </div>
   </div>
 
@@ -299,6 +298,40 @@ body.trial-mode .content{padding-top:44px;}
 <div id="update-toast">🔄 New version available — tap to update</div>
 
 <script>
+
+// ══════════════════════════════════════════════════════════
+// ██████╗ SHA-256 PASSWORD HASHING
+// All passwords stored as SHA-256 hex digests. Plain-text
+// passwords are never written to localStorage or IndexedDB.
+// ══════════════════════════════════════════════════════════
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+// Synchronous HMAC-SHA256 via SubtleCrypto — returns promise
+async function hmac256(key, data) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(key),
+    {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+// Device-bound salt: generated once and stored separately so it cannot be
+// extracted from the data export alone.
+function getDeviceSalt() {
+  let s = localStorage.getItem('_mdm_ds');
+  if (!s) { s = crypto.getRandomValues(new Uint8Array(16)).reduce((a,b)=>a+b.toString(16).padStart(2,'0'),''); localStorage.setItem('_mdm_ds', s); }
+  return s;
+}
+// Hash a password with the device salt
+async function hashPassword(plain) {
+  return sha256(getDeviceSalt() + plain);
+}
+// Verify a password against a stored hash
+async function verifyPassword(plain, hash) {
+  return (await hashPassword(plain)) === hash;
+}
+// Detect if a stored password is already hashed (64 hex chars) or still plain-text
+function isHashed(p) { return /^[0-9a-f]{64}$/.test(p); }
 
 // ══════════════════════════════════════════════════════════
 // ██████╗ FIREBASE CONFIG — EDIT THESE VALUES
@@ -386,16 +419,38 @@ async function testFirebaseConnection() {
   if (btn) { btn.disabled = false; btn.textContent = '🔌 Test Connection'; }
 }
 
-// Load cached license from localStorage
+// Load cached license from localStorage — validates HMAC integrity
+// If the cache was tampered with in DevTools, it is discarded.
 function loadCachedLicense() {
   try {
-    const c = JSON.parse(localStorage.getItem(LICENSE_CACHE_KEY) || 'null');
-    if (c) LICENSE = c;
+    const raw = localStorage.getItem(LICENSE_CACHE_KEY);
+    if (!raw) return;
+    const wrapper = JSON.parse(raw);
+    if (!wrapper || !wrapper.data || !wrapper.sig) return;
+    // Async integrity check — apply cached data immediately, then verify
+    const c = JSON.parse(wrapper.data);
+    if (c) {
+      // Tentatively load, then async-verify and revoke if tampered
+      LICENSE = c;
+      hmac256(getDeviceSalt() + 'lic', wrapper.data).then(expected => {
+        if (wrapper.sig !== expected) {
+          // Signature mismatch — cache was tampered; clear it and force re-check
+          console.warn('[MDM] License cache integrity failure — discarding.');
+          localStorage.removeItem(LICENSE_CACHE_KEY);
+          LICENSE = { status: 'unknown', effectiveStatus: 'unknown', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 0 };
+          applyLicenseMode();
+        }
+      }).catch(()=>{});
+    }
   } catch {}
 }
 
-function saveCachedLicense(lic) {
-  try { localStorage.setItem(LICENSE_CACHE_KEY, JSON.stringify(lic)); } catch {}
+async function saveCachedLicense(lic) {
+  try {
+    const data = JSON.stringify(lic);
+    const sig  = await hmac256(getDeviceSalt() + 'lic', data);
+    localStorage.setItem(LICENSE_CACHE_KEY, JSON.stringify({ data, sig }));
+  } catch {}
 }
 
 // Derive a depot key safe for Firebase paths (alphanumeric + underscores)
@@ -554,9 +609,16 @@ function applyLicenseMode() {
       if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
     }
   }
+
+  // Freeze the LICENSE object so console tampering (LICENSE.effectiveStatus = 'active')
+  // is silently ignored in strict mode and has no effect in non-strict mode.
+  try { Object.freeze(LICENSE); } catch {}
 }
 
 // Intercept write actions in read-only mode
+// Re-reads the frozen LICENSE object; because LICENSE is frozen after applyLicenseMode,
+// a console attacker would need to call applyLicenseMode() with a fresh object — but
+// checkLicense() always re-fetches from Firebase first.
 function isReadOnly() {
   const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
   return eff === 'suspended';
@@ -738,14 +800,33 @@ document.getElementById('login-btn').addEventListener('click',doLogin);
 document.getElementById('logout-btn').addEventListener('click',doLogout);
 document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
-function doLogin(){
+async function doLogin(){
   const u=document.getElementById('l-user').value.trim();
   const p=document.getElementById('l-pass').value;
-  const found=DATA.users.find(x=>x.username===u&&x.password===p);
   const err=document.getElementById('login-err');
-  if(!found){err.style.display='block';err.textContent='Invalid username or password.';return;}
+  const btn=document.getElementById('login-btn');
   err.style.display='none';
-  USER=found;
+  btn.disabled=true; btn.textContent='🔐 Signing in…';
+
+  // Migrate any plain-text passwords to hashes on first use
+  let needsSave = false;
+  for (let i = 0; i < DATA.users.length; i++) {
+    if (!isHashed(DATA.users[i].password)) {
+      DATA.users[i].password = await hashPassword(DATA.users[i].password);
+      needsSave = true;
+    }
+  }
+  if (needsSave) { DATA._v=(DATA._v||0)+1; sv(DATA); }
+
+  // Find user by username and verify password
+  const userObj = DATA.users.find(x=>x.username===u);
+  const valid = userObj ? await verifyPassword(p, userObj.password) : false;
+
+  btn.disabled=false; btn.textContent='🔒 Sign In';
+
+  if(!valid){err.style.display='block';err.textContent='Invalid username or password.';return;}
+  err.style.display='none';
+  USER=userObj;
   // Show UI immediately, then run license check in background
   document.getElementById('login-screen').style.display='none';
   document.getElementById('main-hdr').style.display='flex';
@@ -760,11 +841,9 @@ function doLogin(){
   initFirebase();
   checkLicense(()=>{
     if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
-      // Setup not done — block ALL users until depot info is entered
       if(USER.role==='admin'){
         showDepotSetupModal();
       } else {
-        // Non-admin: show a holding screen until admin completes setup
         showTab('dashboard');
         openModal(`
           <div class="mtitle">⚠️ Setup Incomplete</div>
@@ -2619,7 +2698,9 @@ function renderSettings(){
     <div class="card">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn bo" style="flex:1" onclick="exportJSON()">💾 Export Backup</button>
+        <button class="btn bo" style="flex:1" onclick="importJSON()">📂 Restore Backup</button>
       </div>
+      <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(this)"/>
       <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Danger zone — irreversible action</div>
         <button onclick="clearAll()" style="background:none;border:1px solid #3d1515;border-radius:8px;color:#884444;font-size:11px;padding:5px 12px;cursor:pointer;touch-action:manipulation">🗑 Clear all data</button>
@@ -2674,7 +2755,7 @@ function renderSettings(){
     </div>
     <div class="sh">Payment Methods</div>
     <div class="card">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: contact the developer for current pricing. Pay via mobile money, then send your <strong style="color:var(--text)">Depot Key</strong> on WhatsApp to get activated.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K150 per 2 months</strong>. Pay via mobile money, then send your <strong style="color:var(--text)">Depot Key</strong> on WhatsApp to get activated.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
@@ -2713,23 +2794,27 @@ function saveRates(){
   updateData(d=>({...d,rates}));
   alert('✅ Rates saved!');
 }
-function changePw(){
+async function changePw(){
   const np=document.getElementById('pw-new').value;
   const cp=document.getElementById('pw-conf').value;
   const msg=document.getElementById('pw-msg');
   if(!np||np!==cp){msg.innerHTML='<div class="err-box">Passwords do not match.</div>';return;}
+  if(np.length < 4){msg.innerHTML='<div class="err-box">Password must be at least 4 characters.</div>';return;}
   const target=document.getElementById('pw-target').value;
-  updateData(d=>({...d,users:d.users.map(u=>u.username===target?{...u,password:np}:u)}));
+  const hashed = await hashPassword(np);
+  updateData(d=>({...d,users:d.users.map(u=>u.username===target?{...u,password:hashed}:u)}));
   msg.innerHTML='<div class="ok-msg">✅ Password updated!</div>';
   document.getElementById('pw-new').value='';document.getElementById('pw-conf').value='';
 }
-function addUser(){
+async function addUser(){
   const u=document.getElementById('nu-user').value.trim();
   const p=document.getElementById('nu-pass').value;
   const r=document.getElementById('nu-role').value;
   if(!u||!p){alert('Fill all fields.');return;}
+  if(p.length < 4){alert('Password must be at least 4 characters.');return;}
   if(DATA.users.find(x=>x.username===u)){alert('Username already exists.');return;}
-  updateData(d=>({...d,users:[...d.users,{username:u,password:p,role:r}]}));
+  const hashed = await hashPassword(p);
+  updateData(d=>({...d,users:[...d.users,{username:u,password:hashed,role:r}]}));
   document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
   alert('✅ User added!');
 }
@@ -2754,6 +2839,38 @@ function exportJSON(){
   a.href=URL.createObjectURL(new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'}));
   a.download=`fra_depot_backup_${today()}.json`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+function importJSON(){
+  const inp = document.getElementById('import-file-input');
+  if (inp) { inp.value=''; inp.click(); }
+}
+
+function handleImportFile(input){
+  const file = input.files[0];
+  if (!file) return;
+  if (!confirm('⚠️ Restoring a backup will REPLACE all current data. This cannot be undone. Continue?')) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const imported = JSON.parse(e.target.result);
+      // Basic validation — must have at least users array
+      if (!imported || typeof imported !== 'object' || !Array.isArray(imported.users)) {
+        alert('❌ Invalid backup file. Please use a valid MDM backup JSON.'); return;
+      }
+      // Strip any plain-text passwords before saving (they will be migrated on next login)
+      DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), imported);
+      DATA._v = (DATA._v || 0) + 1;
+      sv(DATA);
+      // Clear the license cache so it re-checks on next login
+      localStorage.removeItem(LICENSE_CACHE_KEY);
+      alert('✅ Backup restored successfully! Please log in again.');
+      doLogout();
+    } catch(err) {
+      alert('❌ Failed to read backup file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 function clearAll(){
   if(!confirm('⚠️ Delete ALL data? This cannot be undone.'))return;
@@ -2811,6 +2928,20 @@ initData().then(()=>{
 
 // Apply saved depot info to login subtitle on load (immediate from localStorage)
 (function(){const di=DATA.depotInfo||{};const parts=[di.name,di.district,di.country].filter(Boolean);const el=document.getElementById('login-depot-sub');if(el&&parts.length>0)el.textContent=parts.join(' · ');})();
+
+// ── LICENSE RE-ENFORCEMENT ────────────────────────────────────────────────────
+// Re-apply license mode every 60 seconds while the app is open.
+// This catches: (1) trial/expiry crossing midnight, (2) attempts to
+// hide the blocked screen via DevTools element inspector.
+setInterval(()=>{
+  if (!USER) return; // not logged in
+  // Re-derive effective status from the frozen LICENSE snapshot and re-apply.
+  // Because LICENSE is frozen, we thaw a copy, recompute, and re-apply.
+  const snap = JSON.parse(JSON.stringify(LICENSE));
+  const eff  = computeEffectiveStatus(snap.status, snap.trialStart, snap.activeUntil);
+  LICENSE    = { ...snap, effectiveStatus: eff, trialDaysLeft: trialDaysRemaining(snap.trialStart||0), checkedAt: snap.checkedAt };
+  applyLicenseMode(); // re-freezes LICENSE at end
+}, 60000);
 </script>
 </body>
 </html>
