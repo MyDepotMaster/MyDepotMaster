@@ -191,7 +191,7 @@ body.trial-mode .content{padding-top:44px;}
   <!-- License read-only banner -->
   <div id="license-banner">
     <span class="lb-icon">🔒</span>
-    <span class="lb-text" id="license-banner-msg">This depot is suspended. Contact your administrator.</span>
+    <span class="lb-text" id="license-banner-msg">This account is suspended. Contact your administrator.</span>
     <span class="lb-tag">READ ONLY</span>
   </div>
 
@@ -211,7 +211,7 @@ body.trial-mode .content{padding-top:44px;}
     </div>
     <div style="width:100%;max-width:400px">
       <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">💳 Make Payment To Activate</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Send <strong style="color:var(--white)">K150</strong> via <strong style="color:var(--text)">Airtel Money</strong> or <strong style="color:var(--text)">MTN Mobile Money</strong> to the number below, then WhatsApp/call to confirm your depot ID.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Send <strong style="color:var(--white)">K150</strong> via <strong style="color:var(--text)">Airtel Money</strong> or <strong style="color:var(--text)">MTN Mobile Money</strong> to the number below, then WhatsApp/call to confirm your Company License Key.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
@@ -231,9 +231,9 @@ body.trial-mode .content{padding-top:44px;}
         <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">Your Depot License Key</div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">Your Company License Key</div>
         <div style="font-family:monospace;font-size:14px;color:var(--blue);word-break:break-all" id="bs-depot-key">—</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:5px">Include this key when you message for activation.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Include this key when you message for activation.</div>
       </div>
       <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;background:var(--green);color:#0a1628;border-radius:11px;padding:13px 20px;font-family:var(--fh);font-size:16px;font-weight:700;text-decoration:none;margin-bottom:10px;touch-action:manipulation">
         <span>💬</span> WhatsApp for Activation
@@ -253,6 +253,12 @@ body.trial-mode .content{padding-top:44px;}
       <div class="err-box" id="login-err" style="display:none"></div>
       <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none"/></div>
       <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password"/></div>
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px" id="tos-box">
+        <input type="checkbox" id="tos-check" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">
+          <label for="tos-check" style="cursor:pointer">I have read and agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span><label for="tos-check" style="cursor:pointer">. I understand this is a general-purpose tool and all data I enter is my responsibility.</label>
+        </div>
+      </div>
       <button class="btn bg" id="login-btn">🔒 Sign In</button>
     </div>
   </div>
@@ -666,7 +672,7 @@ function applyLicenseMode() {
   if (eff === 'suspended') {
     document.body.classList.add('readonly-mode');
     if (banner) banner.style.display = 'flex';
-    if (msg) msg.textContent = LICENSE.suspendedMsg || 'This depot is suspended. Contact your administrator.';
+    if (msg) msg.textContent = LICENSE.suspendedMsg || 'This account is suspended. Contact your administrator.';
 
   } else if (eff === 'trial_expired') {
     if (bsIcon)  bsIcon.textContent  = '⏳';
@@ -742,9 +748,11 @@ self.addEventListener('fetch',e=>{
     return;
   }
 });`;
-if('serviceWorker' in navigator){
-  const b=new Blob([SW_CODE],{type:'text/javascript'});
-  navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'/'}).catch(()=>{});
+if('serviceWorker' in navigator && location.protocol === 'https:'){
+  window.addEventListener('load',()=>{
+    const b=new Blob([SW_CODE],{type:'text/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'/'}).catch(()=>{});
+  });
 }
 
 // ── DATA DEFAULTS ───────────────────────────────────────────────────────────
@@ -912,6 +920,18 @@ async function doLogin(){
   const p=document.getElementById('l-pass').value;
   const err=document.getElementById('login-err');
   const btn=document.getElementById('login-btn');
+  const tosCheck=document.getElementById('tos-check');
+  const tosBox=document.getElementById('tos-box');
+
+  // Enforce ToS consent before anything else
+  if(!tosCheck||!tosCheck.checked){
+    err.style.display='block';
+    err.textContent='⚠️ You must read and accept the Terms of Service before signing in.';
+    if(tosBox){tosBox.style.borderColor='var(--red)';tosBox.style.background='#2d0a0a';}
+    tosCheck&&tosCheck.focus();
+    return;
+  }
+  if(tosBox){tosBox.style.borderColor='var(--green)';tosBox.style.background='#001a10';}
   err.style.display='none';
   btn.disabled=true; btn.textContent='🔐 Signing in…';
 
@@ -969,7 +989,7 @@ async function doLogin(){
           <div class="mtitle">⚠️ Setup Incomplete</div>
           <div style="font-size:14px;color:var(--muted);line-height:1.8;text-align:center;padding:10px 0">
             Depot setup has not been completed yet.<br><br>
-            Please ask your <strong style="color:var(--text)">Admin</strong> to log in and complete the depot setup before using the app.
+            Please ask your <strong style="color:var(--text)">Admin</strong> to log in and complete the company setup before using the app.
           </div>`);
       }
     } else {
@@ -988,6 +1008,11 @@ function doLogout(){
   document.getElementById('login-err').style.display='none';
   document.getElementById('l-user').value='';
   document.getElementById('l-pass').value='';
+  // Reset ToS consent on every logout — must be re-accepted each session
+  const tosCheck=document.getElementById('tos-check');
+  const tosBox=document.getElementById('tos-box');
+  if(tosCheck)tosCheck.checked=false;
+  if(tosBox){tosBox.style.borderColor='';tosBox.style.background='';}
 }
 
 // ── DEPOT INFO ───────────────────────────────────────────────────────────────
@@ -1009,15 +1034,15 @@ function showDepotSetupModal(){
   const ovl=document.getElementById('modal-ovl');
   if(ovl) ovl.onclick=null;
   openModal(`
-    <div class="mtitle">🏢 Depot Setup</div>
+    <div class="mtitle">🏢 Company Setup</div>
     <div style="background:var(--surface2);border:1px solid var(--green);border-radius:10px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:var(--green);line-height:1.7">
-      Welcome! Please fill in your depot details to continue.<br>
+      Welcome! Please fill in your company details to continue.<br>
       <span style="color:var(--muted)">These details are permanent and used as your unique app identifier.</span>
     </div>
     <div id="ds-err" style="display:none;background:#2d0a0a;border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:var(--red)"></div>
     <div class="fw">
-      <div class="fl">Depot Name <span style="color:var(--red)">*</span></div>
-      <input class="fi" id="ds-name" placeholder="E.G. AGRICULTURE DEPOT" value="${di.name||''}" oninput="this.value=this.value.toUpperCase()"/>
+      <div class="fl">Company Name <span style="color:var(--red)">*</span></div>
+      <input class="fi" id="ds-name" placeholder="E.G. ABC COMPANY LTD" value="${di.name||''}" oninput="this.value=this.value.toUpperCase()"/>
     </div>
     <div class="fw">
       <div class="fl">District <span style="color:var(--red)">*</span></div>
@@ -1040,7 +1065,7 @@ function saveDepotSetup(){
   const country=uc(document.getElementById('ds-country').value);
   const errEl=document.getElementById('ds-err');
   const missing=[];
-  if(!name)missing.push('Depot Name');
+  if(!name)missing.push('Company Name');
   if(!district)missing.push('District');
   if(!country)missing.push('Country');
   if(missing.length>0){
@@ -1457,7 +1482,7 @@ function calcGenDmg(){
   if(dmg)dmg.value=Math.max(0,rec-good);
 }
 
-function saveGenRec(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function saveGenRec(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const sel=document.getElementById('gr-name');
   let name='';
   if(sel&&sel.tagName==='SELECT'){
@@ -1486,7 +1511,7 @@ function openGenIssForm(){
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveGenIss()">✓ Issue</button></div>`);
 }
 
-function saveGenIss(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const name=document.getElementById('gi-name').value;
   const qty=Number(document.getElementById('gi-qty').value||0);
   if(!name||!qty){alert('Select item and enter quantity.');return;}
@@ -1794,7 +1819,7 @@ function openMaizeRecForm(){
     <div class="fw"><div class="fl">Date Received</div><input class="fi" type="date" id="mr-date" value="${today()}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveMaizeRec()">✓ Save</button></div>`);
 }
-function saveMaizeRec(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function saveMaizeRec(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const batch=uc(document.getElementById('mr-batch').value);
   const rec=Number(document.getElementById('mr-rec').value||0);
   if(!batch||!rec){alert('Enter batch name and quantity.');return;}
@@ -1814,7 +1839,7 @@ function openMaizeIssForm(){
     <div class="fw"><div class="fl">Date Issued</div><input class="fi" type="date" id="mi-date" value="${today()}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveMaizeIss()">✓ Issue</button></div>`);
 }
-function saveMaizeIss(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function saveMaizeIss(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const batch=document.getElementById('mi-batch').value;
   const trans=document.getElementById('mi-trans').value.trim();
   const qty=Number(document.getElementById('mi-qty').value||0);
@@ -1865,7 +1890,7 @@ function updateVarianceHint(){
   const label=variance<0?`SHORTAGE OF ${Math.abs(variance).toLocaleString()} BAGS`:variance===0?'EXACT MATCH — NO VARIANCE':`SURPLUS OF ${variance.toLocaleString()} BAGS`;
   hint.innerHTML=`<div style="background:var(--surface2);border:1px solid ${color};border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:13px;color:${color};font-weight:700">VARIANCE: ${variance} &nbsp;·&nbsp; ${label}</div>`;
 }
-function saveStockCount(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function saveStockCount(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const batch=document.getElementById('sc-batch').value;
   const phys=Number(document.getElementById('sc-phys').value||0);
   if(!phys&&phys!==0){alert('Enter the physical bag count.');return;}
@@ -2100,7 +2125,7 @@ function openStaffForm(){
     <div class="fw"><div class="fl">Phone (optional)</div><input class="fi" id="sf-phone" placeholder="0977 000 000" inputmode="tel"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveStaff()">✓ Register</button></div>`);
 }
-function saveStaff(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const name=uc(document.getElementById('sf-name').value);
   if(!name){alert('Enter staff name.');return;}
   const payload={id:uid(),name,role:document.getElementById('sf-role').value,phone:document.getElementById('sf-phone').value,status:'active'};
@@ -2165,7 +2190,7 @@ function calcGross(){
     hint.innerHTML=`<div class="hint">Gross: K${g.toFixed(2)} &nbsp;|&nbsp; Net after deduction: K${net.toFixed(2)}</div>`;
   }
 }
-function saveLog(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const sid=document.getElementById('lf-staff').value;
   const bags=Number(document.getElementById('lf-bags').value||0);
   if(!sid||!bags){alert('Select staff and enter bags handled.');return;}
@@ -2461,7 +2486,7 @@ function openPayForm(){
     <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="pf-notes" placeholder="E.G. CASH, MOBILE MONEY…" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="savePayment()">✓ Save Payment</button></div>`);
 }
-function savePayment(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+function savePayment(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const sid=document.getElementById('pf-staff').value;
   const amount=Number(document.getElementById('pf-amount').value||0);
   if(!amount){alert('Enter payment amount.');return;}
@@ -2608,7 +2633,7 @@ function renderLicenseCard(){
       <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:${statusColor}">${statusLabel}</div>
     </div>
     ${statusDetail}
-    <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">DEPOT LICENSE KEY</div>
+    <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">COMPANY LICENSE KEY</div>
     <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:monospace;font-size:13px;color:var(--blue);margin-bottom:10px;word-break:break-all;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <span>${depotId}</span>
       <button class="pm-copy" style="flex-shrink:0" onclick="copyNum('${depotId}')">Copy</button>
@@ -2637,10 +2662,10 @@ function renderSettings(){
   return `
     ${statusBanner()}
     ${renderLicenseCard()}
-    <div class="sh">Depot Information</div>
+    <div class="sh">Company Information</div>
     <div class="card">
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:var(--muted)">🔒 Depot name, district and country are set once during initial setup and cannot be changed. These are used as your unique license identifier.</div>
-      <div class="fw"><div class="fl">Depot Name</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).name||'—'}</div></div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:var(--muted)">🔒 Company name, district and country are set once during initial setup and cannot be changed. These are used as your unique license identifier.</div>
+      <div class="fw"><div class="fl">Company Name</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).name||'—'}</div></div>
       <div class="fw"><div class="fl">District</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).district||'—'}</div></div>
       <div class="fw"><div class="fl">Country</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).country||'—'}</div></div>
     </div>
@@ -2732,7 +2757,7 @@ function renderSettings(){
         <span id="cloud-sync-badge" style="background:#003d2e;color:var(--green);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:800">ACTIVE</span>
       </div>
       <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:12px">
-        All depot data is automatically saved to your Firebase cloud. Even if you clear your phone's browser data or switch devices, your data is fully restored the next time you log in.
+        All company data is automatically saved to your Firebase cloud. Even if you clear your phone's browser data or switch devices, your data is fully restored the next time you log in.
       </div>
       <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:12px;color:var(--muted)">Last cloud sync</span>
@@ -2741,7 +2766,7 @@ function renderSettings(){
       <button class="btn bo bsm" style="width:100%" onclick="forceFbSync()">🔄 Sync Now</button>
     </div>
     <div class="card">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K150 per 2 months</strong>. Pay via mobile money, then send your <strong style="color:var(--text)">Depot Key</strong> on WhatsApp to get activated.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K150 per 2 months</strong>. Pay via mobile money, then send your <strong style="color:var(--text)">Company License Key</strong> on WhatsApp to get activated.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
@@ -2764,16 +2789,43 @@ function renderSettings(){
         💬 WhatsApp for Activation
       </a>
     </div>
+    <div class="sh">Legal</div>
+    <div class="card">
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px">Read the Terms of Service and Disclaimer that govern your use of My Depot Master.</div>
+      <button class="btn bo" onclick="showTOS()" style="width:100%">📄 View Terms of Service &amp; Disclaimer</button>
+    </div>
+    <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} Goodson Chongo · General Purpose Business Management Software</div>
     <div style="height:20px"></div>`;
 }
 
+function showTOS(){
+  const yr=new Date().getFullYear();
+  openModal(`<div class="mtitle">📄 Terms of Service</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
+      <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">PLEASE READ BEFORE USING THIS APPLICATION.</div>
+      <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with Goodson Chongo ("the Developer").</p>
+      <b style="color:var(--white)">2. General-Purpose Tool — No Official Affiliation</b><p style="margin:4px 0 10px">My Depot Master is a <b>general-purpose business management tool</b> for internal record-keeping. It is <b>NOT</b> an official government system and is NOT affiliated with the FRA, any ministry, PACRA, ZRA, or any authority.</p>
+      <b style="color:var(--white)">3. No Warranties</b><p style="margin:4px 0 10px">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY. Calculations may not be accurate, complete, or suitable for any official, legal, or financial purpose.</p>
+      <b style="color:var(--white)">4. Limitation of Liability</b><p style="margin:4px 0 10px">THE DEVELOPER IS NOT LIABLE FOR: data loss; financial loss; wage or count errors; labour disputes; regulatory penalties; or any indirect damages. Maximum liability = 3 months' subscription fees.</p>
+      <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
+      <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally and synced to Google Firebase (USA) where configured. You consent to this. You are the data controller and responsible for compliance with the Zambia Data Protection Act No. 3 of 2021. The Developer does not sell your data.</p>
+      <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to Goodson Chongo. You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
+      <b style="color:var(--white)">8. Subscription</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Access may be suspended for non-payment.</p>
+      <b style="color:var(--white)">9. Indemnification</b><p style="margin:4px 0 10px">You indemnify the Developer from any claims, costs, or legal fees from your use, misuse, or breach of these Terms.</p>
+      <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of Zambia. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
+      <b style="color:var(--white)">11. Modifications</b><p style="margin:4px 0 10px">Terms may be updated at any time. Continued use = acceptance.</p>
+      <div style="background:#3d1515;border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#ff8080"><b>\u26a0\ufe0f IMPORTANT:</b> This is a general-purpose admin tool only — NOT legal, financial, or accounting advice. All figures must be independently verified.</div>
+      <div style="text-align:center;font-size:11px">My Depot Master \u00b7 \u00a9 ${yr} Goodson Chongo \u00b7 All Rights Reserved</div>
+    </div>
+    <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 I Understand &amp; Accept</button></div>`);
+}
 function saveDepotInfo(){
-  const name=uc(document.getElementById('di-name').value)||'MY DEPOT';
+  const name=uc(document.getElementById('di-name').value)||'MY COMPANY';
   const district=uc(document.getElementById('di-district').value);
   const country=uc(document.getElementById('di-country').value)||'ZAMBIA';
   updateData(d=>({...d,depotInfo:{...d.depotInfo,name,district,country,setupDone:true}}));
   applyDepotInfo();
-  alert('✅ Depot info updated!');
+  alert('\u2705 Company info updated!');
 }
 function saveRates(){
   const rates={loader_stack:Number(document.getElementById('r-ls').value),loader_load:Number(document.getElementById('r-ll').value),stitcher:Number(document.getElementById('r-s').value)};
@@ -2900,20 +2952,18 @@ function attachTabListeners(){
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-updateConnStatus();
-setTimeout(updateConnStatus, 500);
-
-// Load from IndexedDB on startup — upgrades localStorage data if IDB has newer version
-initData().then(()=>{
-  // Re-apply depot info after IDB load in case it had newer data
-  const di=DATA.depotInfo||{};
-  const parts=[di.name,di.district,di.country].filter(Boolean);
-  const el=document.getElementById('login-depot-sub');
-  if(el&&parts.length>0)el.textContent=parts.join(' · ');
-});
-
-// Apply saved depot info to login subtitle on load (immediate from localStorage)
-(function(){const di=DATA.depotInfo||{};const parts=[di.name,di.district,di.country].filter(Boolean);const el=document.getElementById('login-depot-sub');if(el&&parts.length>0)el.textContent=parts.join(' · ');})();
+setTimeout(()=>{
+  try{
+    updateConnStatus();
+    initData().then(()=>{
+      const di=DATA.depotInfo||{};
+      const parts=[di.name,di.district,di.country].filter(Boolean);
+      const el=document.getElementById('login-depot-sub');
+      if(el&&parts.length>0)el.textContent=parts.join(' · ');
+    }).catch(()=>{});
+    (function(){const di=DATA.depotInfo||{};const parts=[di.name,di.district,di.country].filter(Boolean);const el=document.getElementById('login-depot-sub');if(el&&parts.length>0)el.textContent=parts.join(' · ');})();
+  }catch(e){}
+}, 0);
 
 // ── LICENSE RE-ENFORCEMENT ────────────────────────────────────────────────────
 // Re-apply license mode every 60 seconds while the app is open.
