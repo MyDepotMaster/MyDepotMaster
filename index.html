@@ -195,7 +195,7 @@ body.trial-mode .content{padding-top:44px;}
     <span class="lb-tag">READ ONLY</span>
   </div>
 
-  <!-- Trial warning banner (shown when ≤5 days left) -->
+  <!-- Trial/subscription warning banner (shown when ≤10 days left) -->
   <div id="trial-banner">
     <span style="font-size:16px;flex-shrink:0">⏳</span>
     <span class="tb-text" id="trial-banner-msg">Trial period active.</span>
@@ -611,12 +611,26 @@ function applyLicenseMode() {
 
   } else if (eff === 'trial') {
     const daysLeft = LICENSE.trialDaysLeft || trialDaysRemaining(LICENSE.trialStart || 0);
-    // Show trial warning strip when ≤5 days left
-    if (daysLeft <= 5 && trialBnr) {
+    // Show trial warning strip when ≤10 days left
+    if (daysLeft <= 10 && trialBnr) {
       document.body.classList.add('trial-mode');
       trialBnr.style.display = 'flex';
-      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Pay to keep access.`;
+      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Pay K150 to keep access.`;
       if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
+    }
+
+  } else if (eff === 'active') {
+    // Warn when subscription expiry is within 10 days
+    const activeUntil = LICENSE.activeUntil || 0;
+    if (activeUntil > 0) {
+      const msLeft = activeUntil - Date.now();
+      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+      if (daysLeft <= 10 && daysLeft > 0 && trialBnr) {
+        document.body.classList.add('trial-mode');
+        trialBnr.style.display = 'flex';
+        if (trialMsg) trialMsg.textContent = `Subscription expires in ${daysLeft} day${daysLeft===1?'':'s'}. Pay K150 to renew.`;
+        if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
+      }
     }
   }
 
@@ -992,7 +1006,7 @@ function statusBanner(){
   }
   if(eff === 'active' && LICENSE.activeUntil) {
     const d = activeDaysRemaining(LICENSE.activeUntil);
-    if(d !== null && d <= 14) {
+    if(d !== null && d <= 10) {
       return `<div class="banner b-qu">⚠️<div class="btxt"><div class="btit" style="color:var(--amber)">Subscription expires in ${d} day${d===1?'':'s'}</div><span style="color:var(--muted);font-size:12px">Renew before expiry to avoid interruption.</span></div></div>`;
     }
   }
