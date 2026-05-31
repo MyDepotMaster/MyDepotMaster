@@ -397,17 +397,22 @@ async function testFirebaseConnection() {
   const btn = document.getElementById('fb-test-btn');
   const out = document.getElementById('fb-test-out');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Testing…'; }
-  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/licenses/_test_ping.json';
+  // Ping the depot's own license path — the only path our rules allow reading
+  const key = depotKey();
+  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/licenses/' + key + '.json';
   try {
     out.style.display = 'block';
     out.style.background = '#0d2a4a';
     out.style.color = 'var(--blue)';
-    out.textContent = '→ GET ' + url;
+    out.textContent = '→ Connecting to Firebase…';
     const res = await fetch(url);
     const body = await res.text();
     if (res.ok) {
       out.style.background = '#003d2e'; out.style.color = 'var(--green)';
-      out.textContent = '✅ Connected! Status ' + res.status + '. Rules are working.';
+      out.textContent = '✅ Connected! Firebase rules are working correctly.';
+    } else if (res.status === 401 || res.status === 403) {
+      out.style.background = '#3d1515'; out.style.color = '#ff8080';
+      out.textContent = '❌ Permission denied (HTTP ' + res.status + '). Check your Firebase Security Rules.';
     } else {
       out.style.background = '#3d1515'; out.style.color = '#ff8080';
       out.textContent = '❌ Failed — HTTP ' + res.status + '\n' + body.slice(0, 200);
@@ -508,7 +513,7 @@ function checkLicense(callback) {
     return;
   }
   if (!navigator.onLine) {
-    const cached = LICENSE;
+    const cached = JSON.parse(JSON.stringify(LICENSE)); // thaw frozen object safely
     const age = Date.now() - (cached.checkedAt || 0);
     if (['suspended','trial_expired','expired'].includes(cached.effectiveStatus)) {
       applyLicenseMode();
@@ -516,7 +521,6 @@ function checkLicense(callback) {
       LICENSE = { ...cached, effectiveStatus: 'suspended', suspendedMsg: 'License check overdue. Please connect to the internet.' };
       applyLicenseMode();
     } else {
-      // Re-compute effective status in case dates have passed while offline
       const eff = computeEffectiveStatus(cached.status, cached.trialStart, cached.activeUntil);
       LICENSE = { ...cached, effectiveStatus: eff, trialDaysLeft: trialDaysRemaining(cached.trialStart||0) };
       applyLicenseMode();
@@ -529,10 +533,14 @@ function checkLicense(callback) {
   fbGet('licenses/' + key)
     .then(val => {
       if (!val) {
-        // New depot — start 14-day trial
+        // New depot — start 14-day trial locally.
+        // Note: fbSet will be rejected by Firebase rules (.write: false) — that is
+        // intentional. You register new depots manually in the Firebase console.
+        // The app still starts the trial locally from this first-seen date.
         const now = Date.now();
-        const newEntry = { status: 'trial', trialStart: now, activeUntil: null, depotName: (DATA.depotInfo||{}).name||'', createdAt: now };
-        fbSet('licenses/' + key, newEntry).catch(()=>{});
+        fbSet('licenses/' + key, { status: 'trial', trialStart: now, activeUntil: null, depotName: (DATA.depotInfo||{}).name||'', createdAt: now }).catch(()=>{
+          // Write blocked by rules — expected. You must add the depot manually in Firebase console.
+        });
         LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
       } else {
         const rawStatus   = val.status || 'trial';
@@ -554,7 +562,9 @@ function checkLicense(callback) {
       if (callback) callback();
     }).catch(err => {
       console.warn('License check failed:', err);
-      LICENSE.lastError = err.message;
+      // Do NOT mutate LICENSE here — it may be frozen. Instead thaw, patch, re-assign.
+      const snap = JSON.parse(JSON.stringify(LICENSE));
+      LICENSE = { ...snap, lastError: err.message };
       loadCachedLicense();
       applyLicenseMode();
       if (callback) callback();
