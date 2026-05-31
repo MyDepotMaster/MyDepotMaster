@@ -1,0 +1,2800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="My Depot Master"/>
+<meta name="theme-color" content="#0a1628"/>
+<title>My Depot Master</title>
+<script>
+(function(){
+  const m={name:"FRA Satellite Depot",short_name:"FRA Depot",start_url:".",display:"standalone",orientation:"portrait",background_color:"#0a1628",theme_color:"#0a1628",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='80' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='210' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]};
+  const b=new Blob([JSON.stringify(m)],{type:'application/json'});
+  const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(b);document.head.appendChild(l);
+})();
+</script>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='74' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E"/>
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0a1628;--surface:#111f38;--surface2:#162844;--border:#1e3a5f;
+  --green:#00e096;--green2:#00b87a;--amber:#f5a623;--red:#e74c3c;--blue:#3b9eff;--purple:#a78bfa;
+  --text:#dff0ff;--muted:#6a90b8;--white:#fff;
+  --fh:'Barlow Condensed',sans-serif;--fb:'Barlow',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden;}
+#app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;}
+
+/* Login */
+#login-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));background:linear-gradient(160deg,#0a1628,#0c2040);z-index:999;}
+.login-logo{width:84px;height:84px;background:var(--green);border-radius:22px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;font-family:var(--fh);font-size:30px;font-weight:800;color:#0a1628;box-shadow:0 0 32px rgba(0,224,150,.3);}
+.login-title{font-family:var(--fh);font-size:32px;font-weight:800;color:var(--white);margin-bottom:4px;}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:28px;text-align:center;line-height:1.7;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:26px;width:100%;max-width:360px;}
+
+/* Fields */
+.fl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.9px;text-transform:uppercase;margin-bottom:6px;}
+.fw{margin-bottom:16px;}
+.fi{width:100%;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:15px;font-family:var(--fb);outline:none;transition:.2s;-webkit-appearance:none;appearance:none;}
+.fi:focus{border-color:var(--green);}
+select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236a90b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;padding:13px 20px;font-family:var(--fh);font-size:16px;font-weight:700;letter-spacing:.4px;cursor:pointer;transition:.15s;width:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.bg{background:var(--green);color:#0a1628;} .bg:active{background:var(--green2);transform:scale(.97);}
+.bo{background:transparent;color:var(--text);border:1.5px solid var(--border);} .bo:active{border-color:var(--green);color:var(--green);}
+.ba{background:var(--amber);color:#0a1628;} .ba:active{opacity:.85;}
+.br{background:var(--red);color:#fff;} .br:active{opacity:.85;}
+.bsm{padding:8px 14px;font-size:13px;width:auto;}
+
+/* Header */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.htitle{font-family:var(--fh);font-size:21px;font-weight:800;color:var(--white);}
+.hsub{font-size:11px;color:var(--muted);}
+.spill{display:flex;align-items:center;gap:5px;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700;border:1.5px solid;cursor:pointer;white-space:nowrap;touch-action:manipulation;}
+.sp-on{background:#003d2e;color:var(--green);border-color:var(--green);}
+.sp-sy{background:#0d2a4a;color:var(--blue);border-color:var(--blue);}
+.sp-of{background:#3d2a00;color:var(--amber);border-color:var(--amber);}
+.sp-qu{background:#2a1540;color:var(--purple);border-color:var(--purple);}
+.sp-er{background:#3d1515;color:#ff8080;border-color:var(--red);}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}
+
+/* Nav */
+.nav{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border:none;background:transparent;color:var(--muted);font-family:var(--fb);font-size:10px;font-weight:600;cursor:pointer;border-top:2px solid transparent;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.nb.act{color:var(--green);border-top-color:var(--green);}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;}
+.ctitle{font-family:var(--fh);font-size:17px;font-weight:700;color:var(--white);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.srow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.sbox{background:#0a1628;border-radius:10px;padding:12px;text-align:center;}
+.sv{font-family:var(--fh);font-size:24px;font-weight:800;color:var(--green);}
+.sl{font-size:11px;color:var(--muted);margin-top:2px;}
+.sbox.am .sv{color:var(--amber);}.sbox.bl .sv{color:var(--blue);}.sbox.pu .sv{color:var(--purple);}.sbox.rd .sv{color:var(--red);}
+
+/* Period filter */
+.prow{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.pb{padding:6px 13px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation;}
+.pb.act{background:var(--green);color:#0a1628;border-color:var(--green);}
+
+/* Table */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:#0a1628;color:var(--muted);font-weight:700;padding:9px 10px;text-align:left;font-size:10px;letter-spacing:.6px;text-transform:uppercase;white-space:nowrap;}
+td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.bdg{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.bg2{background:#003d2e;color:var(--green);}.ba2{background:#3d2a00;color:var(--amber);}.bb2{background:#0d2a4a;color:var(--blue);}.br2{background:#3d1515;color:#ff8080;}
+.tag{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--muted);}
+
+/* Subtabs */
+.stabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;}
+.stab{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;touch-action:manipulation;}
+.stab.act{background:var(--surface2);color:var(--text);border-color:var(--blue);}
+
+/* Modal */
+.movl{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;display:flex;align-items:flex-end;justify-content:center;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
+.mtitle{font-family:var(--fh);font-size:21px;font-weight:800;color:var(--white);margin-bottom:20px;}
+.mact{display:flex;gap:10px;margin-top:20px;}
+.twobox{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* Misc */
+.sh{font-family:var(--fh);font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin:16px 0 8px;}
+.banner{border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:13px;}
+.b-off{background:linear-gradient(90deg,#3d2a00,#2a1a00);border:1px solid var(--amber);}
+.b-qu{background:linear-gradient(90deg,#1a0d30,#0d1a30);border:1px solid var(--purple);}
+.b-on{background:linear-gradient(90deg,#003d2e,#0d2a4a);border:1px solid var(--green);}
+.btxt{flex:1;}.btit{font-family:var(--fh);font-size:15px;font-weight:700;margin-bottom:2px;}
+.empty{text-align:center;padding:28px 16px;color:var(--muted);font-size:14px;}
+.hint{background:#003d2e;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:var(--green);}
+.warn{background:#3d2a00;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--amber);}
+.ok-msg{background:#003d2e;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:var(--green);}
+.err-box{background:#3d1515;border:1px solid var(--red);color:#ff8080;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;}
+.delbtn{background:none;border:none;color:var(--red);cursor:pointer;padding:4px 8px;font-size:16px;touch-action:manipulation;}
+.spin{animation:spin 1s linear infinite;display:inline-flex;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#update-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;display:none;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap;}
+/* Uppercase all text entries */
+.fi:not([type=password]):not([type=date]):not([type=time]):not([type=number]):not([type=tel]){text-transform:uppercase;}
+select.fi{text-transform:uppercase;}
+select.fi option{text-transform:uppercase;}
+/* Payment */
+.pay-row{background:linear-gradient(90deg,#002b1f,var(--surface));border-left:3px solid var(--green);}
+.unp-row{background:linear-gradient(90deg,#3d2a00,var(--surface));border-left:3px solid var(--amber);}
+.cum-cell{border-left:2px solid var(--border);font-size:11px;}
+.editbtn{background:none;border:1px solid var(--blue);border-radius:6px;color:var(--blue);cursor:pointer;padding:3px 8px;font-size:11px;font-weight:700;touch-action:manipulation;white-space:nowrap;}
+.editbtn:active{background:var(--blue);color:#fff;}
+.editbtn.disabled{border-color:var(--border);color:var(--border);cursor:not-allowed;opacity:.45;}
+/* Staff list subtab card */
+.sl-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;}
+.sl-card:active{border-color:var(--blue);background:#0d2a4a;}
+.sl-avatar{width:38px;height:38px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:16px;font-weight:800;color:var(--text);flex-shrink:0;}
+.sl-avatar.lo{background:#003d2e;color:var(--green);}
+.sl-avatar.st{background:#0d2a4a;color:var(--blue);}
+
+/* License / Read-only banner */
+#license-banner{position:fixed;top:0;left:0;right:0;z-index:800;background:linear-gradient(90deg,#3d2a00,#2a1500);border-bottom:2px solid var(--amber);padding:10px 16px;display:none;align-items:center;gap:10px;max-width:480px;margin:0 auto;}
+#license-banner .lb-icon{font-size:20px;flex-shrink:0;}
+#license-banner .lb-text{flex:1;font-size:12px;color:var(--amber);font-weight:600;line-height:1.4;}
+#license-banner .lb-tag{background:var(--amber);color:#0a1628;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;letter-spacing:.6px;flex-shrink:0;}
+body.readonly-mode .content{padding-top:52px;}
+body.readonly-mode .btn.bg,body.readonly-mode .btn.ba,body.readonly-mode .btn.br,body.readonly-mode .btn.bo[id^="btn-add"],body.readonly-mode button[id^="btn-add"],body.readonly-mode button[id^="btn-log"],body.readonly-mode button[id^="btn-pay"]{pointer-events:none;opacity:.35;filter:grayscale(1);}
+/* Trial warning banner (top strip) */
+#trial-banner{position:fixed;top:0;left:0;right:0;z-index:800;background:linear-gradient(90deg,#1a0d30,#0d1a30);border-bottom:2px solid var(--purple);padding:8px 16px;display:none;align-items:center;gap:8px;max-width:480px;margin:0 auto;}
+#trial-banner .tb-text{flex:1;font-size:11px;color:var(--purple);font-weight:600;line-height:1.4;}
+#trial-banner .tb-tag{background:var(--purple);color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;letter-spacing:.6px;flex-shrink:0;white-space:nowrap;}
+body.trial-mode .content{padding-top:44px;}
+/* Blocked / expired full-screen overlay */
+#blocked-screen{position:fixed;inset:0;background:var(--bg);z-index:900;display:none;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:28px 20px 40px;}
+/* Payment method cards */
+.pay-method{display:flex;align-items:center;gap:14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;}
+.pay-method .pm-icon{font-size:28px;flex-shrink:0;}
+.pay-method .pm-info{flex:1;}
+.pay-method .pm-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px;}
+.pay-method .pm-num{font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white);}
+.pay-method .pm-name{font-size:12px;color:var(--muted);margin-top:1px;}
+.pm-copy{background:none;border:1.5px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;touch-action:manipulation;}
+.pm-copy:active{border-color:var(--green);color:var(--green);}
+/* Firebase config screen */
+#fb-config-screen{position:fixed;inset:0;background:var(--bg);z-index:1100;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:24px 20px 40px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+
+  <!-- License read-only banner -->
+  <div id="license-banner">
+    <span class="lb-icon">🔒</span>
+    <span class="lb-text" id="license-banner-msg">This depot is suspended. Contact your administrator.</span>
+    <span class="lb-tag">READ ONLY</span>
+  </div>
+
+  <!-- Trial warning banner (shown when ≤5 days left) -->
+  <div id="trial-banner">
+    <span style="font-size:16px;flex-shrink:0">⏳</span>
+    <span class="tb-text" id="trial-banner-msg">Trial period active.</span>
+    <span class="tb-tag" id="trial-banner-tag">TRIAL</span>
+  </div>
+
+  <!-- Blocked / Expired screen (trial_expired or expired) -->
+  <div id="blocked-screen">
+    <div style="text-align:center;margin-bottom:24px;padding-top:12px">
+      <div style="font-size:52px;margin-bottom:12px" id="bs-icon">🔒</div>
+      <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px" id="bs-title">Access Blocked</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8;max-width:320px;margin:0 auto" id="bs-msg">Your trial period has ended.</div>
+    </div>
+    <div style="width:100%;max-width:400px">
+      <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">💳 Make Payment To Activate</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Send payment via <strong style="color:var(--text)">Airtel Money</strong> or <strong style="color:var(--text)">MTN Mobile Money</strong> to the number below, then WhatsApp/call to confirm your depot ID.</div>
+      <div class="pay-method">
+        <span class="pm-icon">🔴</span>
+        <div class="pm-info">
+          <div class="pm-label">Airtel Money</div>
+          <div class="pm-num">+260 970 962 902</div>
+          <div class="pm-name">Goodson Chongo</div>
+        </div>
+        <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
+      </div>
+      <div class="pay-method">
+        <span class="pm-icon">🟡</span>
+        <div class="pm-info">
+          <div class="pm-label">MTN Mobile Money</div>
+          <div class="pm-num">+260 960 271 128</div>
+          <div class="pm-name">Goodson Chongo</div>
+        </div>
+        <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">Your Depot License Key</div>
+        <div style="font-family:monospace;font-size:14px;color:var(--blue);word-break:break-all" id="bs-depot-key">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">Include this key when you message for activation.</div>
+      </div>
+      <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;background:var(--green);color:#0a1628;border-radius:11px;padding:13px 20px;font-family:var(--fh);font-size:16px;font-weight:700;text-decoration:none;margin-bottom:10px;touch-action:manipulation">
+        <span>💬</span> WhatsApp for Activation
+      </a>
+      <a href="tel:+260960271128" style="display:flex;align-items:center;justify-content:center;gap:10px;background:transparent;color:var(--text);border:1.5px solid var(--border);border-radius:11px;padding:12px 20px;font-family:var(--fh);font-size:15px;font-weight:700;text-decoration:none;margin-bottom:24px">
+        <span>📞</span> Call Developer
+      </a>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <div class="login-logo">MDM</div>
+    <div class="login-title">My Depot Master</div>
+    <div class="login-sub"><span id="login-depot-sub">My Depot Master</span><br><span id="conn-status" style="color:var(--amber)">● Checking connection…</span></div>
+    <div class="login-card">
+      <div class="err-box" id="login-err" style="display:none"></div>
+      <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none"/></div>
+      <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password"/></div>
+      <button class="btn bg" id="login-btn">🔒 Sign In</button>
+      <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center">Default: admin / admin123 &nbsp;|&nbsp; dataentry / entry123</div>
+    </div>
+  </div>
+
+  <!-- MAIN UI -->
+  <div class="hdr" id="main-hdr" style="display:none">
+    <div>
+      <div class="htitle">My Depot Master</div>
+      <div class="hsub" id="hdr-sub">Loading…</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="spill sp-on" id="sync-pill" style="cursor:pointer">✅ Synced</button>
+      <button class="btn bo bsm" id="logout-btn" style="width:auto;padding:6px 12px">⏏ Out</button>
+    </div>
+  </div>
+
+  <div class="content" id="content" style="display:none"></div>
+
+  <div class="nav" id="nav" style="display:none">
+    <button class="nb act" id="nb-dash" data-tab="dashboard">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Dashboard
+    </button>
+    <button class="nb" id="nb-gen" data-tab="general">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>General
+    </button>
+    <button class="nb" id="nb-maize" data-tab="maize">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg>Maize
+    </button>
+    <button class="nb" id="nb-staff" data-tab="staff">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Staff
+    </button>
+    <button class="nb" id="nb-settings" data-tab="settings" style="display:none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
+    </button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="movl" id="modal-ovl" style="display:none">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<div id="update-toast">🔄 New version available — tap to update</div>
+
+<script>
+
+// ══════════════════════════════════════════════════════════
+// ██████╗ FIREBASE CONFIG — EDIT THESE VALUES
+// ══════════════════════════════════════════════════════════
+// Replace the values below with your own Firebase project config.
+// See the Setup Guide in Settings > License & Firebase for step-by-step instructions.
+const FB_CONFIG = {
+  apiKey:            "AIzaSyD_WnWTMBgd__V2M8840LDt1a-7Ebnh6ZU",
+  authDomain:        "realtime-database-be871.firebaseapp.com",
+  databaseURL:       "https://realtime-database-be871-default-rtdb.firebaseio.com",
+  projectId:         "realtime-database-be871",
+  storageBucket:     "realtime-database-be871.firebasestorage.app",
+  messagingSenderId: "1051301635587",
+  appId:             "1:1051301635587:web:00c5bc5825dd41fd329036"
+};
+// ═══════════════════════════════════════════════════════════
+
+// ── LICENSE STATE ─────────────────────────────────────────
+let LICENSE = { status: 'unknown', effectiveStatus: 'unknown', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 14 };
+const LICENSE_CACHE_KEY = 'mdm_license_cache';
+const LICENSE_GRACE_MS  = 7 * 24 * 60 * 60 * 1000; // 7-day offline grace
+const TRIAL_MS          = 14 * 24 * 60 * 60 * 1000; // 14-day trial
+const ACTIVE_MONTHS     = 2; // months active after payment
+
+let fbConfigured = false;
+
+function isFbConfigured() {
+  return FB_CONFIG.apiKey && FB_CONFIG.apiKey !== 'YOUR_API_KEY' &&
+         FB_CONFIG.databaseURL && !FB_CONFIG.databaseURL.includes('YOUR_PROJECT_ID');
+}
+
+function initFirebase() {
+  fbConfigured = isFbConfigured();
+}
+
+// Firebase Realtime Database REST API helpers (no SDK needed)
+async function fbGet(path) {
+  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/' + path + '.json';
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(()=>'');
+    throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
+  }
+  return res.json();
+}
+
+async function fbSet(path, data) {
+  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/' + path + '.json';
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(()=>'');
+    throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
+  }
+  return res.json();
+}
+
+// Test Firebase connection and show result
+async function testFirebaseConnection() {
+  const btn = document.getElementById('fb-test-btn');
+  const out = document.getElementById('fb-test-out');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Testing…'; }
+  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/licenses/_test_ping.json';
+  try {
+    out.style.display = 'block';
+    out.style.background = '#0d2a4a';
+    out.style.color = 'var(--blue)';
+    out.textContent = '→ GET ' + url;
+    const res = await fetch(url);
+    const body = await res.text();
+    if (res.ok) {
+      out.style.background = '#003d2e'; out.style.color = 'var(--green)';
+      out.textContent = '✅ Connected! Status ' + res.status + '. Rules are working.';
+    } else {
+      out.style.background = '#3d1515'; out.style.color = '#ff8080';
+      out.textContent = '❌ Failed — HTTP ' + res.status + '\n' + body.slice(0, 200);
+    }
+  } catch(e) {
+    out.style.background = '#3d1515'; out.style.color = '#ff8080';
+    out.textContent = '❌ Network error: ' + e.message;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '🔌 Test Connection'; }
+}
+
+// Load cached license from localStorage
+function loadCachedLicense() {
+  try {
+    const c = JSON.parse(localStorage.getItem(LICENSE_CACHE_KEY) || 'null');
+    if (c) LICENSE = c;
+  } catch {}
+}
+
+function saveCachedLicense(lic) {
+  try { localStorage.setItem(LICENSE_CACHE_KEY, JSON.stringify(lic)); } catch {}
+}
+
+// Derive a depot key safe for Firebase paths (alphanumeric + underscores)
+function genInstallId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = 'MDM-';
+  for (let g = 0; g < 3; g++) {
+    for (let i = 0; i < 4; i++) id += chars[Math.floor(Math.random() * chars.length)];
+    if (g < 2) id += '-';
+  }
+  return id;
+}
+function depotKey() {
+  if (!DATA.installId) {
+    const id = genInstallId();
+    updateData(d => ({...d, installId: id}));
+    DATA.installId = id;
+  }
+  return DATA.installId;
+}
+
+// Compute effective status from raw Firebase data
+function computeEffectiveStatus(raw, trialStart, activeUntil) {
+  if (raw === 'suspended') return 'suspended';
+  if (raw === 'trial' || raw === 'active') {
+    if (raw === 'trial') {
+      const ts = trialStart || Date.now();
+      return (Date.now() > ts + TRIAL_MS) ? 'trial_expired' : 'trial';
+    }
+    if (raw === 'active') {
+      if (activeUntil && Date.now() > activeUntil) return 'expired';
+      return 'active';
+    }
+  }
+  return raw || 'trial';
+}
+
+function trialDaysRemaining(trialStart) {
+  const msLeft = (trialStart + TRIAL_MS) - Date.now();
+  return Math.max(0, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+}
+
+function activeDaysRemaining(activeUntil) {
+  if (!activeUntil) return null;
+  const msLeft = activeUntil - Date.now();
+  return Math.max(0, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+}
+
+// Main license check — call on login and periodically
+function checkLicense(callback) {
+  if (!isFbConfigured()) {
+    LICENSE = { status: 'trial', effectiveStatus: 'active', suspendedMsg: '', checkedAt: Date.now(), unconfigured: true, trialStart: Date.now(), activeUntil: 0, trialDaysLeft: 14 };
+    applyLicenseMode();
+    if (callback) callback();
+    return;
+  }
+  if (!navigator.onLine) {
+    const cached = LICENSE;
+    const age = Date.now() - (cached.checkedAt || 0);
+    if (['suspended','trial_expired','expired'].includes(cached.effectiveStatus)) {
+      applyLicenseMode();
+    } else if (age > LICENSE_GRACE_MS) {
+      LICENSE = { ...cached, effectiveStatus: 'suspended', suspendedMsg: 'License check overdue. Please connect to the internet.' };
+      applyLicenseMode();
+    } else {
+      // Re-compute effective status in case dates have passed while offline
+      const eff = computeEffectiveStatus(cached.status, cached.trialStart, cached.activeUntil);
+      LICENSE = { ...cached, effectiveStatus: eff, trialDaysLeft: trialDaysRemaining(cached.trialStart||0) };
+      applyLicenseMode();
+    }
+    if (callback) callback();
+    return;
+  }
+  // Online: fetch from Firebase REST API
+  const key = depotKey();
+  fbGet('licenses/' + key)
+    .then(val => {
+      if (!val) {
+        // New depot — start 14-day trial
+        const now = Date.now();
+        const newEntry = { status: 'trial', trialStart: now, activeUntil: null, depotName: (DATA.depotInfo||{}).name||'', createdAt: now };
+        fbSet('licenses/' + key, newEntry).catch(()=>{});
+        LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
+      } else {
+        const rawStatus   = val.status || 'trial';
+        const trialStart  = val.trialStart || val.createdAt || Date.now();
+        const activeUntil = val.activeUntil || 0;
+        const eff         = computeEffectiveStatus(rawStatus, trialStart, activeUntil);
+        LICENSE = {
+          status:        rawStatus,
+          effectiveStatus: eff,
+          suspendedMsg:  val.suspendedMsg || 'This depot has been suspended. Contact your administrator.',
+          checkedAt:     Date.now(),
+          trialStart,
+          activeUntil,
+          trialDaysLeft: trialDaysRemaining(trialStart)
+        };
+      }
+      saveCachedLicense(LICENSE);
+      applyLicenseMode();
+      if (callback) callback();
+    }).catch(err => {
+      console.warn('License check failed:', err);
+      LICENSE.lastError = err.message;
+      loadCachedLicense();
+      applyLicenseMode();
+      if (callback) callback();
+    });
+}
+
+function applyLicenseMode() {
+  const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
+  const banner   = document.getElementById('license-banner');
+  const msg      = document.getElementById('license-banner-msg');
+  const trialBnr = document.getElementById('trial-banner');
+  const trialMsg = document.getElementById('trial-banner-msg');
+  const trialTag = document.getElementById('trial-banner-tag');
+  const blocked  = document.getElementById('blocked-screen');
+  const bsKey    = document.getElementById('bs-depot-key');
+  const bsIcon   = document.getElementById('bs-icon');
+  const bsTitle  = document.getElementById('bs-title');
+  const bsMsg    = document.getElementById('bs-msg');
+
+  // Reset all
+  document.body.classList.remove('readonly-mode','trial-mode');
+  if (banner)   banner.style.display  = 'none';
+  if (trialBnr) trialBnr.style.display= 'none';
+  if (blocked)  blocked.style.display = 'none';
+
+  if (eff === 'suspended') {
+    document.body.classList.add('readonly-mode');
+    if (banner) banner.style.display = 'flex';
+    if (msg) msg.textContent = LICENSE.suspendedMsg || 'This depot is suspended. Contact your administrator.';
+
+  } else if (eff === 'trial_expired') {
+    if (bsIcon)  bsIcon.textContent  = '⏳';
+    if (bsTitle) bsTitle.textContent = 'Trial Period Ended';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>14-day free trial</strong> has ended. Make a payment and contact the developer to activate your depot.';
+    if (bsKey)   bsKey.textContent   = depotKey();
+    if (blocked) blocked.style.display = 'flex';
+
+  } else if (eff === 'expired') {
+    if (bsIcon)  bsIcon.textContent  = '🔒';
+    if (bsTitle) bsTitle.textContent = 'Subscription Expired';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>2-month active period</strong> has ended. Renew your subscription to continue using My Depot Master.';
+    if (bsKey)   bsKey.textContent   = depotKey();
+    if (blocked) blocked.style.display = 'flex';
+
+  } else if (eff === 'trial') {
+    const daysLeft = LICENSE.trialDaysLeft || trialDaysRemaining(LICENSE.trialStart || 0);
+    // Show trial warning strip when ≤5 days left
+    if (daysLeft <= 5 && trialBnr) {
+      document.body.classList.add('trial-mode');
+      trialBnr.style.display = 'flex';
+      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Pay to keep access.`;
+      if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
+    }
+  }
+}
+
+// Intercept write actions in read-only mode
+function isReadOnly() {
+  const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
+  return eff === 'suspended';
+}
+
+// Copy phone number to clipboard
+function copyNum(num) {
+  navigator.clipboard.writeText(num).then(()=>alert('✅ Number copied!')).catch(()=>{
+    const el=document.createElement('input');el.value=num;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('✅ Number copied!');
+  });
+}
+
+// ── SERVICE WORKER ──────────────────────────────────────────────────────────
+const SW_CODE=`const CACHE='fra-v2';
+self.addEventListener('install',e=>{self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil(clients.claim());});
+self.addEventListener('fetch',e=>{
+  if(e.request.mode==='navigate'){
+    e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));return r;}).catch(()=>caches.match(e.request)));
+    return;
+  }
+  if(e.request.url.includes('fonts.gstatic')||e.request.url.includes('fonts.googleapis')){
+    e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const c=res.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));return res;})));
+    return;
+  }
+});`;
+if('serviceWorker' in navigator){
+  const b=new Blob([SW_CODE],{type:'text/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'/'}).catch(()=>{});
+}
+
+// ── DATA DEFAULTS ───────────────────────────────────────────────────────────
+const LK='fra_depot_v2';
+const DEFAULT={
+  users:[{username:'admin',password:'admin123',role:'admin'},{username:'dataentry',password:'entry123',role:'dataentry'}],
+  generalInventory:[],  // {id,date,itemName,received,good,damaged,condition,notes}
+  generalIssued:[],     // {id,date,itemName,issued,notes}
+  inventoryItems:[],    // admin-defined list of inventory names
+  maizeReceived:[],     // {id,batchName,date,received,good,damaged}
+  maizeIssued:[],       // {id,batchName,date,transporter,issued}
+  maizeStockCounts:[],  // {id,batchName,date,physicalCount,notes}
+  staff:[],             // {id,name,role,phone}
+  staffLogs:[],         // {id,staffId,date,task,bags,earnings,deduction,deductionReason,timeIn,timeOut}
+  staffPayments:[],     // {id,staffId,date,amount,notes}
+  rates:{loader_stack:2,loader_load:3,stitcher:1.5},
+  deductionReasons:['Damaged bags','Late arrival','Misconduct','Short count'],
+  depotInfo:{name:'',district:'',country:'',setupDone:false},
+  installId:'',
+  gdrive:{connected:false,accessToken:'',refreshToken:'',email:'',autoBackup:false,lastBackup:null},
+  _v:0
+};
+
+// ── STORAGE: IndexedDB (persistent) + localStorage fallback ─────────────────
+const IDB_NAME='mdm_db';
+const IDB_STORE='depot_data';
+const IDB_KEY='main';
+let _idb=null;
+
+function openIDB(){
+  return new Promise((resolve,reject)=>{
+    if(_idb){resolve(_idb);return;}
+    const req=indexedDB.open(IDB_NAME,1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(IDB_STORE))
+        db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess=e=>{_idb=e.target.result;resolve(_idb);};
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+function idbGet(){
+  return openIDB().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const req=tx.objectStore(IDB_STORE).get(IDB_KEY);
+    req.onsuccess=()=>resolve(req.result||null);
+    req.onerror=()=>reject(req.error);
+  }));
+}
+
+function idbSet(data){
+  return openIDB().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    const req=tx.objectStore(IDB_STORE).put(data,IDB_KEY);
+    req.onsuccess=()=>resolve();
+    req.onerror=()=>reject(req.error);
+  }));
+}
+
+// Sync save: always write to localStorage immediately as backup
+function sv(d){
+  try{localStorage.setItem(LK,JSON.stringify(d));}catch{}
+  // Also persist to IndexedDB asynchronously
+  idbSet(d).catch(()=>{});
+}
+
+// Load from IndexedDB first, fall back to localStorage
+function ld(){
+  try{
+    const r=localStorage.getItem(LK);
+    if(!r)return JSON.parse(JSON.stringify(DEFAULT));
+    return Object.assign(JSON.parse(JSON.stringify(DEFAULT)),JSON.parse(r));
+  }catch{return JSON.parse(JSON.stringify(DEFAULT));}
+}
+
+// Async init: load from IndexedDB and override if newer than localStorage copy
+async function initData(){
+  try{
+    const idbData=await idbGet();
+    if(idbData && (idbData._v||0)>=(DATA._v||0)){
+      DATA=Object.assign(JSON.parse(JSON.stringify(DEFAULT)),idbData);
+      // Sync back to localStorage so fallback is current
+      try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}
+    }
+  }catch(e){
+    console.warn('IndexedDB load failed, using localStorage data',e);
+  }
+}
+
+let DATA=ld(); // immediate sync load from localStorage
+let USER=null;
+let TAB='dashboard';
+let ONLINE=navigator.onLine;
+let PERIOD={dashboard:'monthly',general:'monthly',maize:'monthly',staff:'monthly'};
+let STAB='logs'; // staff subtab
+let MTAB='received'; // maize subtab
+let GTAB='inventory'; // general subtab
+
+function uid(){return Date.now()+Math.random();}
+function nowTime(){return new Date().toTimeString().slice(0,5);} // HH:MM
+function uc(v){return(v||'').trim().toUpperCase();}
+function today(){return new Date().toISOString().split('T')[0];}
+function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
+function zm(n){return'K'+Number(n||0).toFixed(2);}
+
+function filterPeriod(items,period,f='date'){
+  if(period==='all')return items;
+  const now=new Date();
+  return items.filter(item=>{
+    const d=new Date(item[f]+'T00:00:00');
+    if(period==='daily')return item[f]===today();
+    if(period==='weekly'){const s=new Date(now);s.setDate(now.getDate()-7);return d>=s;}
+    if(period==='monthly')return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    if(period==='yearly')return d.getFullYear()===now.getFullYear();
+    return true;
+  });
+}
+
+function pBtns(tab){
+  return ['daily','weekly','monthly','yearly','all'].map(p=>
+    `<button class="pb${PERIOD[tab]===p?' act':''}" onclick="setPeriod('${tab}','${p}')">${p[0].toUpperCase()+p.slice(1)}</button>`
+  ).join('');
+}
+function setPeriod(tab,p){PERIOD[tab]=p;render();}
+
+function updateData(fn){DATA=fn(DATA);DATA._v=(DATA._v||0)+1;sv(DATA);render();maybeAutoBackup();}
+
+// ── ONLINE ──────────────────────────────────────────────────────────────────
+window.addEventListener('online',()=>{ONLINE=true;updPill();updateConnStatus();});
+window.addEventListener('offline',()=>{ONLINE=false;updPill();updateConnStatus();});
+
+function updateConnStatus(){
+  const el=document.getElementById('conn-status');
+  if(!el)return;
+  if(navigator.onLine){el.style.color='var(--green)';el.textContent='● Online';}
+  else{el.style.color='var(--amber)';el.textContent='● Offline — working locally';}
+}
+
+function updPill(){
+  const p=document.getElementById('sync-pill');
+  if(!p)return;
+  if(ONLINE){p.className='spill sp-on';p.textContent='✅ Online';}
+  else{p.className='spill sp-of';p.textContent='📵 Offline';}
+}
+
+// ── LOGIN / LOGOUT ───────────────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click',doLogin);
+document.getElementById('logout-btn').addEventListener('click',doLogout);
+document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+function doLogin(){
+  const u=document.getElementById('l-user').value.trim();
+  const p=document.getElementById('l-pass').value;
+  const found=DATA.users.find(x=>x.username===u&&x.password===p);
+  const err=document.getElementById('login-err');
+  if(!found){err.style.display='block';err.textContent='Invalid username or password.';return;}
+  err.style.display='none';
+  USER=found;
+  // Show UI immediately, then run license check in background
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-hdr').style.display='flex';
+  document.getElementById('content').style.display='block';
+  document.getElementById('nav').style.display='flex';
+  if(USER.role==='admin')document.getElementById('nb-settings').style.display='flex';
+  updPill();
+  applyDepotInfo();
+  // Load cached license immediately so mode applies even before network check
+  loadCachedLicense();
+  applyLicenseMode();
+  initFirebase();
+  checkLicense(()=>{
+    if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
+      // Setup not done — block ALL users until depot info is entered
+      if(USER.role==='admin'){
+        showDepotSetupModal();
+      } else {
+        // Non-admin: show a holding screen until admin completes setup
+        showTab('dashboard');
+        openModal(`
+          <div class="mtitle">⚠️ Setup Incomplete</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.8;text-align:center;padding:10px 0">
+            Depot setup has not been completed yet.<br><br>
+            Please ask your <strong style="color:var(--text)">Admin</strong> to log in and complete the depot setup before using the app.
+          </div>`);
+      }
+    } else {
+      showTab('dashboard');
+    }
+  });
+}
+
+function doLogout(){
+  USER=null;TAB='dashboard';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('main-hdr').style.display='none';
+  document.getElementById('content').style.display='none';
+  document.getElementById('nav').style.display='none';
+  document.getElementById('nb-settings').style.display='none';
+  document.getElementById('login-err').style.display='none';
+  document.getElementById('l-user').value='';
+  document.getElementById('l-pass').value='';
+}
+
+// ── DEPOT INFO ───────────────────────────────────────────────────────────────
+function applyDepotInfo(){
+  const di=DATA.depotInfo||{};
+  const parts=[di.name,di.district,di.country].filter(Boolean);
+  const sub=parts.length>0?parts.join(' · '):'My Depot Master';
+  // Update login subtitle
+  const lsub=document.getElementById('login-depot-sub');
+  if(lsub)lsub.textContent=sub;
+  // Update header subtitle
+  const hsub=document.getElementById('hdr-sub');
+  if(hsub&&USER)hsub.textContent=`${sub} · ${USER.username}`;
+}
+
+function showDepotSetupModal(){
+  const di=DATA.depotInfo||{};
+  // Prevent backdrop click from closing this mandatory modal
+  const ovl=document.getElementById('modal-ovl');
+  if(ovl) ovl.onclick=null;
+  openModal(`
+    <div class="mtitle">🏢 Depot Setup</div>
+    <div style="background:var(--surface2);border:1px solid var(--green);border-radius:10px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:var(--green);line-height:1.7">
+      Welcome! Please fill in your depot details to continue.<br>
+      <span style="color:var(--muted)">These details are permanent and used as your unique app identifier.</span>
+    </div>
+    <div id="ds-err" style="display:none;background:#2d0a0a;border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:var(--red)"></div>
+    <div class="fw">
+      <div class="fl">Depot Name <span style="color:var(--red)">*</span></div>
+      <input class="fi" id="ds-name" placeholder="E.G. AGRICULTURE DEPOT" value="${di.name||''}" oninput="this.value=this.value.toUpperCase()"/>
+    </div>
+    <div class="fw">
+      <div class="fl">District <span style="color:var(--red)">*</span></div>
+      <input class="fi" id="ds-district" placeholder="E.G. MANSA DISTRICT" value="${di.district||''}" oninput="this.value=this.value.toUpperCase()"/>
+    </div>
+    <div class="fw">
+      <div class="fl">Country <span style="color:var(--red)">*</span></div>
+      <input class="fi" id="ds-country" placeholder="E.G. ZAMBIA" value="${di.country||''}" oninput="this.value=this.value.toUpperCase()"/>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">* All fields are required</div>
+    <div class="mact">
+      <button class="btn bg" onclick="saveDepotSetup()">✓ Save & Continue</button>
+    </div>`,
+  true); // true = uncloseable
+}
+
+function saveDepotSetup(){
+  const name=uc(document.getElementById('ds-name').value);
+  const district=uc(document.getElementById('ds-district').value);
+  const country=uc(document.getElementById('ds-country').value);
+  const errEl=document.getElementById('ds-err');
+  const missing=[];
+  if(!name)missing.push('Depot Name');
+  if(!district)missing.push('District');
+  if(!country)missing.push('Country');
+  if(missing.length>0){
+    errEl.style.display='block';
+    errEl.textContent='Please fill in: '+missing.join(', ');
+    return;
+  }
+  errEl.style.display='none';
+  updateData(d=>({...d,depotInfo:{name,district,country,setupDone:true}}));
+  applyDepotInfo();
+  // Restore backdrop close behaviour for future modals
+  const ovl=document.getElementById('modal-ovl');
+  if(ovl)ovl.onclick=e=>{if(e.target===ovl)closeModal();};
+  closeModal();
+  showTab('dashboard');
+}
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nb').forEach(btn=>{
+  btn.addEventListener('click',()=>showTab(btn.dataset.tab));
+});
+
+function showTab(tab){
+  TAB=tab;
+  document.querySelectorAll('.nb').forEach(b=>b.classList.toggle('act',b.dataset.tab===tab));
+  render();
+}
+
+function render(){
+  const c=document.getElementById('content');
+  if(!c||!USER)return;
+  if(TAB==='dashboard')c.innerHTML=renderDash();
+  else if(TAB==='general')c.innerHTML=renderGeneral();
+  else if(TAB==='maize')c.innerHTML=renderMaize();
+  else if(TAB==='staff')c.innerHTML=renderStaff();
+  else if(TAB==='settings')c.innerHTML=renderSettings();
+  attachTabListeners();
+}
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(html, uncloseable=false){
+  const ovl=document.getElementById('modal-ovl');
+  document.getElementById('modal-body').innerHTML=html;
+  ovl.style.display='flex';
+  // If uncloseable, disable backdrop click; otherwise enable it
+  ovl.onclick = uncloseable ? null : e=>{if(e.target===ovl)closeModal();};
+}
+function closeModal(){document.getElementById('modal-ovl').style.display='none';}
+// Backdrop click handled dynamically inside openModal()
+
+// ── STATUS BANNER ─────────────────────────────────────────────────────────────
+function statusBanner(){
+  const eff = LICENSE.effectiveStatus || 'active';
+  if(!ONLINE) return `<div class="banner b-off">📵<div class="btxt"><div class="btit" style="color:var(--amber)">Offline Mode</div><span style="color:var(--muted);font-size:12px">Data saved locally on this device.</span></div></div>`;
+  if(eff === 'trial') {
+    const d = LICENSE.trialDaysLeft || trialDaysRemaining(LICENSE.trialStart||0);
+    const col = d <= 3 ? 'var(--red)' : d <= 7 ? 'var(--amber)' : 'var(--purple)';
+    return `<div class="banner b-qu">⏳<div class="btxt"><div class="btit" style="color:${col}">Trial Mode — ${d} day${d===1?'':'s'} remaining</div><span style="color:var(--muted);font-size:12px">Pay & contact developer to activate full access.</span></div></div>`;
+  }
+  if(eff === 'active' && LICENSE.activeUntil) {
+    const d = activeDaysRemaining(LICENSE.activeUntil);
+    if(d !== null && d <= 14) {
+      return `<div class="banner b-qu">⚠️<div class="btxt"><div class="btit" style="color:var(--amber)">Subscription expires in ${d} day${d===1?'':'s'}</div><span style="color:var(--muted);font-size:12px">Renew before expiry to avoid interruption.</span></div></div>`;
+    }
+  }
+  return `<div class="banner b-on">☁<div class="btxt"><div class="btit" style="color:var(--green)">Online — Data Saved Locally</div><span style="color:var(--muted);font-size:12px">All entries are stored securely on this device.</span></div></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════
+function renderDash(){
+  const maizeRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
+  const maizeIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const maizeBal=maizeRec-maizeIss;
+
+  // ── Build warnings ──────────────────────────────────────────────────────
+  const warnings=[];
+  const stackBags=DATA.staffLogs.filter(l=>l.task==='Stacking').reduce((a,b)=>a+Number(b.bags||0),0);
+  const stitchBags=DATA.staffLogs.filter(l=>l.task==='Stitching').reduce((a,b)=>a+Number(b.bags||0),0);
+  const loadBags=DATA.staffLogs.filter(l=>l.task==='Loading').reduce((a,b)=>a+Number(b.bags||0),0);
+
+  if(DATA.staffLogs.filter(l=>l.task==='Stacking').length>0 && stackBags!==maizeRec)
+    warnings.push({icon:'📦',title:'STACKING MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags stacked: <strong>${stackBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${(maizeRec-stackBags).toLocaleString()}</strong>`});
+
+  if(DATA.staffLogs.filter(l=>l.task==='Stitching').length>0 && stitchBags!==maizeRec)
+    warnings.push({icon:'🧵',title:'STITCHING MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags stitched: <strong>${stitchBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${(maizeRec-stitchBags).toLocaleString()}</strong>`});
+
+  if(DATA.staffLogs.filter(l=>l.task==='Loading').length>0 && loadBags!==maizeIss)
+    warnings.push({icon:'🚛',title:'LOADING MISMATCH',msg:`Bags issued: <strong>${maizeIss.toLocaleString()}</strong> · Bags loaded: <strong>${loadBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${(maizeIss-loadBags).toLocaleString()}</strong>`});
+
+  // Stock count variances
+  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
+  batches.forEach(bn=>{
+    const avail=batchAvail(bn);
+    const latest=batchPhysical(bn);
+    if(latest!==null){
+      const variance=Number(latest.physicalCount)-avail;
+      if(variance!==0){
+        const dir=variance<0?'SHORTAGE':'SURPLUS';
+        warnings.push({icon:'⚖️',title:`STOCK VARIANCE — ${bn}`,msg:`Physical count: <strong>${Number(latest.physicalCount).toLocaleString()}</strong> · System available: <strong>${avail.toLocaleString()}</strong> · <strong style="color:${variance<0?'var(--red)':'var(--amber)'}">${variance<0?variance:'+'+variance} bags (${dir})</strong>`});
+      }
+    }
+  });
+
+  // Negative inventory balances
+  const warnItems=[...(DATA.inventoryItems||[]),...new Set(DATA.generalInventory.map(x=>x.itemName))];
+  [...new Set(warnItems)].forEach(name=>{
+    const rec=DATA.generalInventory.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=DATA.generalIssued.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
+    if(iss>rec) warnings.push({icon:'🔴',title:`NEGATIVE BALANCE — ${name}`,msg:`Issued (${iss.toLocaleString()}) exceeds received (${rec.toLocaleString()}). Balance: <strong style="color:var(--red)">${(rec-iss).toLocaleString()}</strong>`});
+  });
+
+  // Negative maize balance
+  if(maizeBal<0) warnings.push({icon:'🌽',title:'NEGATIVE MAIZE BALANCE',msg:`Total issued (${maizeIss.toLocaleString()}) exceeds total received (${maizeRec.toLocaleString()}). Balance: <strong style="color:var(--red)">${maizeBal.toLocaleString()} bags</strong>`});
+
+  const warnBlock=warnings.length===0?'':`
+    <div style="background:linear-gradient(135deg,#3d1515,#2a1000);border:1.5px solid var(--red);border-radius:14px;padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:20px">⚠️</span>
+        <span style="font-family:var(--fh);font-size:17px;font-weight:800;color:#ff8080">${warnings.length} ALERT${warnings.length>1?'S':''} REQUIRE ATTENTION</span>
+      </div>
+      ${warnings.map(w=>`<div style="border-top:1px solid rgba(231,76,60,.3);padding:10px 0">
+        <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:var(--amber);margin-bottom:3px">${w.icon} ${w.title}</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">${w.msg}</div>
+      </div>`).join('')}
+    </div>`;
+  const logs=filterPeriod(DATA.staffLogs,PERIOD.dashboard);
+  const netEarn=logs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+
+  // Per-item general inventory summary: Opening(0) + Received - Issued = Balance
+  const allItems=[...(DATA.inventoryItems||[]),...new Set(DATA.generalInventory.map(x=>x.itemName)),...new Set(DATA.generalIssued.map(x=>x.itemName))];
+  const uniqueItems=[...new Set(allItems)].sort();
+  const invCards=uniqueItems.map(name=>{
+    const rec=DATA.generalInventory.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=DATA.generalIssued.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
+    const bal=rec-iss;
+    const balColor=bal<=0?'var(--red)':bal<5?'var(--amber)':'var(--green)';
+    return `<div style="border-bottom:1px solid var(--border);padding:11px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-family:var(--fh);font-size:15px;font-weight:700">${name}</span>
+        <span style="font-family:var(--fh);font-size:18px;font-weight:800;color:${balColor}">${bal.toLocaleString()}</span>
+      </div>
+      <div style="display:flex;gap:6px;font-size:11px;color:var(--muted);flex-wrap:wrap">
+        <span>OPENING: <strong style="color:var(--text)">0</strong></span>
+        <span style="color:var(--border)">+</span>
+        <span>RECEIVED: <strong style="color:var(--green)">${rec.toLocaleString()}</strong></span>
+        <span style="color:var(--border)">−</span>
+        <span>USED: <strong style="color:var(--amber)">${iss.toLocaleString()}</strong></span>
+        <span style="color:var(--border)">=</span>
+        <span>BAL: <strong style="color:${balColor}">${bal.toLocaleString()}</strong></span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Recent activity with time
+  const allActivity=[
+    ...DATA.generalInventory.map(x=>({date:x.date,time:x.time||'',desc:`RECEIVED: ${x.itemName}`,qty:`${x.received} units`,type:'rec'})),
+    ...DATA.generalIssued.map(x=>({date:x.date,time:x.time||'',desc:`ISSUED: ${x.itemName}`,qty:`${x.issued} units`,type:'iss'})),
+    ...DATA.maizeReceived.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE RECEIVED: ${x.batchName}`,qty:`${x.received} bags`,type:'rec'})),
+    ...DATA.maizeIssued.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE ISSUED: ${x.batchName}`,qty:`${x.issued} bags`,type:'iss'})),
+  ].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,8);
+
+  return `
+    ${statusBanner()}
+    ${warnBlock}
+    <div class="sh">Overview</div>
+
+    <div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue)">
+      <div class="ctitle">🌽 Maize Stock Summary</div>
+      <div style="display:flex;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap;margin-bottom:10px">
+        <span>OPENING: <strong style="color:var(--text)">0</strong></span>
+        <span style="color:var(--border)">+</span>
+        <span>RECEIVED: <strong style="color:var(--green)">${maizeRec.toLocaleString()}</strong></span>
+        <span style="color:var(--border)">−</span>
+        <span>ISSUED: <strong style="color:var(--amber)">${maizeIss.toLocaleString()}</strong></span>
+        <span style="color:var(--border)">=</span>
+        <span>BALANCE: <strong style="color:${maizeBal<=0?'var(--red)':'var(--blue)'}">${maizeBal.toLocaleString()}</strong></span>
+      </div>
+      <div class="srow">
+        <div class="sbox"><div class="sv">${maizeRec.toLocaleString()}</div><div class="sl">Bags Received</div></div>
+        <div class="sbox am"><div class="sv">${maizeIss.toLocaleString()}</div><div class="sl">Bags Issued</div></div>
+      </div>
+      <div class="sbox bl" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
+        <div class="sv" style="font-size:28px;color:${maizeBal<=0?'var(--red)':'var(--blue)'}">${maizeBal.toLocaleString()}</div>
+        <div class="sl">BALANCE AS AT TODAY</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">📦 General Inventory — Item Balances</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-style:italic">Opening Balance + Receipts − Used = Balance as at today</div>
+      ${uniqueItems.length===0?'<div class="empty">No inventory items yet. Add items in Settings.</div>':invCards}
+    </div>
+
+    <div class="card">
+      <div class="ctitle">👷 Staff Summary</div>
+      <div class="srow">
+        <div class="sbox"><div class="sv">${DATA.staff.filter(s=>s.status!=='expelled').length}</div><div class="sl">Active Staff</div></div>
+        <div class="sbox bl"><div class="sv">K${netEarn.toFixed(0)}</div><div class="sl">Period Net Earnings</div></div>
+      </div>
+      <div class="srow">
+        <div class="sbox"><div class="sv">${logs.reduce((a,b)=>a+Number(b.bags||0),0).toLocaleString()}</div><div class="sl">Bags Handled (Period)</div></div>
+        <div class="sbox"><div class="sv">${logs.length}</div><div class="sl">Work Logs (Period)</div></div>
+      </div>
+      <div class="prow" style="margin-top:8px">${pBtns('dashboard')}</div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">📅 Recent Activity</div>
+      ${allActivity.length===0?'<div class="empty">No entries yet</div>':allActivity.map(a=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span class="bdg ${a.type==='rec'?'bg2':'ba2'}">${a.type==='rec'?'IN':'OUT'}</span>
+              <span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.desc}</span>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">${fmtDate(a.date)}${a.time?' · '+a.time:''}</div>
+          </div>
+          <div style="text-align:right;margin-left:8px;font-size:13px;font-weight:700;white-space:nowrap">${a.qty}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// GENERAL INVENTORY
+// ══════════════════════════════════════════════════════════
+function renderGeneral(){
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="sh" style="margin:0">General Inventory</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg bsm" id="btn-add-gen-rec">+ Receive</button>
+        <button class="btn ba bsm" id="btn-add-gen-iss">+ Issue</button>
+      </div>
+    </div>
+    <div class="stabs">
+      <button class="stab${GTAB==='inventory'?' act':''}" id="gtab-inventory">Received Stock</button>
+      <button class="stab${GTAB==='issued'?' act':''}" id="gtab-issued">Issued</button>
+      <button class="stab${GTAB==='summary'?' act':''}" id="gtab-summary">Summary</button>
+    </div>
+    <div class="prow">${pBtns('general')}</div>
+    ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():renderGenSummary()}`;
+}
+
+function renderGenReceived(){
+  const items=filterPeriod(DATA.generalInventory,PERIOD.general);
+  // Build all-time cumulative per-item (sorted by date+time asc)
+  const sortedAll=DATA.generalInventory.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const runByItem={};const cumMap={};
+  sortedAll.forEach(r=>{
+    runByItem[r.itemName]=(runByItem[r.itemName]||0)+Number(r.received||0);
+    cumMap[r.id]=runByItem[r.itemName];
+  });
+  // Sort period items newest first (date+time)
+  const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+  const rows=sorted.map(item=>{
+    const editable=isWithin24h(item);
+    return`<tr>
+    <td style="white-space:nowrap">
+      <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
+      <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
+    </td>
+    <td style="font-weight:600">${item.itemName}</td>
+    <td style="color:var(--green);text-align:right;font-weight:700">${Number(item.received||0).toLocaleString()}</td>
+    <td style="color:var(--green);text-align:right;font-size:12px">${Number(item.good||0).toLocaleString()}</td>
+    <td style="color:var(--amber);text-align:right;font-size:12px">${Number(item.damaged||0).toLocaleString()}</td>
+    <td><span class="bdg ${item.condition==='good'?'bg2':'ba2'}" style="font-size:10px">${item.condition||'GOOD'}</span></td>
+    <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenRec('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delGenRec('${item.id}')">🗑</button></td>`:''}
+  </tr>`;}).join('');
+  const allTimeRec=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
+  return `
+    <div class="card" style="background:linear-gradient(135deg,#002b1f,#0a1e36);border-color:var(--green)">
+      <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
+      <div class="srow">
+        <div class="sbox"><div class="sv">${allTimeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
+        <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
+      </div>
+      <div class="sbox bl" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
+        <div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Period Received</div></div>
+      <div class="sbox bl"><div class="sv">${items.length}</div><div class="sl">Entries (Period)</div></div>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Received</th><th style="text-align:right">Good</th><th style="text-align:right">Damaged</th><th>Cond.</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="8" class="empty">No received items for this period</td></tr>`:rows}</tbody>
+    </table></div></div>`;
+}
+
+function renderGenIssued(){
+  const items=filterPeriod(DATA.generalIssued,PERIOD.general);
+  const sortedAll=DATA.generalIssued.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const runByItem={};const cumMap={};
+  sortedAll.forEach(r=>{
+    runByItem[r.itemName]=(runByItem[r.itemName]||0)+Number(r.issued||0);
+    cumMap[r.id]=runByItem[r.itemName];
+  });
+  const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+  const rows=sorted.map(item=>{
+    const editable=isWithin24h(item);
+    return`<tr>
+    <td style="white-space:nowrap">
+      <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
+      <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
+    </td>
+    <td style="font-weight:600">${item.itemName}</td>
+    <td style="color:var(--amber);text-align:right;font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
+    <td style="font-size:12px;color:var(--muted)">${item.notes||'—'}</td>
+    <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button></td>`:''}
+  </tr>`;}).join('');
+  const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
+  return `
+    <div class="srow">
+      <div class="sbox am"><div class="sv">${periodIss.toLocaleString()}</div><div class="sl">Period Issued</div></div>
+      <div class="sbox bl"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">All-Time Issued</div></div>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Issued</th><th>Notes</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="6" class="empty">No issued items for this period</td></tr>`:rows}</tbody>
+    </table></div></div>`;
+}
+
+function renderGenSummary(){
+  const allItems=[...(DATA.inventoryItems||[]),...new Set(DATA.generalInventory.map(x=>x.itemName)),...new Set(DATA.generalIssued.map(x=>x.itemName))];
+  const uniqueItems=[...new Set(allItems)].sort();
+  const cards=uniqueItems.map(name=>{
+    const recEntries=DATA.generalInventory.filter(r=>r.itemName===name).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+    const issEntries=DATA.generalIssued.filter(r=>r.itemName===name).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+    const totalRec=recEntries.reduce((a,b)=>a+Number(b.received||0),0);
+    const totalIss=issEntries.reduce((a,b)=>a+Number(b.issued||0),0);
+    const bal=totalRec-totalIss;
+    const balColor=bal<=0?'var(--red)':bal<5?'var(--amber)':'var(--blue)';
+    // Build chronological running balance table
+    const allEvents=[
+      ...recEntries.map(r=>({date:r.date,time:r.time||'',type:'rec',qty:Number(r.received||0)})),
+      ...issEntries.map(r=>({date:r.date,time:r.time||'',type:'iss',qty:Number(r.issued||0)}))
+    ].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+    let running=0;
+    const eRows=allEvents.map(ev=>{
+      if(ev.type==='rec')running+=ev.qty; else running-=ev.qty;
+      const rc=running<=0?'var(--red)':running<5?'var(--amber)':'var(--blue)';
+      return `<tr>
+        <td style="white-space:nowrap;font-size:11px">${fmtDate(ev.date)}<br><span style="color:var(--muted)">${ev.time||'—'}</span></td>
+        <td><span class="bdg ${ev.type==='rec'?'bg2':'ba2'}" style="font-size:10px">${ev.type==='rec'?'IN':'OUT'}</span></td>
+        <td style="color:${ev.type==='rec'?'var(--green)':'var(--amber)'};text-align:right;font-weight:700">${ev.type==='rec'?'+':'-'}${ev.qty.toLocaleString()}</td>
+        <td style="color:${rc};font-weight:800;text-align:right;border-left:2px solid var(--border)">${running.toLocaleString()}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="ctitle" style="margin-bottom:6px">${name}</div>
+      <div style="display:flex;gap:6px;font-size:11px;color:var(--muted);flex-wrap:wrap;margin-bottom:10px">
+        <span>OPENING: <strong style="color:var(--text)">0</strong></span>
+        <span>+</span>
+        <span>RECEIVED: <strong style="color:var(--green)">${totalRec.toLocaleString()}</strong></span>
+        <span>−</span>
+        <span>USED: <strong style="color:var(--amber)">${totalIss.toLocaleString()}</strong></span>
+        <span>=</span>
+        <span>BALANCE: <strong style="color:${balColor}">${bal.toLocaleString()}</strong></span>
+      </div>
+      ${allEvents.length===0?'<div class="empty" style="padding:8px">No entries yet</div>':`<div class="tw"><table>
+        <thead><tr><th>Date & Time</th><th>Type</th><th style="text-align:right">Qty</th><th style="text-align:right;border-left:2px solid var(--border)">Balance</th></tr></thead>
+        <tbody>${eRows}</tbody>
+      </table></div>`}
+    </div>`;
+  }).join('');
+  return uniqueItems.length===0
+    ?`<div class="card"><div class="empty">No inventory items yet.<br>Add items in Settings first.</div></div>`
+    :cards;
+}
+
+// General Inventory Forms
+function openGenRecForm(){
+  const defined=(DATA.inventoryItems||[]);
+  const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
+  const allNames=[...new Set([...defined,...fromData])].sort();
+  const nameInput=allNames.length>0
+    ?`<select class="fi" id="gr-name"><option value="">— Select Item —</option>${allNames.map(n=>`<option value="${n}">${n}</option>`).join('')}<option value="__other__">OTHER (TYPE BELOW)</option></select>
+       <input class="fi" id="gr-name-other" placeholder="TYPE NEW ITEM NAME" style="display:none;margin-top:8px" oninput="this.value=this.value.toUpperCase()"/>`
+    :`<input class="fi" id="gr-name" placeholder="E.G. FERTILIZER, RICE…" oninput="this.value=this.value.toUpperCase()"/>`;
+  openModal(`
+    <div class="mtitle">📦 Receive Item</div>
+    <div class="fw"><div class="fl">Item Name</div>${nameInput}</div>
+    <div class="twobox">
+      <div class="fw"><div class="fl">Qty Received</div><input class="fi" type="number" id="gr-rec" placeholder="0" inputmode="numeric" oninput="calcGenGoodDmg()"/></div>
+      <div class="fw"><div class="fl">Good Qty</div><input class="fi" type="number" id="gr-good" placeholder="0" inputmode="numeric" oninput="calcGenDmg()"/></div>
+    </div>
+    <div class="fw"><div class="fl">Damaged Qty</div><input class="fi" type="number" id="gr-dmg" placeholder="Auto-calculated" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Condition</div><select class="fi" id="gr-cond"><option value="good">GOOD</option><option value="damaged">DAMAGED (SOME)</option><option value="all-damaged">ALL DAMAGED</option></select></div>
+    <div class="fw"><div class="fl">Date Received</div><input class="fi" type="date" id="gr-date" value="${today()}"/></div>
+    <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="gr-notes" placeholder="ANY NOTES…" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveGenRec()">✓ Save</button></div>`);
+  const sel=document.getElementById('gr-name');
+  if(sel&&sel.tagName==='SELECT'){sel.addEventListener('change',()=>{const oth=document.getElementById('gr-name-other');if(oth)oth.style.display=sel.value==='__other__'?'block':'none';});}
+}
+
+function calcGenGoodDmg(){
+  const rec=Number(document.getElementById('gr-rec')?.value||0);
+  const good=document.getElementById('gr-good');
+  if(good&&!good.value)good.value=rec;
+  calcGenDmg();
+}
+function calcGenDmg(){
+  const rec=Number(document.getElementById('gr-rec')?.value||0);
+  const good=Number(document.getElementById('gr-good')?.value||0);
+  const dmg=document.getElementById('gr-dmg');
+  if(dmg)dmg.value=Math.max(0,rec-good);
+}
+
+function saveGenRec(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const sel=document.getElementById('gr-name');
+  let name='';
+  if(sel&&sel.tagName==='SELECT'){
+    name=sel.value==='__other__'?(document.getElementById('gr-name-other')?.value||'').trim().toUpperCase():sel.value;
+  } else { name=(sel?.value||'').trim().toUpperCase(); }
+  const rec=Number(document.getElementById('gr-rec').value||0);
+  const good=Number(document.getElementById('gr-good').value||0);
+  const dmg=Number(document.getElementById('gr-dmg').value||0);
+  if(!name||!rec){alert('Enter item name and quantity.');return;}
+  const payload={id:uid(),date:document.getElementById('gr-date').value,time:nowTime(),itemName:name,received:rec,good,damaged:dmg,condition:document.getElementById('gr-cond').value,notes:uc(document.getElementById('gr-notes').value)};
+  updateData(d=>({...d,generalInventory:[...d.generalInventory,payload]}));
+  closeModal();
+}
+
+function openGenIssForm(){
+  const defined=(DATA.inventoryItems||[]);
+  const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
+  const allNames=[...new Set([...defined,...fromData])].sort();
+  const opts=allNames.length>0?allNames.map(n=>`<option value="${n}">${n}</option>`).join(''):`<option value="">NO ITEMS RECEIVED YET</option>`;
+  openModal(`
+    <div class="mtitle">📤 Issue Item</div>
+    <div class="fw"><div class="fl">Item Name</div><select class="fi" id="gi-name">${opts}</select></div>
+    <div class="fw"><div class="fl">Qty Issued</div><input class="fi" type="number" id="gi-qty" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Date Issued</div><input class="fi" type="date" id="gi-date" value="${today()}"/></div>
+    <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="gi-notes" placeholder="E.G. DESTINATION, PURPOSE…" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveGenIss()">✓ Issue</button></div>`);
+}
+
+function saveGenIss(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const name=document.getElementById('gi-name').value;
+  const qty=Number(document.getElementById('gi-qty').value||0);
+  if(!name||!qty){alert('Select item and enter quantity.');return;}
+  const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value)};
+  updateData(d=>({...d,generalIssued:[...d.generalIssued,payload]}));
+  closeModal();
+}
+
+function delGenRec(id){if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
+function delGenIss(id){if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
+
+// ── EDIT HELPERS ─────────────────────────────────────────────────────────────
+function isWithin24h(record){
+  // Uses the record's id (timestamp from uid()) as the creation time, with date+time as fallback
+  const recId=Number(record.id);
+  const base=isNaN(recId)?Date.now():recId;
+  return(Date.now()-base)<86400000;
+}
+
+// ── EDIT: General Received ───────────────────────────────────────────────────
+function openEditGenRec(id){
+  const rec=DATA.generalInventory.find(x=>String(x.id)===String(id));
+  if(!rec){alert('Record not found.');return;}
+  if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  const defined=(DATA.inventoryItems||[]);
+  const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
+  const allNames=[...new Set([...defined,...fromData])].sort();
+  const opts=allNames.map(n=>`<option value="${n}"${n===rec.itemName?' selected':''}>${n}</option>`).join('');
+  openModal(`
+    <div class="mtitle">✏️ Edit Received Item</div>
+    <div class="warn">⏰ Edits close 24 hrs after entry.</div>
+    <div class="fw"><div class="fl">Item Name</div><select class="fi" id="eger-name">${opts}</select></div>
+    <div class="twobox">
+      <div class="fw"><div class="fl">Qty Received</div><input class="fi" type="number" id="eger-rec" value="${rec.received}" inputmode="numeric"/></div>
+      <div class="fw"><div class="fl">Good Qty</div><input class="fi" type="number" id="eger-good" value="${rec.good||0}" inputmode="numeric"/></div>
+    </div>
+    <div class="fw"><div class="fl">Damaged Qty</div><input class="fi" type="number" id="eger-dmg" value="${rec.damaged||0}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Condition</div><select class="fi" id="eger-cond"><option value="good"${rec.condition==='good'?' selected':''}>GOOD</option><option value="damaged"${rec.condition==='damaged'?' selected':''}>DAMAGED (SOME)</option><option value="all-damaged"${rec.condition==='all-damaged'?' selected':''}>ALL DAMAGED</option></select></div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="eger-date" value="${rec.date}"/></div>
+    <div class="fw"><div class="fl">Notes</div><input class="fi" id="eger-notes" value="${rec.notes||''}" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveEditGenRec('${id}')">✓ Save Changes</button></div>`);
+}
+function saveEditGenRec(id){
+  const name=document.getElementById('eger-name').value;
+  const rec=Number(document.getElementById('eger-rec').value||0);
+  if(!name||!rec){alert('Enter item name and quantity.');return;}
+  updateData(d=>({...d,generalInventory:d.generalInventory.map(x=>String(x.id)===String(id)?{...x,itemName:name,received:rec,good:Number(document.getElementById('eger-good').value||0),damaged:Number(document.getElementById('eger-dmg').value||0),condition:document.getElementById('eger-cond').value,date:document.getElementById('eger-date').value,notes:uc(document.getElementById('eger-notes').value)}:x)}));
+  closeModal();
+}
+
+// ── EDIT: General Issued ─────────────────────────────────────────────────────
+function openEditGenIss(id){
+  const iss=DATA.generalIssued.find(x=>String(x.id)===String(id));
+  if(!iss){alert('Record not found.');return;}
+  if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  const defined=(DATA.inventoryItems||[]);
+  const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
+  const allNames=[...new Set([...defined,...fromData])].sort();
+  const opts=allNames.map(n=>`<option value="${n}"${n===iss.itemName?' selected':''}>${n}</option>`).join('');
+  openModal(`
+    <div class="mtitle">✏️ Edit Issued Item</div>
+    <div class="warn">⏰ Edits close 24 hrs after entry.</div>
+    <div class="fw"><div class="fl">Item Name</div><select class="fi" id="egei-name">${opts}</select></div>
+    <div class="fw"><div class="fl">Qty Issued</div><input class="fi" type="number" id="egei-qty" value="${iss.issued}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="egei-date" value="${iss.date}"/></div>
+    <div class="fw"><div class="fl">Notes</div><input class="fi" id="egei-notes" value="${iss.notes||''}" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveEditGenIss('${id}')">✓ Save Changes</button></div>`);
+}
+function saveEditGenIss(id){
+  const name=document.getElementById('egei-name').value;
+  const qty=Number(document.getElementById('egei-qty').value||0);
+  if(!name||!qty){alert('Select item and enter quantity.');return;}
+  updateData(d=>({...d,generalIssued:d.generalIssued.map(x=>String(x.id)===String(id)?{...x,itemName:name,issued:qty,date:document.getElementById('egei-date').value,notes:uc(document.getElementById('egei-notes').value)}:x)}));
+  closeModal();
+}
+
+// ══════════════════════════════════════════════════════════
+// MAIZE
+// Logic:
+//   Available (system) = Total Received − Total Issued  (per batch, all-time)
+//   Variance           = Available − Physical Count  (negative = shortage, positive = surplus)
+// ══════════════════════════════════════════════════════════
+
+// Helper: compute system-Available for a batch (all-time, not period-filtered)
+function batchAvail(batchName){
+  const rec=DATA.maizeReceived.filter(r=>r.batchName===batchName).reduce((a,b)=>a+Number(b.received||0),0);
+  const iss=DATA.maizeIssued.filter(i=>i.batchName===batchName).reduce((a,b)=>a+Number(b.issued||0),0);
+  return rec-iss;
+}
+
+// Helper: latest physical stock count for a batch
+function batchPhysical(batchName){
+  const counts=(DATA.maizeStockCounts||[]).filter(c=>c.batchName===batchName);
+  if(counts.length===0)return null;
+  counts.sort((a,b)=>b.date.localeCompare(a.date));
+  return counts[0];
+}
+
+function renderMaize(){
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="sh" style="margin:0">Maize Handling</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn bg bsm" id="btn-add-maize-rec">+ Receive</button>
+        <button class="btn ba bsm" id="btn-add-maize-iss">+ Issue</button>
+        <button class="btn bo bsm" id="btn-add-stock-count">📦 Stock Count</button>
+      </div>
+    </div>
+    <div class="stabs">
+      <button class="stab${MTAB==='received'?' act':''}" id="mtab-received">Received</button>
+      <button class="stab${MTAB==='issued'?' act':''}" id="mtab-issued">Issued</button>
+      <button class="stab${MTAB==='variance'?' act':''}" id="mtab-variance">Variance</button>
+      <button class="stab${MTAB==='summary'?' act':''}" id="mtab-summary">Summary</button>
+    </div>
+    <div class="prow">${pBtns('maize')}</div>
+    ${MTAB==='received'?renderMaizeRec():MTAB==='issued'?renderMaizeIss():MTAB==='variance'?renderMaizeVariance():renderMaizeSummary()}`;
+}
+
+function renderMaizeRec(){
+  const items=filterPeriod(DATA.maizeReceived,PERIOD.maize);
+  const sortedAll=DATA.maizeReceived.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  let runTotal=0; const cumMap={};
+  sortedAll.forEach(r=>{runTotal+=Number(r.received||0);cumMap[r.id]=runTotal;});
+  const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+  const rows=sorted.map(item=>{
+    const editable=isWithin24h(item);
+    return`<tr>
+    <td style="white-space:nowrap">
+      <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
+      <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
+    </td>
+    <td style="font-weight:600">${item.batchName}</td>
+    <td style="color:var(--green);text-align:right;font-weight:700">${Number(item.received||0).toLocaleString()}</td>
+    <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName).toLocaleString()}</td>
+    <td style="color:var(--green);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
+  </tr>`;}).join('');
+  const allTimeRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
+  return `
+    <div class="card" style="background:linear-gradient(135deg,#002b1f,#0a1e36);border-color:var(--green)">
+      <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
+      <div class="srow">
+        <div class="sbox"><div class="sv">${allTimeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
+        <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
+      </div>
+      <div class="sbox bl" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
+        <div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Period Received</div></div>
+      <div class="sbox bl"><div class="sv">${items.length}</div><div class="sl">Entries (Period)</div></div>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Date & Time</th><th>Batch</th><th style="text-align:right">Received</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--green);border-left:2px solid var(--border)">Cum. Received</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="6" class="empty">No maize received for this period</td></tr>`:rows}</tbody>
+    </table></div></div>`;
+}
+
+function renderMaizeIss(){
+  const items=filterPeriod(DATA.maizeIssued,PERIOD.maize);
+  const sortedAll=DATA.maizeIssued.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  let runTotal=0; const cumMap={};
+  sortedAll.forEach(r=>{runTotal+=Number(r.issued||0);cumMap[r.id]=runTotal;});
+  const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+  const rows=sorted.map(item=>{
+    const editable=isWithin24h(item);
+    return`<tr>
+    <td style="white-space:nowrap">
+      <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
+      <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
+    </td>
+    <td style="font-weight:600">${item.batchName}</td>
+    <td style="color:var(--blue);font-size:12px">${item.transporter||'—'}</td>
+    <td style="color:var(--amber);text-align:right;font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
+    <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName).toLocaleString()}</td>
+    <td style="color:var(--amber);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
+  </tr>`;}).join('');
+  const allTimeIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const allTimeRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
+  const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
+  return `
+    <div class="card" style="background:linear-gradient(135deg,#2a1500,#0a1e36);border-color:var(--amber)">
+      <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
+      <div class="srow">
+        <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
+        <div class="sbox bl"><div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div></div>
+      </div>
+      <div class="sbox" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
+        <div class="sv" style="font-size:18px;color:var(--muted)">${periodIss.toLocaleString()}</div><div class="sl">Period Issued</div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Date & Time</th><th>Batch</th><th>Transporter</th><th style="text-align:right">Issued</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--amber);border-left:2px solid var(--border)">Cum. Issued</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="7" class="empty">No maize issued for this period</td></tr>`:rows}</tbody>
+    </table></div></div>`;
+}
+
+function renderMaizeVariance(){
+  // Show one row per batch: Available (system) vs Physical Count vs Variance
+  const batches=[...new Set([...DATA.maizeReceived.map(x=>x.batchName),...DATA.maizeIssued.map(x=>x.batchName)])];
+  const counts=filterPeriod(DATA.maizeStockCounts||[],PERIOD.maize);
+  const rows=batches.map(bn=>{
+    const avail=batchAvail(bn);
+    const latest=batchPhysical(bn);
+    const physCount=latest?Number(latest.physicalCount):null;
+    const variance=physCount!==null?physCount-avail:null;
+    const varColor=variance===null?'var(--muted)':variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
+    const varLabel=variance===null?'—':variance<0?`${variance.toLocaleString()} (SHORTAGE)`:(variance===0?'0 (EXACT)':'+'+variance.toLocaleString()+' (SURPLUS)');
+    return `<tr>
+      <td style="font-weight:700">${bn}</td>
+      <td style="color:var(--blue);font-weight:700;text-align:right">${avail.toLocaleString()}</td>
+      <td style="color:var(--green);text-align:right">${physCount!==null?physCount.toLocaleString():'<span style="color:var(--muted)">Not counted</span>'}</td>
+      <td style="color:${varColor};font-weight:700;text-align:right">${varLabel}</td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${latest?fmtDate(latest.date):'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${latest&&latest.notes?latest.notes:'—'}</td>
+    </tr>`;}).join('');
+
+  // Also show stock count history for this period
+  const countRows=counts.slice().reverse().map(c=>{
+    const avail=batchAvail(c.batchName);
+    const variance=Number(c.physicalCount)-avail;
+    const varColor=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
+    const varTxt=variance<0?`${variance.toLocaleString()}`:(variance===0?'0':'+'+variance.toLocaleString());
+    return `<tr>
+      <td style="font-weight:600">${c.batchName}</td>
+      <td style="white-space:nowrap">${fmtDate(c.date)}</td>
+      <td style="color:var(--blue);text-align:right">${avail.toLocaleString()}</td>
+      <td style="color:var(--green);text-align:right">${Number(c.physicalCount).toLocaleString()}</td>
+      <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
+      <td style="font-size:11px;color:var(--muted)">${c.notes||'—'}</td>
+      ${USER.role==='admin'?`<td><button class="delbtn" onclick="delStockCount('${c.id}')">🗑</button></td>`:''}
+    </tr>`;}).join('');
+
+  return `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:12px;color:var(--muted)">
+      <strong style="color:var(--text)">VARIANCE = PHYSICAL COUNT − SYSTEM AVAILABLE</strong><br>
+      🔴 NEGATIVE = BAGS MISSING &nbsp;|&nbsp; 🟡 POSITIVE = EXTRA BAGS FOUND &nbsp;|&nbsp; 🟢 ZERO = EXACT MATCH
+    </div>
+    <div class="sh">Current Variance per Batch</div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Batch</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--green)">Physical</th><th style="text-align:right">Variance</th><th>Last Count</th><th>Notes</th></tr></thead>
+      <tbody>${batches.length===0?`<tr><td colspan="6" class="empty">No batches yet</td></tr>`:rows}</tbody>
+    </table></div></div>
+    <div class="sh">Stock Count History (${PERIOD.maize})</div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Batch</th><th>Date</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--green)">Physical</th><th style="text-align:right">Variance</th><th>Notes</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${counts.length===0?`<tr><td colspan="7" class="empty">No stock counts for this period</td></tr>`:countRows}</tbody>
+    </table></div></div>`;
+}
+
+function renderMaizeSummary(){
+  const totRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
+  const totIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const totAvail=totRec-totIss;
+  const batches=[...new Set([...DATA.maizeReceived.map(x=>x.batchName),...DATA.maizeIssued.map(x=>x.batchName)])];
+  return `
+    <div class="card">
+      <div class="ctitle">🌽 Cumulative Maize Summary</div>
+      <div class="srow">
+        <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
+        <div class="sbox am"><div class="sv">${totIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
+      </div>
+      <div class="srow">
+        <div class="sbox bl" style="grid-column:1/-1"><div class="sv">${totAvail.toLocaleString()}</div><div class="sl">System Available (Received − Issued)</div></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Batch</th><th style="text-align:right">Received</th><th style="text-align:right">Issued</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right">Physical</th><th style="text-align:right">Variance</th></tr></thead>
+      <tbody>${renderMaizeBatchSummaryRows()}</tbody>
+    </table></div></div>`;
+}
+
+function renderMaizeBatchSummaryRows(){
+  const batches=[...new Set([...DATA.maizeReceived.map(x=>x.batchName),...DATA.maizeIssued.map(x=>x.batchName)])];
+  if(batches.length===0)return`<tr><td colspan="6" class="empty">No batches yet</td></tr>`;
+  return batches.map(bn=>{
+    const rec=DATA.maizeReceived.filter(r=>r.batchName===bn).reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=DATA.maizeIssued.filter(i=>i.batchName===bn).reduce((a,b)=>a+Number(b.issued||0),0);
+    const avail=rec-iss;
+    const latest=batchPhysical(bn);
+    const phys=latest?Number(latest.physicalCount):null;
+    const variance=phys!==null?avail-phys:null;
+    const varColor=variance===null?'var(--muted)':variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
+    const varTxt=variance===null?'—':variance<0?`-${Math.abs(variance).toLocaleString()}`:(variance===0?'0':'+'+variance.toLocaleString());
+    return `<tr>
+      <td style="font-weight:700">${bn}</td>
+      <td style="text-align:right">${rec.toLocaleString()}</td>
+      <td style="color:var(--amber);text-align:right">${iss.toLocaleString()}</td>
+      <td style="color:var(--blue);font-weight:700;text-align:right">${avail.toLocaleString()}</td>
+      <td style="color:var(--green);text-align:right">${phys!==null?phys.toLocaleString():'—'}</td>
+      <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openMaizeRecForm(){
+  openModal(`
+    <div class="mtitle">🌽 Receive Maize</div>
+    <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="mr-batch" placeholder="e.g. Batch 1, Batch A…"/></div>
+    <div class="fw"><div class="fl">Bags Received</div><input class="fi" type="number" id="mr-rec" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Date Received</div><input class="fi" type="date" id="mr-date" value="${today()}"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveMaizeRec()">✓ Save</button></div>`);
+}
+function saveMaizeRec(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const batch=uc(document.getElementById('mr-batch').value);
+  const rec=Number(document.getElementById('mr-rec').value||0);
+  if(!batch||!rec){alert('Enter batch name and quantity.');return;}
+  const payload={id:uid(),batchName:batch,date:document.getElementById('mr-date').value,time:nowTime(),received:rec};
+  updateData(d=>({...d,maizeReceived:[...d.maizeReceived,payload]}));
+  closeModal();
+}
+
+function openMaizeIssForm(){
+  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
+  const opts=batches.length>0?batches.map(b=>`<option>${b}</option>`).join(''):`<option>No batches received yet</option>`;
+  openModal(`
+    <div class="mtitle">📤 Issue Maize</div>
+    <div class="fw"><div class="fl">Batch Name</div><select class="fi" id="mi-batch">${opts}</select></div>
+    <div class="fw"><div class="fl">Transporter Name</div><input class="fi" id="mi-trans" placeholder="e.g. Truck A, John's Truck…"/></div>
+    <div class="fw"><div class="fl">Bags Issued</div><input class="fi" type="number" id="mi-qty" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Date Issued</div><input class="fi" type="date" id="mi-date" value="${today()}"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveMaizeIss()">✓ Issue</button></div>`);
+}
+function saveMaizeIss(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const batch=document.getElementById('mi-batch').value;
+  const trans=document.getElementById('mi-trans').value.trim();
+  const qty=Number(document.getElementById('mi-qty').value||0);
+  if(!qty){alert('Enter quantity to issue.');return;}
+  if(!trans){alert('Enter transporter name.');return;}
+  const payload={id:uid(),batchName:batch,date:document.getElementById('mi-date').value,time:nowTime(),transporter:trans,issued:qty};
+  updateData(d=>({...d,maizeIssued:[...d.maizeIssued,payload]}));
+  closeModal();
+}
+
+function openStockCountForm(){
+  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
+  if(batches.length===0){alert('No maize batches received yet.');return;}
+  const opts=batches.map(b=>{
+    const avail=batchAvail(b);
+    return `<option value="${b}">${b} (Available: ${avail.toLocaleString()} bags)</option>`;
+  }).join('');
+  openModal(`
+    <div class="mtitle">📦 Physical Stock Count</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+      Count the actual bags physically present in the depot and enter the number below. The app will calculate the variance automatically.
+    </div>
+    <div class="fw"><div class="fl">Batch</div><select class="fi" id="sc-batch" onchange="updateAvailHint()">${opts}</select></div>
+    <div id="sc-avail-hint"></div>
+    <div class="fw"><div class="fl">Physical Bags Counted</div><input class="fi" type="number" id="sc-phys" placeholder="Enter actual count" inputmode="numeric" oninput="updateVarianceHint()"/></div>
+    <div id="sc-var-hint"></div>
+    <div class="fw"><div class="fl">Date of Count</div><input class="fi" type="date" id="sc-date" value="${today()}"/></div>
+    <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="sc-notes" placeholder="e.g. counted by supervisor…"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveStockCount()">✓ Save Count</button></div>`);
+  updateAvailHint();
+}
+function updateAvailHint(){
+  const batch=document.getElementById('sc-batch')?.value;
+  const hint=document.getElementById('sc-avail-hint');
+  if(!batch||!hint)return;
+  const avail=batchAvail(batch);
+  hint.innerHTML=`<div class="hint" style="margin-bottom:12px">System Available for <strong>${batch}</strong>: <strong>${avail.toLocaleString()} bags</strong></div>`;
+  updateVarianceHint();
+}
+function updateVarianceHint(){
+  const batch=document.getElementById('sc-batch')?.value;
+  const phys=Number(document.getElementById('sc-phys')?.value||0);
+  const hint=document.getElementById('sc-var-hint');
+  if(!hint||!phys)return;
+  const avail=batchAvail(batch);
+  const variance=phys-avail;
+  const color=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
+  const label=variance<0?`SHORTAGE OF ${Math.abs(variance).toLocaleString()} BAGS`:variance===0?'EXACT MATCH — NO VARIANCE':`SURPLUS OF ${variance.toLocaleString()} BAGS`;
+  hint.innerHTML=`<div style="background:var(--surface2);border:1px solid ${color};border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:13px;color:${color};font-weight:700">VARIANCE: ${variance} &nbsp;·&nbsp; ${label}</div>`;
+}
+function saveStockCount(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const batch=document.getElementById('sc-batch').value;
+  const phys=Number(document.getElementById('sc-phys').value||0);
+  if(!phys&&phys!==0){alert('Enter the physical bag count.');return;}
+  const payload={id:uid(),batchName:batch,date:document.getElementById('sc-date').value,time:nowTime(),physicalCount:phys,notes:document.getElementById('sc-notes').value};
+  updateData(d=>({...d,maizeStockCounts:[...(d.maizeStockCounts||[]),payload]}));
+  MTAB='variance';
+  closeModal();
+}
+function delMaizeRec(id){if(!confirm('Delete this maize receive record?'))return;updateData(d=>({...d,maizeReceived:d.maizeReceived.filter(x=>x.id!==id)}));}
+function delMaizeIss(id){if(!confirm('Delete this maize issue record?'))return;updateData(d=>({...d,maizeIssued:d.maizeIssued.filter(x=>x.id!==id)}));}
+function delStockCount(id){if(!confirm('Delete this stock count?'))return;updateData(d=>({...d,maizeStockCounts:(d.maizeStockCounts||[]).filter(x=>x.id!==id)}));}
+
+// ── EDIT: Maize Received ─────────────────────────────────────────────────────
+function openEditMaizeRec(id){
+  const rec=DATA.maizeReceived.find(x=>String(x.id)===String(id));
+  if(!rec){alert('Record not found.');return;}
+  if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  openModal(`
+    <div class="mtitle">✏️ Edit Maize Received</div>
+    <div class="warn">⏰ Edits close 24 hrs after entry.</div>
+    <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="emr-batch" value="${rec.batchName}" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="fw"><div class="fl">Bags Received</div><input class="fi" type="number" id="emr-rec" value="${rec.received}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="emr-date" value="${rec.date}"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveEditMaizeRec('${id}')">✓ Save Changes</button></div>`);
+}
+function saveEditMaizeRec(id){
+  const batch=uc(document.getElementById('emr-batch').value);
+  const qty=Number(document.getElementById('emr-rec').value||0);
+  if(!batch||!qty){alert('Enter batch name and quantity.');return;}
+  updateData(d=>({...d,maizeReceived:d.maizeReceived.map(x=>String(x.id)===String(id)?{...x,batchName:batch,received:qty,date:document.getElementById('emr-date').value}:x)}));
+  closeModal();
+}
+
+// ── EDIT: Maize Issued ───────────────────────────────────────────────────────
+function openEditMaizeIss(id){
+  const iss=DATA.maizeIssued.find(x=>String(x.id)===String(id));
+  if(!iss){alert('Record not found.');return;}
+  if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
+  const opts=batches.map(b=>`<option value="${b}"${b===iss.batchName?' selected':''}>${b}</option>`).join('');
+  openModal(`
+    <div class="mtitle">✏️ Edit Maize Issued</div>
+    <div class="warn">⏰ Edits close 24 hrs after entry.</div>
+    <div class="fw"><div class="fl">Batch</div><select class="fi" id="emi-batch">${opts}</select></div>
+    <div class="fw"><div class="fl">Transporter</div><input class="fi" id="emi-trans" value="${iss.transporter||''}" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="fw"><div class="fl">Bags Issued</div><input class="fi" type="number" id="emi-qty" value="${iss.issued}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="emi-date" value="${iss.date}"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveEditMaizeIss('${id}')">✓ Save Changes</button></div>`);
+}
+function saveEditMaizeIss(id){
+  const batch=document.getElementById('emi-batch').value;
+  const trans=document.getElementById('emi-trans').value.trim();
+  const qty=Number(document.getElementById('emi-qty').value||0);
+  if(!qty){alert('Enter quantity.');return;}
+  if(!trans){alert('Enter transporter name.');return;}
+  updateData(d=>({...d,maizeIssued:d.maizeIssued.map(x=>String(x.id)===String(id)?{...x,batchName:batch,transporter:trans,issued:qty,date:document.getElementById('emi-date').value}:x)}));
+  closeModal();
+}
+
+// ══════════════════════════════════════════════════════════
+// STAFF
+// ══════════════════════════════════════════════════════════
+function getEarnings(bags,role,task){
+  const b=Number(bags||0);
+  if(role==='Loader'&&task==='Stacking')return b*DATA.rates.loader_stack;
+  if(role==='Loader'&&task==='Loading')return b*DATA.rates.loader_load;
+  if(role==='Stitcher')return b*DATA.rates.stitcher;
+  return 0;
+}
+
+function renderStaff(){
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="sh" style="margin:0">Staff</div>
+      <div style="display:flex;gap:8px">
+        ${USER.role==='admin'?`<button class="btn bo bsm" id="btn-add-staff">+ Add Staff</button>`:''}
+        <button class="btn bg bsm" id="btn-log-work">+ Log Work</button>
+        <button class="btn ba bsm" id="btn-pay-staff">💳 Pay</button>
+      </div>
+    </div>
+    <div class="stabs">
+      <button class="stab${STAB==='logs'?' act':''}" id="stab-logs">Work Logs</button>
+      <button class="stab${STAB==='roster'?' act':''}" id="stab-roster">Roster</button>
+      <button class="stab${STAB==='earnings'?' act':''}" id="stab-earnings">Earnings</button>
+      <button class="stab${STAB==='payments'?' act':''}" id="stab-payments">💳 Payments</button>
+      <button class="stab${STAB==='bagcheck'?' act':''}" id="stab-bagcheck">🌽 Bag Check</button>
+      <button class="stab${STAB==='stafflist'?' act':''}" id="stab-stafflist">👥 Staff List</button>
+    </div>
+    ${STAB==='logs'?renderStaffLogs():STAB==='roster'?renderRoster():STAB==='earnings'?renderEarnings():STAB==='payments'?renderPayments():STAB==='stafflist'?renderStaffList():renderBagCheck()}`;
+}
+
+function renderStaffLogs(){
+  const logs=filterPeriod(DATA.staffLogs,PERIOD.staff);
+  const staffById=Object.fromEntries(DATA.staff.map(s=>[s.id,s]));
+  const totBags=logs.reduce((a,b)=>a+Number(b.bags||0),0);
+  const totNet=logs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+
+  // Build cumulative totals per staff across ALL logs (career running total up to each entry)
+  const allSorted=DATA.staffLogs.slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
+  const cumMap={};
+  const runBags={}, runNet={};
+  allSorted.forEach(log=>{
+    const sid=log.staffId;
+    runBags[sid]=(runBags[sid]||0)+Number(log.bags||0);
+    runNet[sid]=(runNet[sid]||0)+(Number(log.earnings||0)-Number(log.deduction||0));
+    cumMap[log.id]={cumBags:runBags[sid], cumNet:runNet[sid]};
+  });
+
+  const rows=logs.slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id))).map(log=>{
+    const s=staffById[log.staffId];
+    const net=Number(log.earnings||0)-Number(log.deduction||0);
+    const cum=cumMap[log.id]||{cumBags:0,cumNet:0};
+    const editable=isWithin24h(log);
+    return `<tr>
+      <td style="white-space:nowrap"><div style='font-size:12px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:10px;color:var(--muted)'>${log.time||'—'}</div></td>
+      <td style="font-weight:700">${s?.name||'—'}</td>
+      <td><span class="tag">${log.role}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${log.task||'—'}</td>
+      <td style="text-align:right">${Number(log.bags||0).toLocaleString()}</td>
+      <td style="color:var(--green);font-weight:600;text-align:right">${zm(log.earnings)}</td>
+      <td style="color:${Number(log.deduction||0)>0?'var(--red)':'var(--muted)'};text-align:right">-${zm(log.deduction||0)}</td>
+      <td style="color:var(--green);font-weight:700;text-align:right">${zm(net)}</td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${log.timeOut||'—'}</td>
+      <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${cum.cumBags.toLocaleString()}</td>
+      <td style="color:var(--purple);font-weight:700;text-align:right">${zm(cum.cumNet)}</td>
+      ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
+    </tr>`;}).join('');
+
+  return `
+    <div class="prow">${pBtns('staff')}</div>
+    <div class="srow">
+      <div class="sbox"><div class="sv">${totBags.toLocaleString()}</div><div class="sl">Bags (Period)</div></div>
+      <div class="sbox bl"><div class="sv">K${totNet.toFixed(0)}</div><div class="sl">Net (Period)</div></div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
+      🔵 <span style="color:var(--blue);font-weight:700">Cum. Bags</span> &amp; 🟣 <span style="color:var(--purple);font-weight:700">Cum. Net</span> = running career total per staff up to that day
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr>
+        <th>Date</th><th>Staff</th><th>Role</th><th>Task</th>
+        <th style="text-align:right">Bags</th>
+        <th style="text-align:right">Gross</th>
+        <th style="text-align:right">Deduct</th>
+        <th style="text-align:right">Net</th>
+        <th>Time</th>
+        <th style="text-align:right;border-left:2px solid var(--border);color:var(--blue)">Cum.Bags</th>
+        <th style="text-align:right;color:var(--purple)">Cum.Net</th>
+        ${USER.role==='admin'?'<th></th>':''}
+      </tr></thead>
+      <tbody>${logs.length===0?`<tr><td colspan="12" class="empty">No logs for this period</td></tr>`:rows}</tbody>
+    </table></div></div>`;
+}
+
+function renderRoster(){
+  const statusBadge=s=>{
+    if(s.status==='expelled')return`<span class="bdg br2" style="font-size:10px">EXPELLED</span>`;
+    if(s.status==='suspended')return`<span class="bdg ba2" style="font-size:10px">SUSPENDED</span>`;
+    return`<span class="bdg bg2" style="font-size:10px">ACTIVE</span>`;
+  };
+  const actionBtns=s=>{
+    if(USER.role!=='admin')return'';
+    if(s.status==='expelled')
+      return`<button class="btn bg bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','active')">↩ Reinstate</button>`;
+    if(s.status==='suspended')
+      return`<div style="display:flex;gap:6px">
+        <button class="btn bg bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','active')">↩ Reinstate</button>
+        <button class="btn br bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','expelled')">⛔ Expel</button>
+      </div>`;
+    return`<div style="display:flex;gap:6px">
+      <button class="btn ba bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','suspended')">⏸ Suspend</button>
+      <button class="btn br bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','expelled')">⛔ Expel</button>
+    </div>`;
+  };
+  return['Loader','Stitcher'].map(role=>{
+    const members=DATA.staff.filter(s=>s.role===role);
+    const mRows=members.map(s=>{
+      const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
+      const net=sLogs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+      const dimmed=s.status==='expelled'?'opacity:.55;':'';
+      return`<div style="display:flex;flex-direction:column;padding:12px 0;border-bottom:1px solid var(--border);gap:8px;${dimmed}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-weight:700;font-size:14px">${s.name} ${statusBadge(s)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">${s.phone||'No phone'} · ${sLogs.length} logs</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:14px;font-weight:700;color:var(--green)">K${net.toFixed(2)}</div>
+            <div style="font-size:11px;color:var(--muted)">cumulative</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:6px">${actionBtns(s)}</div>
+      </div>`;
+    }).join('');
+    const active=members.filter(s=>s.status==='active').length;
+    const susp=members.filter(s=>s.status==='suspended').length;
+    const exp=members.filter(s=>s.status==='expelled').length;
+    return`<div class="card">
+      <div class="ctitle">👷 ${role}s <span style="font-size:12px;color:var(--muted);font-weight:400">${active} active${susp>0?` · ${susp} suspended`:''}${exp>0?` · ${exp} expelled`:''}</span></div>
+      ${members.length===0?`<div class="empty" style="padding:8px 0">No ${role.toLowerCase()}s registered</div>`:mRows}
+    </div>`;
+  }).join('');
+}
+
+function renderEarnings(){
+  const staffList=DATA.staff;
+  const rows=staffList.map(s=>{
+    const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
+    const totBags=sLogs.reduce((a,b)=>a+Number(b.bags||0),0);
+    const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
+    const ded=sLogs.reduce((a,b)=>a+Number(b.deduction||0),0);
+    const net=gross-ded;
+    return `<tr>
+      <td style="font-weight:700">${s.name}</td>
+      <td><span class="tag">${s.role}</span></td>
+      <td>${totBags.toLocaleString()}</td>
+      <td style="color:var(--green)">${zm(gross)}</td>
+      <td style="color:var(--red)">-${zm(ded)}</td>
+      <td style="color:var(--green);font-weight:700">${zm(net)}</td>
+    </tr>`;}).join('');
+  return `
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Staff Name</th><th>Role</th><th>Total Bags</th><th>Gross Earn</th><th>Deductions</th><th>Net Earn</th></tr></thead>
+      <tbody>${staffList.length===0?`<tr><td colspan="6" class="empty">No staff registered</td></tr>`:rows}</tbody>
+    </table></div></div>`;
+}
+
+function openStaffForm(){
+  openModal(`
+    <div class="mtitle">👤 Register Staff</div>
+    <div class="fw"><div class="fl">Full Name</div><input class="fi" id="sf-name" placeholder="e.g. John Banda"/></div>
+    <div class="fw"><div class="fl">Job Role</div><select class="fi" id="sf-role"><option>Loader</option><option>Stitcher</option></select></div>
+    <div class="fw"><div class="fl">Phone (optional)</div><input class="fi" id="sf-phone" placeholder="0977 000 000" inputmode="tel"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveStaff()">✓ Register</button></div>`);
+}
+function saveStaff(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const name=uc(document.getElementById('sf-name').value);
+  if(!name){alert('Enter staff name.');return;}
+  const payload={id:uid(),name,role:document.getElementById('sf-role').value,phone:document.getElementById('sf-phone').value,status:'active'};
+  updateData(d=>({...d,staff:[...d.staff,payload]}));
+  closeModal();
+}
+
+function openLogForm(){
+  if(DATA.staff.length===0){alert('Register staff members first.');return;}
+  const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
+  if(activeStaff.length===0){alert('No active staff. Check roster for suspended/expelled staff.');return;}
+  const opts=activeStaff.map(s=>`<option value="${s.id}">${s.name} (${s.role})</option>`).join('');
+  openModal(`
+    <div class="mtitle">📋 Log Work ${!ONLINE?'<span style="font-size:14px;color:var(--amber)">· Offline</span>':''}</div>
+    <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lf-staff" onchange="onStaffChange()">${opts}</select></div>
+    <div class="fw"><div class="fl">Role</div><div class="fi" id="lf-role-display" style="background:#0a1628;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="lf-role"/></div>
+    <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="calcGross()"><option>Stacking</option><option>Loading</option><option>Stitching</option></select></div>
+    <div class="fw"><div class="fl">Bags Handled</div><input class="fi" type="number" id="lf-bags" placeholder="e.g. 200" inputmode="numeric" oninput="calcGross()"/></div>
+    <div id="gross-hint"></div>
+    <div class="fw"><div class="fl">Deduction (ZMW)</div><input class="fi" type="number" id="lf-ded" value="0" inputmode="decimal" oninput="calcGross()"/></div>
+    <div class="fw"><div class="fl">Deduction Reason</div><select class="fi" id="lf-dr"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option>${r}</option>`).join('')}</select></div>
+    <div class="twobox">
+      <div class="fw"><div class="fl">Time In</div><input class="fi" type="time" id="lf-in"/></div>
+      <div class="fw"><div class="fl">Time Out</div><input class="fi" type="time" id="lf-out"/></div>
+    </div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="lf-date" value="${today()}"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveLog()">✓ Save Log</button></div>`);
+  onStaffChange();
+}
+
+function onStaffChange(){
+  const sid=document.getElementById('lf-staff')?.value;
+  const s=DATA.staff.find(x=>String(x.id)===String(sid));
+  if(s){
+    // Show role as read-only display
+    const display=document.getElementById('lf-role-display');
+    const hidden=document.getElementById('lf-role');
+    if(display)display.textContent=s.role.toUpperCase();
+    if(hidden)hidden.value=s.role;
+    // Auto-set task options based on role
+    const taskEl=document.getElementById('lf-task');
+    if(taskEl){
+      if(s.role==='Stitcher'){taskEl.innerHTML='<option>Stitching</option>';taskEl.value='Stitching';}
+      else{taskEl.innerHTML='<option>Stacking</option><option>Loading</option>';taskEl.value='Stacking';}
+    }
+    calcGross();
+  }
+}
+function onTaskRoleChange(){
+  // kept for compatibility — role is now read from hidden field
+  calcGross();
+}
+function calcGross(){
+  const bags=document.getElementById('lf-bags')?.value;
+  const role=document.getElementById('lf-role')?.value;
+  const task=document.getElementById('lf-task')?.value;
+  const ded=Number(document.getElementById('lf-ded')?.value||0);
+  const hint=document.getElementById('gross-hint');
+  if(bags&&hint){
+    const g=getEarnings(bags,role,task);
+    const net=Math.max(0,g-ded);
+    hint.innerHTML=`<div class="hint">Gross: K${g.toFixed(2)} &nbsp;|&nbsp; Net after deduction: K${net.toFixed(2)}</div>`;
+  }
+}
+function saveLog(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const sid=document.getElementById('lf-staff').value;
+  const bags=Number(document.getElementById('lf-bags').value||0);
+  if(!sid||!bags){alert('Select staff and enter bags handled.');return;}
+  const role=document.getElementById('lf-role').value;
+  const task=document.getElementById('lf-task').value;
+  const earnings=getEarnings(bags,role,task);
+  const ded=Number(document.getElementById('lf-ded').value||0);
+  const payload={id:uid(),staffId:Number(sid),role,task,bags,earnings,deduction:ded,deductionReason:document.getElementById('lf-dr').value,timeIn:document.getElementById('lf-in').value,timeOut:document.getElementById('lf-out').value,date:document.getElementById('lf-date').value,time:nowTime()};
+  updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
+  closeModal();
+}
+
+// ── RENDER PAYMENTS ──────────────────────────────────────────────────────────
+function renderPayments(){
+  const staffList=DATA.staff;
+  const payments=DATA.staffPayments||[];
+  // Summary by role
+  const byRole={};
+  staffList.forEach(s=>{
+    const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
+    const earned=sLogs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+    const paid=payments.filter(p=>p.staffId===s.id).reduce((a,b)=>a+Number(b.amount||0),0);
+    if(!byRole[s.role])byRole[s.role]={earned:0,paid:0,count:0};
+    byRole[s.role].earned+=earned;byRole[s.role].paid+=paid;byRole[s.role].count++;
+  });
+  const roleRows=Object.entries(byRole).map(([role,v])=>`<tr>
+    <td style="font-weight:700">${role}S</td>
+    <td style="text-align:right">${v.count}</td>
+    <td style="color:var(--green);font-weight:700;text-align:right">${zm(v.earned)}</td>
+    <td style="color:var(--blue);font-weight:700;text-align:right">${zm(v.paid)}</td>
+    <td style="color:${(v.earned-v.paid)>0?'var(--amber)':'var(--green)'};font-weight:700;text-align:right">${zm(v.earned-v.paid)}</td>
+  </tr>`).join('');
+
+  // Per-staff detail
+  const staffDetail=staffList.map(s=>{
+    const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id).sort((a,b)=>a.date.localeCompare(b.date));
+    const sPays=payments.filter(p=>p.staffId===s.id).sort((a,b)=>a.date.localeCompare(b.date));
+    // Merge and sort all events by date
+    const events=[
+      ...sLogs.map(l=>({type:'earn',date:l.date,id:l.id,amount:Number(l.earnings||0)-Number(l.deduction||0),bags:l.bags,task:l.task,role:l.role})),
+      ...sPays.map(p=>({type:'pay',date:p.date,id:p.id,amount:Number(p.amount||0),notes:p.notes}))
+    ].sort((a,b)=>a.date.localeCompare(b.date)||a.type.localeCompare(b.type));
+    let cumEarned=0,cumPaid=0;
+    const eRows=events.map(ev=>{
+      if(ev.type==='earn'){cumEarned+=ev.amount;
+        return `<tr class="pay-row">
+          <td style="white-space:nowrap">${fmtDate(ev.date)}</td>
+          <td><span class="bdg bg2">WORK</span></td>
+          <td style="font-size:12px;color:var(--muted)">${ev.role} · ${ev.task} · ${Number(ev.bags||0)} BAGS</td>
+          <td style="color:var(--green);font-weight:700;text-align:right">${zm(ev.amount)}</td>
+          <td style="color:var(--muted);text-align:right">—</td>
+          <td style="color:var(--green);font-weight:700;text-align:right">${zm(cumEarned)}</td>
+          <td style="color:var(--blue);font-weight:700;text-align:right">${zm(cumPaid)}</td>
+          <td style="color:${(cumEarned-cumPaid)>0?'var(--amber)':'var(--green)'};font-weight:700;text-align:right">${zm(cumEarned-cumPaid)}</td>
+          <td></td>
+        </tr>`;
+      } else {cumPaid+=ev.amount;
+        return `<tr class="unp-row">
+          <td style="white-space:nowrap">${fmtDate(ev.date)}</td>
+          <td><span class="bdg bb2">PAID</span></td>
+          <td style="font-size:12px;color:var(--muted)">${ev.notes||'PAYMENT'}</td>
+          <td style="color:var(--muted);text-align:right">—</td>
+          <td style="color:var(--blue);font-weight:700;text-align:right">${zm(ev.amount)}</td>
+          <td style="color:var(--green);font-weight:700;text-align:right">${zm(cumEarned)}</td>
+          <td style="color:var(--blue);font-weight:700;text-align:right">${zm(cumPaid)}</td>
+          <td style="color:${(cumEarned-cumPaid)>0?'var(--amber)':'var(--green)'};font-weight:700;text-align:right">${zm(cumEarned-cumPaid)}</td>
+          ${USER.role==='admin'?`<td><button class="delbtn" onclick="delPayment('${ev.id}')">🗑</button></td>`:'<td></td>'}
+        </tr>`;
+      }
+    }).join('');
+    const unpaid=cumEarned-cumPaid;
+    return `<div class="card" style="margin-bottom:14px">
+      <div class="ctitle" style="margin-bottom:4px">${s.name} <span class="tag" style="font-size:11px;margin-left:4px">${s.role}</span></div>
+      <div class="srow" style="margin-bottom:10px">
+        <div class="sbox"><div class="sv" style="font-size:18px">${zm(cumEarned)}</div><div class="sl">TOTAL EARNED</div></div>
+        <div class="sbox bl"><div class="sv" style="font-size:18px">${zm(cumPaid)}</div><div class="sl">TOTAL PAID</div></div>
+      </div>
+      <div class="sbox ${unpaid>0?'am':''}" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628;margin-bottom:10px">
+        <div class="sv" style="font-size:18px;color:${unpaid>0?'var(--amber)':'var(--green)'}">${zm(unpaid)}</div>
+        <div class="sl">${unpaid>0?'UNPAID BALANCE':'FULLY PAID ✓'}</div>
+      </div>
+      ${events.length===0?'<div class="empty">No work logs or payments yet</div>':`
+      <div class="tw"><table>
+        <thead><tr><th>Date</th><th>Type</th><th>Details</th><th style="text-align:right">Earned</th><th style="text-align:right">Paid</th><th style="text-align:right;color:var(--green)">Cum.Earned</th><th style="text-align:right;color:var(--blue)">Cum.Paid</th><th style="text-align:right;color:var(--amber)">Unpaid</th><th></th></tr></thead>
+        <tbody>${eRows}</tbody>
+      </table></div>`}
+    </div>`;
+  }).join('');
+  return `
+    <div class="card" style="padding:0">
+      <div class="ctitle" style="padding:14px 16px;margin-bottom:0">💳 Payment Summary by Role</div>
+      <div class="tw"><table>
+        <thead><tr><th>Role</th><th style="text-align:right">Staff</th><th style="text-align:right;color:var(--green)">Total Earned</th><th style="text-align:right;color:var(--blue)">Total Paid</th><th style="text-align:right;color:var(--amber)">Unpaid Balance</th></tr></thead>
+        <tbody>${Object.keys(byRole).length===0?`<tr><td colspan="5" class="empty">No data yet</td></tr>`:roleRows}</tbody>
+      </table></div>
+    </div>
+    ${staffList.length===0?'<div class="card"><div class="empty">Register staff members first</div></div>':staffDetail}`;
+}
+
+// ── STAFF LIST ───────────────────────────────────────────────────────────────
+function renderStaffList(){
+  const roles=['Loader','Stitcher'];
+  const statusBadge=s=>{
+    if(s.status==='expelled')return`<span class="bdg br2" style="font-size:10px">EXPELLED</span>`;
+    if(s.status==='suspended')return`<span class="bdg ba2" style="font-size:10px">SUSPENDED</span>`;
+    return`<span class="bdg bg2" style="font-size:10px">ACTIVE</span>`;
+  };
+  const sections=roles.map(role=>{
+    const members=DATA.staff.filter(s=>s.role===role);
+    if(members.length===0)return`<div class="card"><div class="ctitle">👷 ${role}s</div><div class="empty" style="padding:8px 0">No ${role.toLowerCase()}s registered</div></div>`;
+    const active=members.filter(s=>!s.status||s.status==='active').length;
+    const susp=members.filter(s=>s.status==='suspended').length;
+    const exp=members.filter(s=>s.status==='expelled').length;
+    const avatarClass=role==='Loader'?'lo':'st';
+    const initials=n=>n.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    const cards=members.map(s=>{
+      const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
+      const totBags=sLogs.reduce((a,b)=>a+Number(b.bags||0),0);
+      const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
+      const ded=sLogs.reduce((a,b)=>a+Number(b.deduction||0),0);
+      const net=gross-ded;
+      const paid=(DATA.staffPayments||[]).filter(p=>p.staffId===s.id).reduce((a,b)=>a+Number(b.amount||0),0);
+      const unpaid=net-paid;
+      const dimmed=s.status==='expelled'?'opacity:.55;':'';
+      return`<div class="sl-card" style="${dimmed}" onclick="openStaffDetail('${s.id}')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="sl-avatar ${avatarClass}">${initials(s.name)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white)">${s.name}</span>
+              ${statusBadge(s)}
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.phone||'No phone'}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:var(--fh);font-size:14px;font-weight:800;color:${unpaid>0?'var(--amber)':'var(--green)'}">${zm(unpaid)}</div>
+            <div style="font-size:10px;color:var(--muted)">UNPAID</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px">
+          <div style="background:#0a1628;border-radius:8px;padding:7px;text-align:center">
+            <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:var(--text)">${totBags.toLocaleString()}</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">BAGS</div>
+          </div>
+          <div style="background:#0a1628;border-radius:8px;padding:7px;text-align:center">
+            <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:var(--green)">${zm(net)}</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">NET EARNED</div>
+          </div>
+          <div style="background:#0a1628;border-radius:8px;padding:7px;text-align:center">
+            <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:var(--blue)">${sLogs.length}</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">SESSIONS</div>
+          </div>
+        </div>
+        <div style="text-align:right;margin-top:8px;font-size:11px;color:var(--blue)">Tap to view full profile →</div>
+      </div>`;
+    }).join('');
+    return`<div style="margin-bottom:16px">
+      <div class="sh" style="margin-bottom:8px">👷 ${role}s <span style="font-size:11px;color:var(--muted);font-weight:400">${active} active${susp>0?` · ${susp} suspended`:''}${exp>0?` · ${exp} expelled`:''}</span></div>
+      ${cards}
+    </div>`;
+  }).join('');
+  return`
+    <div class="hint" style="margin-bottom:10px">Tap any staff card to view their full profile, history, and take actions.</div>
+    ${DATA.staff.length===0?`<div class="card"><div class="empty">No staff registered yet.<br>Use "+ Add Staff" to register.</div></div>`:sections}`;
+}
+
+function openStaffDetail(id){
+  const s=DATA.staff.find(x=>String(x.id)===String(id));
+  if(!s)return;
+  const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id).sort((a,b)=>b.date.localeCompare(a.date));
+  const sPays=(DATA.staffPayments||[]).filter(p=>p.staffId===s.id).sort((a,b)=>b.date.localeCompare(a.date));
+  const totBags=sLogs.reduce((a,b)=>a+Number(b.bags||0),0);
+  const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
+  const ded=sLogs.reduce((a,b)=>a+Number(b.deduction||0),0);
+  const net=gross-ded;
+  const paid=sPays.reduce((a,b)=>a+Number(b.amount||0),0);
+  const unpaid=net-paid;
+  const statusBadge=s.status==='expelled'?`<span class="bdg br2">EXPELLED</span>`:s.status==='suspended'?`<span class="bdg ba2">SUSPENDED</span>`:`<span class="bdg bg2">ACTIVE</span>`;
+  const taskBreakdown=['Stacking','Loading','Stitching'].map(task=>{
+    const tLogs=sLogs.filter(l=>l.task===task);
+    if(tLogs.length===0)return'';
+    const tBags=tLogs.reduce((a,b)=>a+Number(b.bags||0),0);
+    const tNet=tLogs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px;color:var(--muted)">${task}</span>
+      <span style="font-size:12px;font-weight:700">${tBags.toLocaleString()} bags · ${zm(tNet)}</span>
+    </div>`;
+  }).join('');
+  const recentLogs=sLogs.slice(0,5).map(l=>{
+    const editable=isWithin24h(l);
+    return`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;font-weight:700">${fmtDate(l.date)} <span style="color:var(--muted);font-weight:400;font-size:11px">${l.task}</span></div>
+          <div style="font-size:11px;color:var(--muted)">${Number(l.bags||0)} bags · ${zm(Number(l.earnings||0)-Number(l.deduction||0))} net</div>
+        </div>
+        ${USER.role==='admin'?`<button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`closeModal();setTimeout(()=>openEditLog('${l.id}'),50)`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  const actionBtns=USER.role==='admin'?(
+    s.status==='expelled'
+      ?`<button class="btn bg" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button>`
+      :s.status==='suspended'
+        ?`<div style="display:flex;gap:8px"><button class="btn bg" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','expelled')">⛔ Expel</button></div>`
+        :`<div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','suspended')">⏸ Suspend</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','expelled')">⛔ Expel</button></div>`
+  ):'';
+  openModal(`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+      <div class="sl-avatar ${s.role==='Loader'?'lo':'st'}" style="width:50px;height:50px;font-size:20px">${s.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>
+      <div>
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="tag">${s.role}</span>${statusBadge}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${s.phone||'No phone on record'}</div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="sbox"><div class="sv" style="font-size:20px">${zm(net)}</div><div class="sl">Total Earned</div></div>
+      <div class="sbox bl"><div class="sv" style="font-size:20px">${zm(paid)}</div><div class="sl">Total Paid</div></div>
+    </div>
+    <div class="sbox ${unpaid>0?'am':''}" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628;margin-bottom:14px">
+      <div class="sv" style="font-size:20px;color:${unpaid>0?'var(--amber)':'var(--green)'}">${zm(unpaid)}</div>
+      <div class="sl">${unpaid>0?'UNPAID BALANCE':'FULLY PAID ✓'}</div>
+    </div>
+    <div class="srow" style="margin-bottom:12px">
+      <div class="sbox"><div class="sv" style="font-size:18px">${totBags.toLocaleString()}</div><div class="sl">Total Bags</div></div>
+      <div class="sbox"><div class="sv" style="font-size:18px">${sLogs.length}</div><div class="sl">Sessions</div></div>
+    </div>
+    ${taskBreakdown?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:4px">TASK BREAKDOWN</div>${taskBreakdown}</div>`:''}
+    ${recentLogs?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:4px">RECENT SESSIONS</div>${recentLogs}</div>`:''}
+    ${actionBtns?`<div style="margin-top:14px">${actionBtns}</div>`:''}
+    <div style="margin-top:10px"><button class="btn bo" onclick="closeModal()">Close</button></div>`);
+}
+
+// ── BAG CHECK (verification) ─────────────────────────────────────────────────
+function renderBagCheck(){
+  const totalRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
+  const totalIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const stackBags=DATA.staffLogs.filter(l=>l.task==='Stacking').reduce((a,b)=>a+Number(b.bags||0),0);
+  const loadBags=DATA.staffLogs.filter(l=>l.task==='Loading').reduce((a,b)=>a+Number(b.bags||0),0);
+  const stitchBags=DATA.staffLogs.filter(l=>l.task==='Stitching').reduce((a,b)=>a+Number(b.bags||0),0);
+  function chk(a,b){return a===b?'🟢':'🔴';}
+  function diff(a,b){const d=a-b;return d===0?'EXACT MATCH':d>0?`+${d} (SYSTEM HAS MORE)`:` ${d} (STAFF HANDLED MORE)`;}
+  return `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.8">
+      These checks verify that staff bag handling records match the system maize records.<br>
+      <strong style="color:var(--text)">All three checks should be 🟢 for records to be consistent.</strong>
+    </div>
+    <div class="card">
+      <div class="ctitle">🌽 Bag Count Verification</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="border-radius:10px;padding:14px;background:#0a1628;border:1px solid ${stackBags===totalRec?'var(--green)':'var(--red)'}">
+          <div style="font-size:20px;margin-bottom:4px">${chk(totalRec,stackBags)} Received vs Stacking</div>
+          <div class="srow" style="margin-bottom:4px">
+            <div class="sbox"><div class="sv" style="font-size:18px">${totalRec.toLocaleString()}</div><div class="sl">TOTAL BAGS RECEIVED</div></div>
+            <div class="sbox"><div class="sv" style="font-size:18px">${stackBags.toLocaleString()}</div><div class="sl">BAGS STACKED</div></div>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:${stackBags===totalRec?'var(--green)':'var(--red)'}">${diff(totalRec,stackBags)}</div>
+        </div>
+        <div style="border-radius:10px;padding:14px;background:#0a1628;border:1px solid ${stitchBags===totalRec?'var(--green)':'var(--red)'}">
+          <div style="font-size:20px;margin-bottom:4px">${chk(totalRec,stitchBags)} Received vs Stitching</div>
+          <div class="srow" style="margin-bottom:4px">
+            <div class="sbox"><div class="sv" style="font-size:18px">${totalRec.toLocaleString()}</div><div class="sl">TOTAL BAGS RECEIVED</div></div>
+            <div class="sbox"><div class="sv" style="font-size:18px">${stitchBags.toLocaleString()}</div><div class="sl">BAGS STITCHED</div></div>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:${stitchBags===totalRec?'var(--green)':'var(--red)'}">${diff(totalRec,stitchBags)}</div>
+        </div>
+        <div style="border-radius:10px;padding:14px;background:#0a1628;border:1px solid ${loadBags===totalIss?'var(--green)':'var(--red)'}">
+          <div style="font-size:20px;margin-bottom:4px">${chk(totalIss,loadBags)} Issued vs Loading</div>
+          <div class="srow" style="margin-bottom:4px">
+            <div class="sbox am"><div class="sv" style="font-size:18px">${totalIss.toLocaleString()}</div><div class="sl">TOTAL BAGS ISSUED</div></div>
+            <div class="sbox"><div class="sv" style="font-size:18px">${loadBags.toLocaleString()}</div><div class="sl">BAGS LOADED</div></div>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:${loadBags===totalIss?'var(--green)':'var(--red)'}">${diff(totalIss,loadBags)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Payment form
+function openPayForm(){
+  if(DATA.staff.length===0){alert('Register staff members first.');return;}
+  const opts=DATA.staff.map(s=>{
+    const earned=DATA.staffLogs.filter(l=>l.staffId===s.id).reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+    const paid=(DATA.staffPayments||[]).filter(p=>p.staffId===s.id).reduce((a,b)=>a+Number(b.amount||0),0);
+    return `<option value="${s.id}">${s.name} (${s.role}) — Balance: K${(earned-paid).toFixed(2)}</option>`;
+  }).join('');
+  openModal(`
+    <div class="mtitle">💳 Record Payment</div>
+    <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="pf-staff">${opts}</select></div>
+    <div class="fw"><div class="fl">Amount Paid (ZMW)</div><input class="fi" type="number" id="pf-amount" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
+    <div class="fw"><div class="fl">Date of Payment</div><input class="fi" type="date" id="pf-date" value="${today()}"/></div>
+    <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="pf-notes" placeholder="E.G. CASH, MOBILE MONEY…" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="savePayment()">✓ Save Payment</button></div>`);
+}
+function savePayment(){if(isReadOnly()){alert("🔒 This depot is in read-only mode. Contact your administrator.");return;}
+  const sid=document.getElementById('pf-staff').value;
+  const amount=Number(document.getElementById('pf-amount').value||0);
+  if(!amount){alert('Enter payment amount.');return;}
+  const payload={id:uid(),staffId:Number(sid),date:document.getElementById('pf-date').value,amount,notes:uc(document.getElementById('pf-notes').value)};
+  updateData(d=>({...d,staffPayments:[...(d.staffPayments||[]),payload]}));
+  STAB='payments';
+  closeModal();
+}
+function delPayment(id){if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
+
+function delLog(id){if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
+
+// ── EDIT: Staff Work Log ─────────────────────────────────────────────────────
+function openEditLog(id){
+  const log=DATA.staffLogs.find(x=>String(x.id)===String(id));
+  if(!log){alert('Record not found.');return;}
+  if(!isWithin24h(log)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
+  const staffOpts=activeStaff.map(s=>`<option value="${s.id}"${String(s.id)===String(log.staffId)?' selected':''}>${s.name} (${s.role})</option>`).join('');
+  const staffRec=DATA.staff.find(s=>String(s.id)===String(log.staffId));
+  const isStitcher=staffRec?.role==='Stitcher';
+  const taskOpts=isStitcher?`<option>Stitching</option>`:`<option${log.task==='Stacking'?' selected':''}>Stacking</option><option${log.task==='Loading'?' selected':''}>Loading</option>`;
+  openModal(`
+    <div class="mtitle">✏️ Edit Work Log</div>
+    <div class="warn">⏰ Edits close 24 hrs after entry.</div>
+    <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="elg-staff">${staffOpts}</select></div>
+    <div class="fw"><div class="fl">Task</div><select class="fi" id="elg-task" onchange="calcEditGross()">${taskOpts}</select></div>
+    <div class="fw"><div class="fl">Bags Handled</div><input class="fi" type="number" id="elg-bags" value="${log.bags}" inputmode="numeric" oninput="calcEditGross()"/></div>
+    <div id="edit-gross-hint"></div>
+    <div class="fw"><div class="fl">Deduction (ZMW)</div><input class="fi" type="number" id="elg-ded" value="${log.deduction||0}" inputmode="decimal" oninput="calcEditGross()"/></div>
+    <div class="fw"><div class="fl">Deduction Reason</div><select class="fi" id="elg-dr"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option${r===log.deductionReason?' selected':''}>${r}</option>`).join('')}</select></div>
+    <div class="twobox">
+      <div class="fw"><div class="fl">Time In</div><input class="fi" type="time" id="elg-in" value="${log.timeIn||''}"/></div>
+      <div class="fw"><div class="fl">Time Out</div><input class="fi" type="time" id="elg-out" value="${log.timeOut||''}"/></div>
+    </div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="elg-date" value="${log.date}"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveEditLog('${id}')">✓ Save Changes</button></div>`);
+  calcEditGross();
+}
+function calcEditGross(){
+  const staffId=document.getElementById('elg-staff')?.value;
+  const s=DATA.staff.find(x=>String(x.id)===String(staffId));
+  const role=s?.role||'Loader';
+  const task=document.getElementById('elg-task')?.value;
+  const bags=document.getElementById('elg-bags')?.value;
+  const ded=Number(document.getElementById('elg-ded')?.value||0);
+  const hint=document.getElementById('edit-gross-hint');
+  if(bags&&hint){const g=getEarnings(bags,role,task);const net=Math.max(0,g-ded);hint.innerHTML=`<div class="hint">Gross: K${g.toFixed(2)} · Net: K${net.toFixed(2)}</div>`;}
+}
+function saveEditLog(id){
+  const sid=document.getElementById('elg-staff').value;
+  const bags=Number(document.getElementById('elg-bags').value||0);
+  if(!sid||!bags){alert('Select staff and enter bags.');return;}
+  const s=DATA.staff.find(x=>String(x.id)===String(sid));
+  const role=s?.role||'Loader';
+  const task=document.getElementById('elg-task').value;
+  const earnings=getEarnings(bags,role,task);
+  const ded=Number(document.getElementById('elg-ded').value||0);
+  updateData(d=>({...d,staffLogs:d.staffLogs.map(l=>String(l.id)===String(id)?{...l,staffId:Number(sid),role,task,bags,earnings,deduction:ded,deductionReason:document.getElementById('elg-dr').value,timeIn:document.getElementById('elg-in').value,timeOut:document.getElementById('elg-out').value,date:document.getElementById('elg-date').value}:l)}));
+  closeModal();
+}
+function setStaffStatus(id,status){
+  const labels={suspended:'Suspend this staff member? They will remain in all records.',expelled:'Expel this staff member? They will remain in all records but cannot be assigned new work.',active:'Reinstate this staff member?'};
+  if(!confirm(labels[status]||'Change staff status?'))return;
+  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status}:s)}));
+}
+function delStaff(id){if(!confirm('Delete this staff member? All their logs will remain.'))return;updateData(d=>({...d,staff:d.staff.filter(s=>String(s.id)!==String(id))}));}
+
+
+
+// ══════════════════════════════════════════════════════════
+// GOOGLE DRIVE BACKUP
+// ══════════════════════════════════════════════════════════
+const GDRIVE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // Replace with your OAuth 2.0 Client ID
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+function gdriveConnected() { return !!(DATA.gdrive && DATA.gdrive.accessToken); }
+
+function connectGDrive() {
+  if (!GDRIVE_CLIENT_ID || GDRIVE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+    alert('Google Drive integration requires a Google OAuth Client ID.\nContact the developer to enable this feature.');
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id: GDRIVE_CLIENT_ID,
+    redirect_uri: window.location.href.split('?')[0],
+    response_type: 'token',
+    scope: GDRIVE_SCOPE,
+    prompt: 'select_account'
+  });
+  window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(), '_blank', 'width=500,height=600');
+}
+
+function disconnectGDrive() {
+  if (!confirm('Disconnect Google Drive? Auto-backup will be disabled.')) return;
+  updateData(d => ({...d, gdrive: {connected:false, accessToken:'', email:'', autoBackup:false, lastBackup:null}}));
+  render();
+}
+
+function toggleAutoBackup() {
+  const current = DATA.gdrive && DATA.gdrive.autoBackup;
+  updateData(d => ({...d, gdrive: {...(d.gdrive||{}), autoBackup: !current}}));
+  render();
+}
+
+async function backupToDrive(silent=false) {
+  if (!gdriveConnected()) { if(!silent) alert('Connect Google Drive first.'); return; }
+  const token = DATA.gdrive.accessToken;
+  const filename = 'MDM_Backup_' + (DATA.depotInfo.name||'DEPOT').replace(/\s+/g,'_') + '_' + today() + '.json';
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type: 'application/json'});
+
+  // Check if file exists to update instead of duplicate
+  try {
+    const searchRes = await fetch(
+      'https://www.googleapis.com/drive/v3/files?q=name%3D%22MDM_Backup_' + encodeURIComponent((DATA.depotInfo.name||'DEPOT').replace(/\s+/g,'_')) + '%22+and+trashed%3Dfalse&fields=files(id,name)',
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    if (searchRes.status === 401) { handleTokenExpiry(); return; }
+    const searchData = await searchRes.json();
+
+    let res;
+    if (searchData.files && searchData.files.length > 0) {
+      // Update existing file
+      const fileId = searchData.files[0].id;
+      const form = new FormData();
+      form.append('file', new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'}));
+      res = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
+        method: 'PATCH', headers: { Authorization: 'Bearer ' + token }, body: blob
+      });
+    } else {
+      // Create new file
+      const meta = JSON.stringify({name: filename, mimeType: 'application/json'});
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], {type:'application/json'}));
+      form.append('file', blob);
+      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form
+      });
+    }
+
+    if (res.ok) {
+      updateData(d => ({...d, gdrive: {...(d.gdrive||{}), lastBackup: Date.now()}}));
+      if (!silent) alert('✅ Backup saved to Google Drive!');
+      render();
+    } else {
+      if (!silent) alert('⚠️ Backup failed. Try reconnecting Google Drive.');
+    }
+  } catch(e) {
+    if (!silent) alert('⚠️ Backup error: ' + e.message);
+  }
+}
+
+function handleTokenExpiry() {
+  updateData(d => ({...d, gdrive: {...(d.gdrive||{}), accessToken: '', connected: false}}));
+  alert('Google Drive session expired. Please reconnect.');
+  render();
+}
+
+// Handle OAuth redirect token
+(function handleOAuthRedirect() {
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.replace('#','?').slice(1));
+    const token = params.get('access_token');
+    if (token) {
+      // Fetch user email
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: 'Bearer ' + token }
+      }).then(r => r.json()).then(info => {
+        updateData(d => ({...d, gdrive: {connected:true, accessToken:token, email:info.email||'', autoBackup:false, lastBackup:(d.gdrive||{}).lastBackup||null}}));
+        window.history.replaceState(null, '', window.location.pathname);
+        render();
+        alert('✅ Google Drive connected as ' + (info.email||'unknown') + '!');
+      }).catch(() => {
+        updateData(d => ({...d, gdrive: {connected:true, accessToken:token, email:'', autoBackup:false, lastBackup:null}}));
+        window.history.replaceState(null, '', window.location.pathname);
+        render();
+      });
+    }
+  }
+})();
+
+// Auto-backup trigger — runs after every data save if enabled and online
+function maybeAutoBackup() {
+  if (ONLINE && DATA.gdrive && DATA.gdrive.autoBackup && DATA.gdrive.accessToken) {
+    backupToDrive(true);
+  }
+}
+
+// ── LICENSE STATUS CARD ───────────────────────────────────────────────────────
+function renderPaymentSection() {
+  return `
+  <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Send payment via Airtel Money or MTN Mobile Money, then WhatsApp your <strong style="color:var(--text)">Depot Key</strong> to confirm activation.</div>
+    <div class="pay-method">
+      <span class="pm-icon">🔴</span>
+      <div class="pm-info">
+        <div class="pm-label">Airtel Money</div>
+        <div class="pm-num" style="font-size:17px">+260 970 962 902</div>
+        <div class="pm-name">Goodson Chongo</div>
+      </div>
+      <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
+    </div>
+    <div class="pay-method">
+      <span class="pm-icon">🟡</span>
+      <div class="pm-info">
+        <div class="pm-label">MTN Mobile Money</div>
+        <div class="pm-num" style="font-size:17px">+260 960 271 128</div>
+        <div class="pm-name">Goodson Chongo</div>
+      </div>
+      <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
+    </div>
+    <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#0a1628;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:15px;font-weight:700;text-decoration:none;margin-top:4px">
+      💬 WhatsApp for Activation
+    </a>
+  </div>`;
+}
+
+function renderLicenseCard(){
+  const configured = isFbConfigured();
+  const eff        = LICENSE.effectiveStatus || LICENSE.status || 'active';
+  const depotId    = depotKey();
+  const lastChecked= LICENSE.checkedAt ? new Date(LICENSE.checkedAt).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : 'Never';
+
+  // Status color & label
+  let statusColor, statusLabel, statusDetail = '';
+  if (eff === 'active') {
+    statusColor = 'var(--green)'; statusLabel = '✅ ACTIVE';
+    if (LICENSE.activeUntil) {
+      const d = activeDaysRemaining(LICENSE.activeUntil);
+      const exp = new Date(LICENSE.activeUntil).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+      statusDetail = `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6">Expires: <strong style="color:var(--text)">${exp}</strong>${d!==null&&d<=30?' · <span style="color:var(--amber)">⚠️ '+d+' days left</span>':''}</div>`;
+    }
+  } else if (eff === 'trial') {
+    const d = LICENSE.trialDaysLeft || trialDaysRemaining(LICENSE.trialStart||0);
+    statusColor = d<=3?'var(--red)':d<=7?'var(--amber)':'var(--purple)';
+    statusLabel = `⏳ TRIAL`;
+    statusDetail = `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6"><strong style="color:${statusColor}">${d} day${d===1?'':'s'} remaining</strong> of 14-day free trial</div>`;
+  } else if (eff === 'trial_expired') {
+    statusColor = 'var(--red)'; statusLabel = '⏳ TRIAL EXPIRED';
+    statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your 14-day trial has ended. Pay to activate.</div>`;
+  } else if (eff === 'expired') {
+    statusColor = 'var(--red)'; statusLabel = '🔒 EXPIRED';
+    statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your subscription has expired. Renew to continue.</div>`;
+  } else if (eff === 'suspended') {
+    statusColor = 'var(--red)'; statusLabel = '🔒 SUSPENDED';
+    statusDetail = `<div class="warn" style="margin-top:10px">🔒 ${LICENSE.suspendedMsg||'Depot suspended.'}</div>`;
+  } else {
+    statusColor = 'var(--amber)'; statusLabel = '⏳ CHECKING…';
+  }
+
+  const configBadge = configured
+    ? `<span style="background:#003d2e;color:var(--green);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">CONFIGURED</span>`
+    : `<span style="background:#3d2a00;color:var(--amber);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">NOT CONFIGURED</span>`;
+
+  const showPayment = ['trial','trial_expired','expired'].includes(eff);
+
+  return `
+  <div class="sh">License & Subscription</div>
+  <div class="card" style="border-color:${statusColor}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-family:var(--fh);font-size:17px;font-weight:700;color:var(--white)">License Status</div>
+      <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:${statusColor}">${statusLabel}</div>
+    </div>
+    ${statusDetail}
+    <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">DEPOT LICENSE KEY</div>
+    <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:monospace;font-size:13px;color:var(--blue);margin-bottom:10px;word-break:break-all;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>${depotId}</span>
+      <button class="pm-copy" style="flex-shrink:0" onclick="copyNum('${depotId}')">Copy</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+      <span>Firebase: ${configBadge}</span>
+      <span>Last check: ${lastChecked}</span>
+    </div>
+    ${LICENSE.lastError ? `<div style="background:#3d1515;border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:#ff8080;word-break:break-all;font-family:monospace">⚠️ Last error: ${LICENSE.lastError}</div>` : ''}
+    <div style="margin-top:10px">
+      <button id="fb-test-btn" class="btn bo bsm" style="width:100%" onclick="testFirebaseConnection()">🔌 Test Connection</button>
+      <div id="fb-test-out" style="display:none;margin-top:8px;border-radius:8px;padding:9px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;line-height:1.5"></div>
+    </div>
+    ${showPayment ? renderPaymentSection() : ''}
+  </div>`;
+}
+// ══════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════
+function renderSettings(){
+  const users=DATA.users.map(u=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div><div style="font-weight:700">${u.username}</div><span class="bdg ${u.role==='admin'?'bg2':'ba2'}">${u.role}</span></div>
+      ${u.username!=='admin'?`<button class="delbtn" onclick="removeUser('${u.username}')">🗑</button>`:''}
+    </div>`).join('');
+  return `
+    ${statusBanner()}
+    ${renderLicenseCard()}
+    <div class="sh">Depot Information</div>
+    <div class="card">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:var(--muted)">🔒 Depot name, district and country are set once during initial setup and cannot be changed. These are used as your unique license identifier.</div>
+      <div class="fw"><div class="fl">Depot Name</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).name||'—'}</div></div>
+      <div class="fw"><div class="fl">District</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).district||'—'}</div></div>
+      <div class="fw"><div class="fl">Country</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).country||'—'}</div></div>
+    </div>
+    <div class="sh">Pay Rates per Bag (ZMW)</div>
+    <div class="card">
+      <div class="fw"><div class="fl">Loader — Stacking</div><input class="fi" type="number" step="0.01" id="r-ls" value="${DATA.rates.loader_stack}" inputmode="decimal"/></div>
+      <div class="fw"><div class="fl">Loader — Loading</div><input class="fi" type="number" step="0.01" id="r-ll" value="${DATA.rates.loader_load}" inputmode="decimal"/></div>
+      <div class="fw"><div class="fl">Stitcher — Stitching</div><input class="fi" type="number" step="0.01" id="r-s" value="${DATA.rates.stitcher}" inputmode="decimal"/></div>
+      <button class="btn bg" onclick="saveRates()">✓ Save Rates</button>
+    </div>
+
+    <div class="sh">Change Password</div>
+    <div class="card">
+      <div id="pw-msg"></div>
+      <div class="fw"><div class="fl">Account</div><select class="fi" id="pw-target">${DATA.users.filter(u=>USER.role==='admin'||u.username===USER.username).map(u=>`<option value="${u.username}">${u.username} (${u.role})</option>`).join('')}</select></div>
+      <div class="fw"><div class="fl">New Password</div><input class="fi" type="password" id="pw-new"/></div>
+      <div class="fw"><div class="fl">Confirm Password</div><input class="fi" type="password" id="pw-conf"/></div>
+      <button class="btn ba" onclick="changePw()">🔒 Update Password</button>
+    </div>
+
+    ${USER.role==='admin'?`
+    <div class="sh">User Accounts</div>
+    <div class="card">
+      ${users}
+      <div class="sh" style="margin-top:14px">Add New User</div>
+      <div class="fw"><div class="fl">Username</div><input class="fi" id="nu-user" autocapitalize="none"/></div>
+      <div class="fw"><div class="fl">Password</div><input class="fi" type="password" id="nu-pass"/></div>
+      <div class="fw"><div class="fl">Role</div><select class="fi" id="nu-role"><option value="dataentry">Data Entry</option><option value="admin">Admin</option></select></div>
+      <button class="btn bg" onclick="addUser()">+ Add User</button>
+    </div>
+
+    <div class="sh">Role Permissions</div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr><th>Feature</th><th>Admin</th><th>Data Entry</th></tr></thead>
+      <tbody>
+        <tr><td>Add records</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
+        <tr><td>Edit / Delete</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>View dashboards</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
+        <tr><td>Set pay rates</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>Manage users</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>Change own password</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
+      </tbody>
+    </table></div></div>
+
+    <div class="sh">Inventory Item Names</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define the names of items that appear in the General Inventory dropdown. This ensures consistent naming across all entries, totals and reports.</div>
+      ${(DATA.inventoryItems||[]).length>0?`<div style="margin-bottom:12px">${(DATA.inventoryItems||[]).map((item,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-weight:700">${item}</span><button class="delbtn" onclick="removeInvItem(${i})">🗑</button></div>`).join('')}</div>`:'<div style="color:var(--muted);font-size:13px;margin-bottom:12px">No items defined yet. Add items below.</div>'}
+      <div style="display:flex;gap:8px">
+        <input class="fi" id="new-inv-item" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItem()">+ ADD</button>
+      </div>
+    </div>
+
+    <div class="sh">Data Management</div>
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn bo" style="flex:1" onclick="exportJSON()">💾 Export Backup</button>
+      </div>
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Danger zone — irreversible action</div>
+        <button onclick="clearAll()" style="background:none;border:1px solid #3d1515;border-radius:8px;color:#884444;font-size:11px;padding:5px 12px;cursor:pointer;touch-action:manipulation">🗑 Clear all data</button>
+      </div>
+    </div>`:''}
+    <div class="sh">Google Drive Backup</div>
+    <div class="card">
+      ${gdriveConnected() ? `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:24px">✅</span>
+          <div>
+            <div style="font-weight:700;color:var(--green);font-size:14px">Connected</div>
+            <div style="font-size:12px;color:var(--muted)">${DATA.gdrive.email||'Google Account'}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div>
+            <div style="font-weight:700;font-size:13px">Auto-backup on save</div>
+            <div style="font-size:11px;color:var(--muted)">Uploads data to Drive after every entry</div>
+          </div>
+          <button onclick="toggleAutoBackup()" style="background:${DATA.gdrive.autoBackup?'var(--green)':'var(--surface2)'};border:2px solid ${DATA.gdrive.autoBackup?'var(--green)':'var(--border)'};border-radius:20px;width:44px;height:26px;cursor:pointer;transition:all .2s;touch-action:manipulation"></button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Last backup: ${DATA.gdrive.lastBackup?new Date(DATA.gdrive.lastBackup).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}):'Never'}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bg" style="flex:1" onclick="backupToDrive()">☁ Backup Now</button>
+          <button class="btn bo" style="flex:1" onclick="disconnectGDrive()">Disconnect</button>
+        </div>
+      ` : `
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">Connect your Google Drive to automatically back up depot data to the cloud after every save.</div>
+        <button class="btn bg" style="width:100%" onclick="connectGDrive()">
+          <span style="font-size:16px">🔗</span> Connect Google Drive
+        </button>
+      `}
+    </div>
+    <div class="sh">Contact &amp; Support</div>
+    <div class="card">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">For technical support, licensing enquiries or assistance, reach out to the developer:</div>
+      <a href="mailto:chongos909@gmail.com" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;text-decoration:none;color:var(--text)">
+        <span style="font-size:22px">✉️</span>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">EMAIL</div>
+          <div style="font-weight:700;color:var(--blue)">chongos909@gmail.com</div>
+        </div>
+      </a>
+      <a href="tel:+260960271128" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--text)">
+        <span style="font-size:22px">📞</span>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">PHONE / WHATSAPP</div>
+          <div style="font-weight:700;color:var(--green)">+260 960 271 128</div>
+        </div>
+      </a>
+    </div>
+    <div class="sh">Payment Methods</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: contact the developer for current pricing. Pay via mobile money, then send your <strong style="color:var(--text)">Depot Key</strong> on WhatsApp to get activated.</div>
+      <div class="pay-method">
+        <span class="pm-icon">🔴</span>
+        <div class="pm-info">
+          <div class="pm-label">Airtel Money</div>
+          <div class="pm-num" style="font-size:17px">+260 970 962 902</div>
+          <div class="pm-name">Goodson Chongo</div>
+        </div>
+        <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
+      </div>
+      <div class="pay-method">
+        <span class="pm-icon">🟡</span>
+        <div class="pm-info">
+          <div class="pm-label">MTN Mobile Money</div>
+          <div class="pm-num" style="font-size:17px">+260 960 271 128</div>
+          <div class="pm-name">Goodson Chongo</div>
+        </div>
+        <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
+      </div>
+      <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#0a1628;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:15px;font-weight:700;text-decoration:none;margin-top:6px">
+        💬 WhatsApp for Activation
+      </a>
+    </div>
+    <div style="height:20px"></div>`;
+}
+
+function saveDepotInfo(){
+  const name=uc(document.getElementById('di-name').value)||'MY DEPOT';
+  const district=uc(document.getElementById('di-district').value);
+  const country=uc(document.getElementById('di-country').value)||'ZAMBIA';
+  updateData(d=>({...d,depotInfo:{...d.depotInfo,name,district,country,setupDone:true}}));
+  applyDepotInfo();
+  alert('✅ Depot info updated!');
+}
+function saveRates(){
+  const rates={loader_stack:Number(document.getElementById('r-ls').value),loader_load:Number(document.getElementById('r-ll').value),stitcher:Number(document.getElementById('r-s').value)};
+  updateData(d=>({...d,rates}));
+  alert('✅ Rates saved!');
+}
+function changePw(){
+  const np=document.getElementById('pw-new').value;
+  const cp=document.getElementById('pw-conf').value;
+  const msg=document.getElementById('pw-msg');
+  if(!np||np!==cp){msg.innerHTML='<div class="err-box">Passwords do not match.</div>';return;}
+  const target=document.getElementById('pw-target').value;
+  updateData(d=>({...d,users:d.users.map(u=>u.username===target?{...u,password:np}:u)}));
+  msg.innerHTML='<div class="ok-msg">✅ Password updated!</div>';
+  document.getElementById('pw-new').value='';document.getElementById('pw-conf').value='';
+}
+function addUser(){
+  const u=document.getElementById('nu-user').value.trim();
+  const p=document.getElementById('nu-pass').value;
+  const r=document.getElementById('nu-role').value;
+  if(!u||!p){alert('Fill all fields.');return;}
+  if(DATA.users.find(x=>x.username===u)){alert('Username already exists.');return;}
+  updateData(d=>({...d,users:[...d.users,{username:u,password:p,role:r}]}));
+  document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
+  alert('✅ User added!');
+}
+function removeUser(username){
+  if(username==='admin'){alert('Cannot remove admin.');return;}
+  if(!confirm(`Remove user "${username}"?`))return;
+  updateData(d=>({...d,users:d.users.filter(u=>u.username!==username)}));
+}
+function addInvItem(){
+  const val=uc(document.getElementById('new-inv-item')?.value);
+  if(!val){alert('Enter an item name.');return;}
+  if((DATA.inventoryItems||[]).includes(val)){alert('Item already exists.');return;}
+  updateData(d=>({...d,inventoryItems:[...(d.inventoryItems||[]),val]}));
+  document.getElementById('new-inv-item').value='';
+}
+function removeInvItem(idx){
+  if(!confirm('Remove this inventory item?'))return;
+  updateData(d=>({...d,inventoryItems:(d.inventoryItems||[]).filter((_,i)=>i!==idx)}));
+}
+function exportJSON(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'}));
+  a.download=`fra_depot_backup_${today()}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function clearAll(){
+  if(!confirm('⚠️ Delete ALL data? This cannot be undone.'))return;
+  if(!confirm('LAST WARNING — all inventory, maize, and staff records will be permanently deleted.'))return;
+  DATA=JSON.parse(JSON.stringify(DEFAULT));sv(DATA);render();
+}
+
+// ── TAB LISTENERS ─────────────────────────────────────────────────────────────
+function attachTabListeners(){
+  // General
+  const addGenRec=document.getElementById('btn-add-gen-rec');
+  const addGenIss=document.getElementById('btn-add-gen-iss');
+  if(addGenRec)addGenRec.addEventListener('click',openGenRecForm);
+  if(addGenIss)addGenIss.addEventListener('click',openGenIssForm);
+  ['inventory','issued','summary'].forEach(t=>{
+    const el=document.getElementById('gtab-'+t);
+    if(el)el.addEventListener('click',()=>{GTAB=t;render();});
+  });
+  // Maize
+  const addMaizeRec=document.getElementById('btn-add-maize-rec');
+  const addMaizeIss=document.getElementById('btn-add-maize-iss');
+  const addStockCount=document.getElementById('btn-add-stock-count');
+  if(addMaizeRec)addMaizeRec.addEventListener('click',openMaizeRecForm);
+  if(addMaizeIss)addMaizeIss.addEventListener('click',openMaizeIssForm);
+  if(addStockCount)addStockCount.addEventListener('click',openStockCountForm);
+  ['received','issued','variance','summary'].forEach(t=>{
+    const el=document.getElementById('mtab-'+t);
+    if(el)el.addEventListener('click',()=>{MTAB=t;render();});
+  });
+  // Staff
+  const addStaff=document.getElementById('btn-add-staff');
+  const logWork=document.getElementById('btn-log-work');
+  const payStaff=document.getElementById('btn-pay-staff');
+  if(addStaff)addStaff.addEventListener('click',openStaffForm);
+  if(logWork)logWork.addEventListener('click',openLogForm);
+  if(payStaff)payStaff.addEventListener('click',openPayForm);
+  ['logs','roster','earnings','payments','bagcheck','stafflist'].forEach(t=>{
+    const el=document.getElementById('stab-'+t);
+    if(el)el.addEventListener('click',()=>{STAB=t;render();});
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+updateConnStatus();
+setTimeout(updateConnStatus, 500);
+
+// Load from IndexedDB on startup — upgrades localStorage data if IDB has newer version
+initData().then(()=>{
+  // Re-apply depot info after IDB load in case it had newer data
+  const di=DATA.depotInfo||{};
+  const parts=[di.name,di.district,di.country].filter(Boolean);
+  const el=document.getElementById('login-depot-sub');
+  if(el&&parts.length>0)el.textContent=parts.join(' · ');
+});
+
+// Apply saved depot info to login subtitle on load (immediate from localStorage)
+(function(){const di=DATA.depotInfo||{};const parts=[di.name,di.district,di.country].filter(Boolean);const el=document.getElementById('login-depot-sub');if(el&&parts.length>0)el.textContent=parts.join(' · ');})();
+</script>
+</body>
+</html>
