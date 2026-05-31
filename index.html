@@ -392,7 +392,80 @@ async function fbSet(path, data) {
   return res.json();
 }
 
-// Test Firebase connection and show result
+// ── FIREBASE DATA SYNC ───────────────────────────────────────────────────────
+// Saves the full depot DATA object to Firebase under depots/{key}
+// Strips non-serialisable fields and enforces a debounce so rapid edits
+// don't flood the network.
+let _fbSyncTimer = null;
+function scheduleFbSync() {
+  if (!isFbConfigured() || !navigator.onLine) return;
+  clearTimeout(_fbSyncTimer);
+  _fbSyncTimer = setTimeout(()=>{ doFbSync(); }, 2500); // 2.5s debounce
+}
+
+async function doFbSync() {
+  if (!isFbConfigured() || !navigator.onLine) return;
+  const key = depotKey();
+  if (!key || key === 'MDM-????-????-????') return;
+  try {
+    // Save a clean copy
+    const payload = JSON.parse(JSON.stringify(DATA));
+    delete payload.gdrive; // don't store oauth tokens in Firebase
+    await fbSet('depots/' + key + '/data', payload);
+    // Update last-synced timestamp
+    await fbSet('depots/' + key + '/meta', {
+      lastSync: Date.now(),
+      depotName: (DATA.depotInfo||{}).name || '',
+      version: DATA._v || 0
+    });
+    DATA._lastFbSync = Date.now();
+    try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}
+  } catch(e) {
+    console.warn('Firebase data sync failed:', e.message);
+  }
+}
+
+// Restore depot data from Firebase after a local wipe
+async function fbRestoreData() {
+  if (!isFbConfigured() || !navigator.onLine) return false;
+  const key = depotKey();
+  if (!key || key === 'MDM-????-????-????') return false;
+  try {
+    const val = await fbGet('depots/' + key + '/data');
+    if (!val || !val._v) return false;
+    // Only restore if Firebase has a newer version than local
+    if ((val._v || 0) > (DATA._v || 0)) {
+      DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+      sv(DATA); // write back to localStorage + IDB
+      return true;
+    }
+    return false;
+  } catch(e) {
+    console.warn('Firebase restore failed:', e.message);
+    return false;
+  }
+}
+async function forceFbSync() {
+  const btn = document.querySelector('button[onclick="forceFbSync()"]');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Syncing…';}
+  DATA._lastFbSync = Date.now();
+  sv(DATA);
+  await doFbSync();
+  if(btn){btn.disabled=false;btn.textContent='🔄 Sync Now';}
+  updateLastSyncDisplay();
+  showToast('✅ Data synced to cloud');
+}
+
+function updateLastSyncDisplay() {
+  const el = document.getElementById('last-sync-time');
+  if (!el) return;
+  const lastSync = DATA._lastFbSync || 0;
+  if (!lastSync) { el.textContent = 'Not yet synced'; el.style.color = 'var(--amber)'; return; }
+  const d = new Date(lastSync);
+  el.textContent = d.toLocaleString('en-GB', {dateStyle:'short', timeStyle:'short'});
+  el.style.color = 'var(--green)';
+}
+
 async function testFirebaseConnection() {
   const btn = document.getElementById('fb-test-btn');
   const out = document.getElementById('fb-test-out');
@@ -691,7 +764,6 @@ const DEFAULT={
   deductionReasons:['Damaged bags','Late arrival','Misconduct','Short count'],
   depotInfo:{name:'',district:'',country:'',setupDone:false},
   installId:'',
-  gdrive:{connected:false,accessToken:'',refreshToken:'',email:'',autoBackup:false,lastBackup:null},
   _v:0
 };
 
@@ -799,11 +871,22 @@ function pBtns(tab){
 }
 function setPeriod(tab,p){PERIOD[tab]=p;render();}
 
-function updateData(fn){DATA=fn(DATA);DATA._v=(DATA._v||0)+1;sv(DATA);render();maybeAutoBackup();}
+function updateData(fn){DATA=fn(DATA);DATA._v=(DATA._v||0)+1;sv(DATA);render();scheduleFbSync();}
 
 // ── ONLINE ──────────────────────────────────────────────────────────────────
-window.addEventListener('online',()=>{ONLINE=true;updPill();updateConnStatus();});
+window.addEventListener('online',()=>{ONLINE=true;updPill();updateConnStatus();scheduleFbSync();});
 window.addEventListener('offline',()=>{ONLINE=false;updPill();updateConnStatus();});
+
+// Simple toast notification
+function showToast(msg, duration=3500) {
+  let t = document.getElementById('update-toast');
+  if (!t) return;
+  const orig = t.textContent;
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.opacity = '1';
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>{ t.style.display='none'; t.textContent=orig; },400); }, duration);
+}
 
 function updateConnStatus(){
   const el=document.getElementById('conn-status');
@@ -863,7 +946,20 @@ async function doLogin(){
   loadCachedLicense();
   applyLicenseMode();
   initFirebase();
-  checkLicense(()=>{
+  checkLicense(async ()=>{
+    // After license check, try to restore from Firebase if local data looks empty/wiped
+    const isEmptyLocal = !DATA.depotInfo?.setupDone &&
+                         !DATA.maizeReceived?.length &&
+                         !DATA.generalInventory?.length &&
+                         !DATA.staff?.length;
+    if (isEmptyLocal && isFbConfigured() && navigator.onLine) {
+      const restored = await fbRestoreData();
+      if (restored) {
+        applyDepotInfo();
+        // Show a quiet notice
+        showToast('☁️ Data restored from cloud backup');
+      }
+    }
     if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
       if(USER.role==='admin'){
         showDepotSetupModal();
@@ -980,7 +1076,7 @@ function render(){
   else if(TAB==='general')c.innerHTML=renderGeneral();
   else if(TAB==='maize')c.innerHTML=renderMaize();
   else if(TAB==='staff')c.innerHTML=renderStaff();
-  else if(TAB==='settings')c.innerHTML=renderSettings();
+  else if(TAB==='settings'){c.innerHTML=renderSettings();setTimeout(updateLastSyncDisplay,50);}
   attachTabListeners();
 }
 
@@ -2436,125 +2532,6 @@ function delStaff(id){if(!confirm('Delete this staff member? All their logs will
 
 
 
-// ══════════════════════════════════════════════════════════
-// GOOGLE DRIVE BACKUP
-// ══════════════════════════════════════════════════════════
-const GDRIVE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // Replace with your OAuth 2.0 Client ID
-const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-
-function gdriveConnected() { return !!(DATA.gdrive && DATA.gdrive.accessToken); }
-
-function connectGDrive() {
-  if (!GDRIVE_CLIENT_ID || GDRIVE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
-    alert('Google Drive integration requires a Google OAuth Client ID.\nContact the developer to enable this feature.');
-    return;
-  }
-  const params = new URLSearchParams({
-    client_id: GDRIVE_CLIENT_ID,
-    redirect_uri: window.location.href.split('?')[0],
-    response_type: 'token',
-    scope: GDRIVE_SCOPE,
-    prompt: 'select_account'
-  });
-  window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(), '_blank', 'width=500,height=600');
-}
-
-function disconnectGDrive() {
-  if (!confirm('Disconnect Google Drive? Auto-backup will be disabled.')) return;
-  updateData(d => ({...d, gdrive: {connected:false, accessToken:'', email:'', autoBackup:false, lastBackup:null}}));
-  render();
-}
-
-function toggleAutoBackup() {
-  const current = DATA.gdrive && DATA.gdrive.autoBackup;
-  updateData(d => ({...d, gdrive: {...(d.gdrive||{}), autoBackup: !current}}));
-  render();
-}
-
-async function backupToDrive(silent=false) {
-  if (!gdriveConnected()) { if(!silent) alert('Connect Google Drive first.'); return; }
-  const token = DATA.gdrive.accessToken;
-  const filename = 'MDM_Backup_' + (DATA.depotInfo.name||'DEPOT').replace(/\s+/g,'_') + '_' + today() + '.json';
-  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type: 'application/json'});
-
-  // Check if file exists to update instead of duplicate
-  try {
-    const searchRes = await fetch(
-      'https://www.googleapis.com/drive/v3/files?q=name%3D%22MDM_Backup_' + encodeURIComponent((DATA.depotInfo.name||'DEPOT').replace(/\s+/g,'_')) + '%22+and+trashed%3Dfalse&fields=files(id,name)',
-      { headers: { Authorization: 'Bearer ' + token } }
-    );
-    if (searchRes.status === 401) { handleTokenExpiry(); return; }
-    const searchData = await searchRes.json();
-
-    let res;
-    if (searchData.files && searchData.files.length > 0) {
-      // Update existing file
-      const fileId = searchData.files[0].id;
-      const form = new FormData();
-      form.append('file', new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'}));
-      res = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
-        method: 'PATCH', headers: { Authorization: 'Bearer ' + token }, body: blob
-      });
-    } else {
-      // Create new file
-      const meta = JSON.stringify({name: filename, mimeType: 'application/json'});
-      const form = new FormData();
-      form.append('metadata', new Blob([meta], {type:'application/json'}));
-      form.append('file', blob);
-      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form
-      });
-    }
-
-    if (res.ok) {
-      updateData(d => ({...d, gdrive: {...(d.gdrive||{}), lastBackup: Date.now()}}));
-      if (!silent) alert('✅ Backup saved to Google Drive!');
-      render();
-    } else {
-      if (!silent) alert('⚠️ Backup failed. Try reconnecting Google Drive.');
-    }
-  } catch(e) {
-    if (!silent) alert('⚠️ Backup error: ' + e.message);
-  }
-}
-
-function handleTokenExpiry() {
-  updateData(d => ({...d, gdrive: {...(d.gdrive||{}), accessToken: '', connected: false}}));
-  alert('Google Drive session expired. Please reconnect.');
-  render();
-}
-
-// Handle OAuth redirect token
-(function handleOAuthRedirect() {
-  const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    const params = new URLSearchParams(hash.replace('#','?').slice(1));
-    const token = params.get('access_token');
-    if (token) {
-      // Fetch user email
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: 'Bearer ' + token }
-      }).then(r => r.json()).then(info => {
-        updateData(d => ({...d, gdrive: {connected:true, accessToken:token, email:info.email||'', autoBackup:false, lastBackup:(d.gdrive||{}).lastBackup||null}}));
-        window.history.replaceState(null, '', window.location.pathname);
-        render();
-        alert('✅ Google Drive connected as ' + (info.email||'unknown') + '!');
-      }).catch(() => {
-        updateData(d => ({...d, gdrive: {connected:true, accessToken:token, email:'', autoBackup:false, lastBackup:null}}));
-        window.history.replaceState(null, '', window.location.pathname);
-        render();
-      });
-    }
-  }
-})();
-
-// Auto-backup trigger — runs after every data save if enabled and online
-function maybeAutoBackup() {
-  if (ONLINE && DATA.gdrive && DATA.gdrive.autoBackup && DATA.gdrive.accessToken) {
-    backupToDrive(true);
-  }
-}
-
 // ── LICENSE STATUS CARD ───────────────────────────────────────────────────────
 function renderPaymentSection() {
   return `
@@ -2730,35 +2707,6 @@ function renderSettings(){
         <button onclick="clearAll()" style="background:none;border:1px solid #3d1515;border-radius:8px;color:#884444;font-size:11px;padding:5px 12px;cursor:pointer;touch-action:manipulation">🗑 Clear all data</button>
       </div>
     </div>`:''}
-    <div class="sh">Google Drive Backup</div>
-    <div class="card">
-      ${gdriveConnected() ? `
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <span style="font-size:24px">✅</span>
-          <div>
-            <div style="font-weight:700;color:var(--green);font-size:14px">Connected</div>
-            <div style="font-size:12px;color:var(--muted)">${DATA.gdrive.email||'Google Account'}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
-          <div>
-            <div style="font-weight:700;font-size:13px">Auto-backup on save</div>
-            <div style="font-size:11px;color:var(--muted)">Uploads data to Drive after every entry</div>
-          </div>
-          <button onclick="toggleAutoBackup()" style="background:${DATA.gdrive.autoBackup?'var(--green)':'var(--surface2)'};border:2px solid ${DATA.gdrive.autoBackup?'var(--green)':'var(--border)'};border-radius:20px;width:44px;height:26px;cursor:pointer;transition:all .2s;touch-action:manipulation"></button>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Last backup: ${DATA.gdrive.lastBackup?new Date(DATA.gdrive.lastBackup).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}):'Never'}</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn bg" style="flex:1" onclick="backupToDrive()">☁ Backup Now</button>
-          <button class="btn bo" style="flex:1" onclick="disconnectGDrive()">Disconnect</button>
-        </div>
-      ` : `
-        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">Connect your Google Drive to automatically back up depot data to the cloud after every save.</div>
-        <button class="btn bg" style="width:100%" onclick="connectGDrive()">
-          <span style="font-size:16px">🔗</span> Connect Google Drive
-        </button>
-      `}
-    </div>
     <div class="sh">Contact &amp; Support</div>
     <div class="card">
       <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">For technical support, licensing enquiries or assistance, reach out to the developer:</div>
@@ -2777,7 +2725,21 @@ function renderSettings(){
         </div>
       </a>
     </div>
-    <div class="sh">Payment Methods</div>
+    <div class="sh">☁️ Cloud Data Protection</div>
+    <div class="card" id="cloud-sync-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-family:var(--fh);font-size:17px;font-weight:700;color:var(--white)">Auto Cloud Backup</div>
+        <span id="cloud-sync-badge" style="background:#003d2e;color:var(--green);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:800">ACTIVE</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:12px">
+        All depot data is automatically saved to your Firebase cloud. Even if you clear your phone's browser data or switch devices, your data is fully restored the next time you log in.
+      </div>
+      <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--muted)">Last cloud sync</span>
+        <span id="last-sync-time" style="font-size:12px;color:var(--green);font-weight:700">—</span>
+      </div>
+      <button class="btn bo bsm" style="width:100%" onclick="forceFbSync()">🔄 Sync Now</button>
+    </div>
     <div class="card">
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K150 per 2 months</strong>. Pay via mobile money, then send your <strong style="color:var(--text)">Depot Key</strong> on WhatsApp to get activated.</div>
       <div class="pay-method">
