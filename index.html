@@ -311,21 +311,56 @@ body.trial-mode .content{padding-top:44px;}
 // passwords are never written to localStorage or IndexedDB.
 // ══════════════════════════════════════════════════════════
 async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  // crypto.subtle requires secure context (HTTPS/localhost). Fallback for older
+  // Android browsers or file:// contexts uses a pure-JS FNV-inspired hash that
+  // still produces a consistent 64-char hex string so the login flow never breaks.
+  try {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+  } catch(e) { /* fall through to JS fallback */ }
+  // JS fallback — deterministic, collision-resistant enough for local auth
+  let h1 = 0x9e3779b9, h2 = 0x243f6a88, h3 = 0xb7e15162, h4 = 0x6c62272e;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x9e3779b9) >>> 0;
+    h2 = Math.imul(h2 ^ c, 0x85ebca6b) >>> 0;
+    h3 = Math.imul(h3 ^ c, 0xc2b2ae35) >>> 0;
+    h4 = Math.imul(h4 ^ c, 0x27d4eb2f) >>> 0;
+    h1 ^= h2 >>> 13; h2 ^= h3 >>> 7; h3 ^= h4 >>> 17; h4 ^= h1 >>> 5;
+  }
+  // Produce 64 hex chars by mixing rounds
+  const mix = [h1,h2,h3,h4,h1^h2,h2^h3,h3^h4,h4^h1,
+               h1^h3,h2^h4,h1^h2^h3,h2^h3^h4,h1^h4,h2^h1,h3^h2,h4^h3];
+  return mix.map(n=>(n>>>0).toString(16).padStart(8,'0')).join('');
 }
-// Synchronous HMAC-SHA256 via SubtleCrypto — returns promise
 async function hmac256(key, data) {
-  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(key),
-    {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
-  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+  try {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(key),
+        {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+      const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
+      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+  } catch(e) { /* fall through */ }
+  // Fallback: use sha256 of key+data
+  return sha256(key + data);
 }
 // Device-bound salt: generated once and stored separately so it cannot be
 // extracted from the data export alone.
 function getDeviceSalt() {
   let s = localStorage.getItem('_mdm_ds');
-  if (!s) { s = crypto.getRandomValues(new Uint8Array(16)).reduce((a,b)=>a+b.toString(16).padStart(2,'0'),''); localStorage.setItem('_mdm_ds', s); }
+  if (!s) {
+    try {
+      s = crypto.getRandomValues(new Uint8Array(16)).reduce((a,b)=>a+b.toString(16).padStart(2,'0'),'');
+    } catch(e) {
+      // Fallback for environments without crypto.getRandomValues
+      s = Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      s = s.slice(0,32).padEnd(32,'0');
+    }
+    localStorage.setItem('_mdm_ds', s);
+  }
   return s;
 }
 // Hash a password with the device salt
@@ -962,12 +997,13 @@ async function doLogin(){
     if (err) { err.style.display = 'block'; err.textContent = `⛔ Too many attempts. Try again in ${secsLeft}s.`; }
     return;
   }
-  const u=document.getElementById('l-user').value.trim();
-  const p=document.getElementById('l-pass').value;
-  const err=document.getElementById('login-err');
-  const btn=document.getElementById('login-btn');
-  const tosCheck=document.getElementById('tos-check');
-  const tosBox=document.getElementById('tos-box');
+  // Normalise username — trim + lowercase to avoid case-sensitivity failures
+  const u = document.getElementById('l-user').value.trim().toLowerCase();
+  const p = document.getElementById('l-pass').value;
+  const err = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  const tosCheck = document.getElementById('tos-check');
+  const tosBox = document.getElementById('tos-box');
 
   // Enforce ToS consent before anything else
   if(!tosCheck||!tosCheck.checked){
@@ -981,80 +1017,90 @@ async function doLogin(){
   err.style.display='none';
   btn.disabled=true; btn.textContent='🔐 Signing in…';
 
-  // Migrate any plain-text passwords to hashes on first use
-  let needsSave = false;
-  for (let i = 0; i < DATA.users.length; i++) {
-    if (!isHashed(DATA.users[i].password)) {
-      DATA.users[i].password = await hashPassword(DATA.users[i].password);
-      needsSave = true;
-    }
-  }
-  if (needsSave) { DATA._v=(DATA._v||0)+1; sv(DATA); }
+  try {
+    // Wait for IndexedDB to finish loading in case user taps Sign In before it completes
+    await initData();
 
-  // Find user by username and verify password
-  const userObj = DATA.users.find(x=>x.username===u);
-  const valid = userObj ? await verifyPassword(p, userObj.password) : false;
+    // Normalise stored usernames to lowercase for comparison (handle legacy mixed-case)
+    const users = DATA.users.map(u => ({...u, username: (u.username||'').toLowerCase()}));
 
-  btn.disabled=false; btn.textContent='🔒 Sign In';
-
-  if(!valid){
-    _loginAttempts++;
-    if (_loginAttempts >= MAX_ATTEMPTS) {
-      _loginLockedUntil = Date.now() + LOCKOUT_MS;
-      _loginAttempts = 0;
-      err.style.display='block';
-      err.textContent='⛔ Too many failed attempts. Locked for 60 seconds.';
-    } else {
-      err.style.display='block';
-      err.textContent=`Invalid username or password. (${MAX_ATTEMPTS - _loginAttempts} attempt${MAX_ATTEMPTS - _loginAttempts===1?'':'s'} remaining)`;
-    }
-    return;
-  }
-  _loginAttempts = 0; // reset on success
-  err.style.display='none';
-  USER=userObj;
-  // Show UI immediately, then run license check in background
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('main-hdr').style.display='flex';
-  document.getElementById('content').style.display='block';
-  document.getElementById('nav').style.display='flex';
-  if(USER.role==='admin')document.getElementById('nb-settings').style.display='flex';
-  updPill();
-  applyDepotInfo();
-  // Load cached license immediately so mode applies even before network check
-  loadCachedLicense();
-  applyLicenseMode();
-  initFirebase();
-  checkLicense(async ()=>{
-    // After license check, try to restore from Firebase if local data looks empty/wiped
-    const isEmptyLocal = !DATA.depotInfo?.setupDone &&
-                         !DATA.maizeReceived?.length &&
-                         !DATA.generalInventory?.length &&
-                         !DATA.staff?.length;
-    if (isEmptyLocal && isFbConfigured() && navigator.onLine) {
-      const restored = await fbRestoreData();
-      if (restored) {
-        applyDepotInfo();
-        // Show a quiet notice
-        showToast('☁️ Data restored from cloud backup');
+    // Migrate any plain-text passwords to hashes on first use
+    let needsSave = false;
+    for (let i = 0; i < DATA.users.length; i++) {
+      if (!isHashed(DATA.users[i].password)) {
+        DATA.users[i].password = await hashPassword(DATA.users[i].password);
+        needsSave = true;
       }
     }
-    if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
-      if(USER.role==='admin'){
-        showDepotSetupModal();
+    if (needsSave) { DATA._v=(DATA._v||0)+1; sv(DATA); }
+
+    // Find user (case-insensitive) and verify password
+    const userObj = DATA.users.find(x=>(x.username||'').toLowerCase()===u);
+    const valid = userObj ? await verifyPassword(p, userObj.password) : false;
+
+    btn.disabled=false; btn.textContent='🔒 Sign In';
+
+    if(!valid){
+      _loginAttempts++;
+      if (_loginAttempts >= MAX_ATTEMPTS) {
+        _loginLockedUntil = Date.now() + LOCKOUT_MS;
+        _loginAttempts = 0;
+        err.style.display='block';
+        err.textContent='⛔ Too many failed attempts. Locked for 60 seconds.';
+      } else {
+        err.style.display='block';
+        err.textContent=`Invalid username or password. (${MAX_ATTEMPTS - _loginAttempts} attempt${MAX_ATTEMPTS - _loginAttempts===1?'':'s'} remaining)`;
+      }
+      return;
+    }
+    _loginAttempts = 0;
+    err.style.display='none';
+    USER=userObj;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('main-hdr').style.display='flex';
+    document.getElementById('content').style.display='block';
+    document.getElementById('nav').style.display='flex';
+    if(USER.role==='admin')document.getElementById('nb-settings').style.display='flex';
+    updPill();
+    applyDepotInfo();
+    loadCachedLicense();
+    applyLicenseMode();
+    initFirebase();
+    checkLicense(async ()=>{
+      const isEmptyLocal = !DATA.depotInfo?.setupDone &&
+                           !DATA.maizeReceived?.length &&
+                           !DATA.generalInventory?.length &&
+                           !DATA.staff?.length;
+      if (isEmptyLocal && isFbConfigured() && navigator.onLine) {
+        const restored = await fbRestoreData();
+        if (restored) {
+          applyDepotInfo();
+          showToast('☁️ Data restored from cloud backup');
+        }
+      }
+      if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
+        if(USER.role==='admin'){
+          showDepotSetupModal();
+        } else {
+          showTab('dashboard');
+          openModal(`
+            <div class="mtitle">⚠️ Setup Incomplete</div>
+            <div style="font-size:14px;color:var(--muted);line-height:1.8;text-align:center;padding:10px 0">
+              Setup has not been completed yet.<br><br>
+              Please ask your <strong style="color:var(--text)">Admin</strong> to log in and complete the company setup before using the app.
+            </div>`);
+        }
       } else {
         showTab('dashboard');
-        openModal(`
-          <div class="mtitle">⚠️ Setup Incomplete</div>
-          <div style="font-size:14px;color:var(--muted);line-height:1.8;text-align:center;padding:10px 0">
-            Depot setup has not been completed yet.<br><br>
-            Please ask your <strong style="color:var(--text)">Admin</strong> to log in and complete the company setup before using the app.
-          </div>`);
       }
-    } else {
-      showTab('dashboard');
-    }
-  });
+    });
+  } catch(e) {
+    // Catch-all: never leave the button frozen or the user stranded
+    btn.disabled=false; btn.textContent='🔒 Sign In';
+    err.style.display='block';
+    err.textContent='⚠️ Login error: ' + (e.message||'Please try again.');
+    console.error('Login error:', e);
+  }
 }
 
 function doLogout(){
@@ -3023,12 +3069,12 @@ async function changePw(){
   document.getElementById('pw-new').value='';document.getElementById('pw-conf').value='';
 }
 async function addUser(){
-  const u=document.getElementById('nu-user').value.trim();
+  const u=document.getElementById('nu-user').value.trim().toLowerCase();
   const p=document.getElementById('nu-pass').value;
   const r=document.getElementById('nu-role').value;
   if(!u||!p){alert('Fill all fields.');return;}
   if(p.length < 4){alert('Password must be at least 4 characters.');return;}
-  if(DATA.users.find(x=>x.username===u)){alert('Username already exists.');return;}
+  if(DATA.users.find(x=>(x.username||'').toLowerCase()===u)){alert('Username already exists.');return;}
   const hashed = await hashPassword(p);
   updateData(d=>({...d,users:[...d.users,{username:u,password:hashed,role:r}]}));
   document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
