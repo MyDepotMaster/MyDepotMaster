@@ -762,7 +762,7 @@ function copyNum(num) {
 }
 
 // ── SERVICE WORKER ──────────────────────────────────────────────────────────
-const SW_CODE=`const CACHE='fra-v2';
+const SW_CODE=`const CACHE='mdm-v2';
 self.addEventListener('install',e=>{self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(clients.claim());});
 self.addEventListener('fetch',e=>{
@@ -798,6 +798,10 @@ const DEFAULT={
   staffLogs:[],         // {id,staffId,date,task,bags,earnings,deduction,deductionReason,timeIn,timeOut}
   staffPayments:[],     // {id,staffId,date,amount,notes}
   rates:{loader_stack:2,loader_load:3,stitcher:1.5},
+  staffRoles:[
+    {id:'role_loader',name:'Loader',tasks:[{id:'task_stacking',name:'Stacking',rate:2},{id:'task_loading',name:'Loading',rate:3}]},
+    {id:'role_stitcher',name:'Stitcher',tasks:[{id:'task_stitching',name:'Stitching',rate:1.5}]}
+  ],
   deductionReasons:['Damaged bags','Late arrival','Misconduct','Short count'],
   depotInfo:{name:'',district:'',country:'',setupDone:false},
   installId:'',
@@ -2010,11 +2014,17 @@ function saveEditMaizeIss(id){
 // ══════════════════════════════════════════════════════════
 function getEarnings(bags,role,task){
   const b=Number(bags||0);
-  if(role==='Loader'&&task==='Stacking')return b*DATA.rates.loader_stack;
-  if(role==='Loader'&&task==='Loading')return b*DATA.rates.loader_load;
-  if(role==='Stitcher')return b*DATA.rates.stitcher;
-  return 0;
+  const roles=DATA.staffRoles||[];
+  const roleObj=roles.find(r=>r.name===role);
+  if(!roleObj)return 0;
+  const taskObj=(roleObj.tasks||[]).find(t=>t.name===task);
+  if(!taskObj)return 0;
+  return b*(Number(taskObj.rate)||0);
 }
+// Helper: get all role names
+function allRoleNames(){return(DATA.staffRoles||[]).map(r=>r.name);}
+// Helper: get tasks for a role name
+function tasksForRole(roleName){const r=(DATA.staffRoles||[]).find(x=>x.name===roleName);return r?r.tasks||[]:[]; }
 
 function renderStaff(){
   return `
@@ -2119,7 +2129,7 @@ function renderRoster(){
       <button class="btn br bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','expelled')">⛔ Expel</button>
     </div>`;
   };
-  return['Loader','Stitcher'].map(role=>{
+  return allRoleNames().map(role=>{
     const members=DATA.staff.filter(s=>s.role===role);
     const mRows=members.map(s=>{
       const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
@@ -2174,10 +2184,11 @@ function renderEarnings(){
 }
 
 function openStaffForm(){
+  const roleOpts=allRoleNames().map(r=>`<option>${r}</option>`).join('');
   openModal(`
     <div class="mtitle">👤 Register Staff</div>
     <div class="fw"><div class="fl">Full Name</div><input class="fi" id="sf-name" placeholder="e.g. John Banda"/></div>
-    <div class="fw"><div class="fl">Job Role</div><select class="fi" id="sf-role"><option>Loader</option><option>Stitcher</option></select></div>
+    <div class="fw"><div class="fl">Job Role</div><select class="fi" id="sf-role">${roleOpts||'<option>No roles defined</option>'}</select></div>
     <div class="fw"><div class="fl">Phone (optional)</div><input class="fi" id="sf-phone" placeholder="0977 000 000" inputmode="tel"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveStaff()">✓ Register</button></div>`);
 }
@@ -2191,6 +2202,7 @@ function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only m
 
 function openLogForm(){
   if(DATA.staff.length===0){alert('Register staff members first.');return;}
+  if((DATA.staffRoles||[]).length===0){alert('No roles defined. Go to Settings > Staff Roles & Rates to add roles first.');return;}
   const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
   if(activeStaff.length===0){alert('No active staff. Check roster for suspended/expelled staff.');return;}
   const opts=activeStaff.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} (${esc(s.role)})</option>`).join('');
@@ -2198,7 +2210,7 @@ function openLogForm(){
     <div class="mtitle">📋 Log Work ${!ONLINE?'<span style="font-size:14px;color:var(--amber)">· Offline</span>':''}</div>
     <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lf-staff" onchange="onStaffChange()">${opts}</select></div>
     <div class="fw"><div class="fl">Role</div><div class="fi" id="lf-role-display" style="background:#0a1628;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="lf-role"/></div>
-    <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="calcGross()"><option>Stacking</option><option>Loading</option><option>Stitching</option></select></div>
+    <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="calcGross()"><option>—</option></select></div>
     <div class="fw"><div class="fl">Bags Handled</div><input class="fi" type="number" id="lf-bags" placeholder="e.g. 200" inputmode="numeric" oninput="calcGross()"/></div>
     <div id="gross-hint"></div>
     <div class="fw"><div class="fl">Deduction (ZMW)</div><input class="fi" type="number" id="lf-ded" value="0" inputmode="decimal" oninput="calcGross()"/></div>
@@ -2216,16 +2228,15 @@ function onStaffChange(){
   const sid=document.getElementById('lf-staff')?.value;
   const s=DATA.staff.find(x=>String(x.id)===String(sid));
   if(s){
-    // Show role as read-only display
     const display=document.getElementById('lf-role-display');
     const hidden=document.getElementById('lf-role');
     if(display)display.textContent=s.role.toUpperCase();
     if(hidden)hidden.value=s.role;
-    // Auto-set task options based on role
+    // Populate task options from role definition
     const taskEl=document.getElementById('lf-task');
     if(taskEl){
-      if(s.role==='Stitcher'){taskEl.innerHTML='<option>Stitching</option>';taskEl.value='Stitching';}
-      else{taskEl.innerHTML='<option>Stacking</option><option>Loading</option>';taskEl.value='Stacking';}
+      const tasks=tasksForRole(s.role);
+      taskEl.innerHTML=tasks.length>0?tasks.map(t=>`<option value="${esc(t.name)}">${esc(t.name)} (K${Number(t.rate||0).toFixed(2)}/bag)</option>`).join(''):'<option>No tasks defined</option>';
     }
     calcGross();
   }
@@ -2348,19 +2359,20 @@ function renderPayments(){
 
 // ── STAFF LIST ───────────────────────────────────────────────────────────────
 function renderStaffList(){
-  const roles=['Loader','Stitcher'];
+  const roles=allRoleNames();
   const statusBadge=s=>{
     if(s.status==='expelled')return`<span class="bdg br2" style="font-size:10px">EXPELLED</span>`;
     if(s.status==='suspended')return`<span class="bdg ba2" style="font-size:10px">SUSPENDED</span>`;
     return`<span class="bdg bg2" style="font-size:10px">ACTIVE</span>`;
   };
-  const sections=roles.map(role=>{
+  const sections=roles.map((role,ri)=>{
     const members=DATA.staff.filter(s=>s.role===role);
     if(members.length===0)return`<div class="card"><div class="ctitle">👷 ${role}s</div><div class="empty" style="padding:8px 0">No ${role.toLowerCase()}s registered</div></div>`;
     const active=members.filter(s=>!s.status||s.status==='active').length;
     const susp=members.filter(s=>s.status==='suspended').length;
     const exp=members.filter(s=>s.status==='expelled').length;
-    const avatarClass=role==='Loader'?'lo':'st';
+    const avatarColors=['lo','st','pu','rd'];
+    const avatarClass=avatarColors[ri%avatarColors.length];
     const initials=n=>n.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
     const cards=members.map(s=>{
       const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
@@ -2425,7 +2437,8 @@ function openStaffDetail(id){
   const paid=sPays.reduce((a,b)=>a+Number(b.amount||0),0);
   const unpaid=net-paid;
   const statusBadge=s.status==='expelled'?`<span class="bdg br2">EXPELLED</span>`:s.status==='suspended'?`<span class="bdg ba2">SUSPENDED</span>`:`<span class="bdg bg2">ACTIVE</span>`;
-  const taskBreakdown=['Stacking','Loading','Stitching'].map(task=>{
+  const taskBreakdown=tasksForRole(s.role).map(tObj=>{
+    const task=tObj.name;
     const tLogs=sLogs.filter(l=>l.task===task);
     if(tLogs.length===0)return'';
     const tBags=tLogs.reduce((a,b)=>a+Number(b.bags||0),0);
@@ -2563,8 +2576,9 @@ function openEditLog(id){
   const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
   const staffOpts=activeStaff.map(s=>`<option value="${s.id}"${String(s.id)===String(log.staffId)?' selected':''}>${esc(s.name)} (${esc(s.role)})</option>`).join('');
   const staffRec=DATA.staff.find(s=>String(s.id)===String(log.staffId));
-  const isStitcher=staffRec?.role==='Stitcher';
-  const taskOpts=isStitcher?`<option>Stitching</option>`:`<option${log.task==='Stacking'?' selected':''}>Stacking</option><option${log.task==='Loading'?' selected':''}>Loading</option>`;
+  const staffRole=staffRec?.role||log.role||'';
+  const tasks=tasksForRole(staffRole);
+  const taskOpts=tasks.length>0?tasks.map(t=>`<option value="${esc(t.name)}"${t.name===log.task?' selected':''}>${esc(t.name)} (K${Number(t.rate||0).toFixed(2)}/bag)</option>`).join(''):`<option>${log.task||'Unknown'}</option>`;
   openModal(`
     <div class="mtitle">✏️ Edit Work Log</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
@@ -2725,12 +2739,17 @@ function renderSettings(){
       <div class="fw"><div class="fl">District</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).district||'—'}</div></div>
       <div class="fw"><div class="fl">Country</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).country||'—'}</div></div>
     </div>
-    <div class="sh">Pay Rates per Bag (ZMW)</div>
+    <div class="sh">Staff Roles &amp; Rates</div>
     <div class="card">
-      <div class="fw"><div class="fl">Loader — Stacking</div><input class="fi" type="number" step="0.01" id="r-ls" value="${DATA.rates.loader_stack}" inputmode="decimal"/></div>
-      <div class="fw"><div class="fl">Loader — Loading</div><input class="fi" type="number" step="0.01" id="r-ll" value="${DATA.rates.loader_load}" inputmode="decimal"/></div>
-      <div class="fw"><div class="fl">Stitcher — Stitching</div><input class="fi" type="number" step="0.01" id="r-s" value="${DATA.rates.stitcher}" inputmode="decimal"/></div>
-      <button class="btn bg" onclick="saveRates()">✓ Save Rates</button>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define job roles and their tasks with pay rates per bag. These appear as dropdowns when registering staff and logging work.</div>
+      <div id="roles-list">${renderRolesEditor()}</div>
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <div class="sh" style="margin-top:0">Add New Role</div>
+        <div style="display:flex;gap:8px">
+          <input class="fi" id="new-role-name" placeholder="E.G. FORKLIFT OPERATOR" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
+          <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addRole()">+ ADD</button>
+        </div>
+      </div>
     </div>
 
     <div class="sh">Change Password</div>
@@ -2860,7 +2879,7 @@ function showTOS(){
     <div style="font-size:12px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
       <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">PLEASE READ BEFORE USING THIS APPLICATION.</div>
       <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with MDM Developer ("the Developer").</p>
-      <b style="color:var(--white)">2. General-Purpose Tool — No Official Affiliation</b><p style="margin:4px 0 10px">My Depot Master is a <b>general-purpose business management tool</b> for internal record-keeping. It is <b>NOT</b> an official government system and is NOT affiliated with the FRA, any ministry, PACRA, ZRA, or any authority.</p>
+      <b style="color:var(--white)">2. General-Purpose Tool — No Official Affiliation</b><p style="margin:4px 0 10px">My Depot Master is a <b>general-purpose business management tool</b> for internal record-keeping. It is <b>NOT</b> an official government system and is NOT affiliated with any government agency, ministry, PACRA, ZRA, or any regulatory authority.</p>
       <b style="color:var(--white)">3. No Warranties</b><p style="margin:4px 0 10px">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY. Calculations may not be accurate, complete, or suitable for any official, legal, or financial purpose.</p>
       <b style="color:var(--white)">4. Limitation of Liability</b><p style="margin:4px 0 10px">THE DEVELOPER IS NOT LIABLE FOR: data loss; financial loss; wage or count errors; labour disputes; regulatory penalties; or any indirect damages. Maximum liability = 3 months' subscription fees.</p>
       <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
@@ -2885,9 +2904,111 @@ function saveDepotInfo(){
   alert('\u2705 Company info updated!');
 }
 function saveRates(){
-  const rates={loader_stack:Number(document.getElementById('r-ls').value),loader_load:Number(document.getElementById('r-ll').value),stitcher:Number(document.getElementById('r-s').value)};
-  updateData(d=>({...d,rates}));
+  // Legacy stub kept for compatibility — new system uses saveTaskRate()
   alert('✅ Rates saved!');
+}
+
+// ── DYNAMIC ROLES & RATES MANAGEMENT ─────────────────────────────────────────
+function renderRolesEditor(){
+  const roles=DATA.staffRoles||[];
+  if(roles.length===0)return'<div style="color:var(--muted);font-size:13px;margin-bottom:12px">No roles defined yet. Add a role below.</div>';
+  return roles.map((role,ri)=>{
+    const tasks=(role.tasks||[]).map((task,ti)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${esc(task.name)}</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:11px;color:var(--muted)">K</span>
+          <input type="number" step="0.01" min="0" value="${Number(task.rate||0).toFixed(2)}"
+            style="width:72px;background:#0a1628;border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;appearance:none;"
+            oninput="this.dataset.dirty='1'"
+            onblur="saveTaskRate(${ri},${ti},this.value)"
+            inputmode="decimal"/>
+          <span style="font-size:10px;color:var(--muted)">/bag</span>
+        </div>
+        <button class="delbtn" title="Remove task" onclick="removeTask(${ri},${ti})">🗑</button>
+      </div>`).join('');
+    const tasksSection=tasks||'<div style="color:var(--muted);font-size:12px;padding:6px 0">No tasks — add one below</div>';
+    return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white)">👷 ${esc(role.name)}</div>
+        <button class="delbtn" title="Remove role" onclick="removeRole(${ri})">🗑 Role</button>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px">Tasks &amp; Rates per Bag</div>
+      ${tasksSection}
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <input class="fi" id="new-task-${ri}" placeholder="E.G. WEIGHING, BAGGING…" style="flex:1;font-size:13px;padding:8px 12px" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="btn bg" style="width:auto;padding:8px 12px;font-size:13px" onclick="addTask(${ri})">+ Task</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function refreshRolesEditor(){
+  const el=document.getElementById('roles-list');
+  if(el)el.innerHTML=renderRolesEditor();
+}
+
+function addRole(){
+  const inp=document.getElementById('new-role-name');
+  const name=uc(inp?.value||'');
+  if(!name){alert('Enter a role name.');return;}
+  if((DATA.staffRoles||[]).find(r=>r.name===name)){alert('Role already exists.');return;}
+  const newRole={id:'role_'+Date.now(),name,tasks:[]};
+  updateData(d=>({...d,staffRoles:[...(d.staffRoles||[]),newRole]}));
+  if(inp)inp.value='';
+  refreshRolesEditor();
+}
+
+function removeRole(ri){
+  const role=(DATA.staffRoles||[])[ri];
+  if(!role)return;
+  const inUse=DATA.staff.some(s=>s.role===role.name);
+  if(inUse){alert(`⚠️ Cannot remove "${role.name}" — it is assigned to existing staff members. Re-assign or remove those staff first.`);return;}
+  if(!confirm(`Remove role "${role.name}" and all its tasks?`))return;
+  updateData(d=>({...d,staffRoles:d.staffRoles.filter((_,i)=>i!==ri)}));
+  refreshRolesEditor();
+}
+
+function addTask(ri){
+  const inp=document.getElementById('new-task-'+ri);
+  const name=uc(inp?.value||'');
+  if(!name){alert('Enter a task name.');return;}
+  const role=(DATA.staffRoles||[])[ri];
+  if(!role)return;
+  if((role.tasks||[]).find(t=>t.name===name)){alert('Task already exists for this role.');return;}
+  const newTask={id:'task_'+Date.now(),name,rate:0};
+  updateData(d=>{
+    const roles=JSON.parse(JSON.stringify(d.staffRoles||[]));
+    if(!roles[ri].tasks)roles[ri].tasks=[];
+    roles[ri].tasks.push(newTask);
+    return{...d,staffRoles:roles};
+  });
+  if(inp)inp.value='';
+  refreshRolesEditor();
+}
+
+function removeTask(ri,ti){
+  const role=(DATA.staffRoles||[])[ri];
+  const task=(role?.tasks||[])[ti];
+  if(!task)return;
+  if(!confirm(`Remove task "${task.name}" from role "${role.name}"?`))return;
+  updateData(d=>{
+    const roles=JSON.parse(JSON.stringify(d.staffRoles||[]));
+    roles[ri].tasks=roles[ri].tasks.filter((_,i)=>i!==ti);
+    return{...d,staffRoles:roles};
+  });
+  refreshRolesEditor();
+}
+
+function saveTaskRate(ri,ti,val){
+  const rate=Math.max(0,Number(val)||0);
+  // Direct save without triggering full render (avoids losing input focus)
+  const roles=JSON.parse(JSON.stringify(DATA.staffRoles||[]));
+  if(roles[ri]&&roles[ri].tasks&&roles[ri].tasks[ti])roles[ri].tasks[ti].rate=rate;
+  DATA=Object.assign({},DATA,{staffRoles:roles});
+  DATA._v=(DATA._v||0)+1;
+  sv(DATA);
+  scheduleFbSync();
 }
 async function changePw(){
   const np=document.getElementById('pw-new').value;
@@ -2935,7 +3056,7 @@ function removeInvItem(idx){
 function exportJSON(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'}));
-  a.download=`fra_depot_backup_${today()}.json`;
+  a.download=`mdm_backup_${today()}.json`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 
