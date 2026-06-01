@@ -30,20 +30,19 @@
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden;}
 #app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;}
 
-/* Landscape: allow content to scroll, shrink nav */
+/* Landscape: shrink nav */
 @media (orientation:landscape) and (max-height:500px){
   #app{height:100dvh;}
-  .nav{padding-bottom:0;}
-  .nb{padding:6px 2px;font-size:9px;gap:1px;}
-  .nb svg{width:16px;height:16px;}
+  .nav{padding-bottom:0;min-height:44px;}
+  .nb{padding:4px 1px;gap:1px;}
   .content{padding:10px 14px;}
   .hdr{padding:7px 14px;}
 }
 
-/* Small phones (≤360px wide) — squeeze nav labels */
-@media (max-width:360px){
-  .nb{font-size:9px;padding:8px 2px;gap:2px;}
-  .nb svg{width:18px;height:18px;}
+/* Very small phones (≤320px) — icon only, hide label */
+@media (max-width:320px){
+  .nb span{display:none;}
+  .nb{padding:10px 2px;}
 }
 
 /* Login */
@@ -83,8 +82,10 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .content{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}
 
 /* Nav */
-.nav{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);min-height:52px;}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;border:none;background:transparent;color:var(--muted);font-family:var(--fb);font-size:10px;font-weight:600;cursor:pointer;border-top:2px solid transparent;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:0;overflow:hidden;}
+.nav{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);min-height:52px;width:100%;}
+.nb{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 1px 6px;border:none;background:transparent;color:var(--muted);font-family:var(--fb);font-size:clamp(8px,2.2vw,11px);font-weight:600;cursor:pointer;border-top:2px solid transparent;touch-action:manipulation;-webkit-tap-highlight-color:transparent;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;}
+.nb svg{flex-shrink:0;width:clamp(16px,5vw,22px);height:clamp(16px,5vw,22px);}
+.nb span{display:block;width:100%;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.1;}
 .nb.act{color:var(--green);border-top-color:var(--green);}
 
 /* Cards */
@@ -279,19 +280,19 @@ body.trial-mode .content{padding-top:44px;}
 
   <div class="nav" id="nav" style="display:none">
     <button class="nb act" id="nb-dash" data-tab="dashboard">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Dashboard
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Dashboard</span>
     </button>
     <button class="nb" id="nb-gen" data-tab="general">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>General
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>General</span>
     </button>
     <button class="nb" id="nb-maize" data-tab="maize">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg>Maize
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg><span>Maize</span>
     </button>
     <button class="nb" id="nb-staff" data-tab="staff">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Staff
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Staff</span>
     </button>
     <button class="nb" id="nb-settings" data-tab="settings" style="display:none">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span>
     </button>
   </div>
 </div>
