@@ -347,27 +347,14 @@ async function hmac256(key, data) {
   // Fallback: use sha256 of key+data
   return sha256(key + data);
 }
-// Device-bound salt: generated once and stored separately so it cannot be
-// extracted from the data export alone.
-function getDeviceSalt() {
-  let s = localStorage.getItem('_mdm_ds');
-  if (!s) {
-    try {
-      s = crypto.getRandomValues(new Uint8Array(16)).reduce((a,b)=>a+b.toString(16).padStart(2,'0'),'');
-    } catch(e) {
-      // Fallback for environments without crypto.getRandomValues
-      s = Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      s = s.slice(0,32).padEnd(32,'0');
-    }
-    localStorage.setItem('_mdm_ds', s);
-  }
-  return s;
-}
-// Hash a password with the device salt
+// Password hashing — SHA-256 without a device salt so that hashed passwords
+// remain valid across devices, backups, and Firebase restores.
+// The salt concept was removed because this app stores both the hash and the
+// salt on the same device, providing no real security benefit while breaking
+// login whenever data moves to a new device or is restored from a backup.
 async function hashPassword(plain) {
-  return sha256(getDeviceSalt() + plain);
+  return sha256(plain);
 }
-// Verify a password against a stored hash
 async function verifyPassword(plain, hash) {
   return (await hashPassword(plain)) === hash;
 }
@@ -564,7 +551,7 @@ function loadCachedLicense() {
     if (c) {
       // Tentatively load, then async-verify and revoke if tampered
       LICENSE = c;
-      hmac256(getDeviceSalt() + 'lic', wrapper.data).then(expected => {
+      hmac256('mdm_lic', wrapper.data).then(expected => {
         if (wrapper.sig !== expected) {
           // Signature mismatch — cache was tampered; clear it and force re-check
           console.warn('[MDM] License cache integrity failure — discarding.');
@@ -580,7 +567,7 @@ function loadCachedLicense() {
 async function saveCachedLicense(lic) {
   try {
     const data = JSON.stringify(lic);
-    const sig  = await hmac256(getDeviceSalt() + 'lic', data);
+    const sig  = await hmac256('mdm_lic', data);
     localStorage.setItem(LICENSE_CACHE_KEY, JSON.stringify({ data, sig }));
   } catch {}
 }
@@ -1038,7 +1025,35 @@ async function doLogin(){
 
     // Find user AFTER migration so userObj always has the up-to-date hashed password
     const userObj = DATA.users.find(x=>(x.username||'').toLowerCase()===u);
-    const valid = userObj ? await verifyPassword(p, userObj.password) : false;
+    let valid = userObj ? await verifyPassword(p, userObj.password) : false;
+
+    // Recovery path: if verify failed but the stored hash looks like it was made
+    // with an old device-salted scheme (hashes that don't match plain SHA-256),
+    // re-hash the entered password and overwrite — this silently fixes any phone
+    // that previously stored a salt-bound hash.
+    if (!valid && userObj) {
+      const freshHash = await hashPassword(p);
+      // If the freshHash matches what we'd get from the entered password, the
+      // entered password is correct but the stored hash is stale (wrong salt).
+      // We detect this by checking if the stored hash == sha256(salt+p) for any
+      // known old salt stored in localStorage.
+      const oldSalt = localStorage.getItem('_mdm_ds');
+      if (oldSalt) {
+        const oldHash = await sha256(oldSalt + p);
+        if (oldHash === userObj.password) {
+          // The password IS correct — the hash just used the old device salt.
+          // Re-save with the new salt-free hash and log the user in.
+          const idx = DATA.users.findIndex(x=>(x.username||'').toLowerCase()===u);
+          if (idx !== -1) {
+            DATA.users[idx].password = freshHash;
+            DATA._v = (DATA._v||0)+1;
+            sv(DATA);
+            userObj.password = freshHash;
+          }
+          valid = true;
+        }
+      }
+    }
 
     btn.disabled=false; btn.textContent='🔒 Sign In';
 
@@ -3099,7 +3114,7 @@ function showTOS(){
       <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
       <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally and synced to Google Firebase (USA) where configured. You consent to this. You are the data controller and responsible for compliance with the Zambia Data Protection Act No. 3 of 2021. The Developer does not sell your data.</p>
       <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to MDM Developer. You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
-      <b style="color:var(--white)">8. Subscription &amp; Activation</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Activation will be completed within 48 hours of confirmed payment receipt. Access may be suspended for non-payment.</p>
+      <b style="color:var(--white)">8. Subscription, Fees &amp; Activation</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Activation will be completed within 48 hours of confirmed payment receipt. Access may be suspended for non-payment. <b style="color:#ffcc66">The Developer reserves the right to change subscription fees and/or subscription periods (e.g. trial duration, active period length) at any time without prior notice.</b> The fee and period applicable at the time of your payment will be honoured for that payment cycle only. Continued use of the Software after any fee or period change constitutes acceptance of the new terms.</p>
       <b style="color:var(--white)">9. Indemnification</b><p style="margin:4px 0 10px">You indemnify the Developer from any claims, costs, or legal fees from your use, misuse, or breach of these Terms.</p>
       <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of Zambia. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
       <b style="color:var(--white)">11. Modifications</b><p style="margin:4px 0 10px">Terms may be updated at any time. Continued use = acceptance.</p>
