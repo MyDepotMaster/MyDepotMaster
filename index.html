@@ -217,7 +217,7 @@ body.trial-mode .content{padding-top:44px;}
         <div class="pm-info">
           <div class="pm-label">Airtel Money</div>
           <div class="pm-num">+260 970 962 902</div>
-          <div class="pm-name">Goodson Chongo</div>
+          <div class="pm-name">MDM Developer</div>
         </div>
         <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
       </div>
@@ -226,7 +226,7 @@ body.trial-mode .content{padding-top:44px;}
         <div class="pm-info">
           <div class="pm-label">MTN Mobile Money</div>
           <div class="pm-num">+260 960 271 128</div>
-          <div class="pm-name">Goodson Chongo</div>
+          <div class="pm-name">MDM Developer</div>
         </div>
         <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
       </div>
@@ -338,6 +338,19 @@ async function verifyPassword(plain, hash) {
 }
 // Detect if a stored password is already hashed (64 hex chars) or still plain-text
 function isHashed(p) { return /^[0-9a-f]{64}$/.test(p); }
+
+// ── XSS PROTECTION ──────────────────────────────────────────────────────────
+// All user-supplied strings MUST pass through esc() before being
+// interpolated into innerHTML template literals.
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
 
 // ══════════════════════════════════════════════════════════
 // ██████╗ FIREBASE CONFIG — EDIT THESE VALUES
@@ -727,6 +740,20 @@ function isReadOnly() {
   return eff === 'suspended';
 }
 
+// Role enforcement — always check server-side (in-memory USER object),
+// never rely on UI visibility alone. A non-admin who calls these from
+// DevTools console is blocked here.
+function isAdmin() {
+  return USER && USER.role === 'admin';
+}
+function requireAdmin(action) {
+  if (!isAdmin()) {
+    alert('⛔ Admin access required to ' + (action || 'perform this action') + '.');
+    return false;
+  }
+  return true;
+}
+
 // Copy phone number to clipboard
 function copyNum(num) {
   navigator.clipboard.writeText(num).then(()=>alert('✅ Number copied!')).catch(()=>{
@@ -758,7 +785,9 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
 // ── DATA DEFAULTS ───────────────────────────────────────────────────────────
 const LK='fra_depot_v2';
 const DEFAULT={
-  users:[{username:'admin',password:'admin123',role:'admin'},{username:'dataentry',password:'entry123',role:'dataentry'}],
+  // SECURITY: passwords below are plain-text ONLY because they are hashed on first login.
+  // Change these immediately after first use via Settings > User Accounts.
+  users:[{username:'admin',password:'admin',role:'admin'},{username:'dataentry',password:'entry',role:'dataentry'}],
   generalInventory:[],  // {id,date,itemName,received,good,damaged,condition,notes}
   generalIssued:[],     // {id,date,itemName,issued,notes}
   inventoryItems:[],    // admin-defined list of inventory names
@@ -915,7 +944,20 @@ document.getElementById('login-btn').addEventListener('click',doLogin);
 document.getElementById('logout-btn').addEventListener('click',doLogout);
 document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
+// ── BRUTE-FORCE PROTECTION ──────────────────────────────────────────────────
+let _loginAttempts = 0;
+let _loginLockedUntil = 0;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 60 * 1000; // 1 minute
+
 async function doLogin(){
+  // Rate-limit check
+  if (Date.now() < _loginLockedUntil) {
+    const secsLeft = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
+    const err = document.getElementById('login-err');
+    if (err) { err.style.display = 'block'; err.textContent = `⛔ Too many attempts. Try again in ${secsLeft}s.`; }
+    return;
+  }
   const u=document.getElementById('l-user').value.trim();
   const p=document.getElementById('l-pass').value;
   const err=document.getElementById('login-err');
@@ -951,7 +993,20 @@ async function doLogin(){
 
   btn.disabled=false; btn.textContent='🔒 Sign In';
 
-  if(!valid){err.style.display='block';err.textContent='Invalid username or password.';return;}
+  if(!valid){
+    _loginAttempts++;
+    if (_loginAttempts >= MAX_ATTEMPTS) {
+      _loginLockedUntil = Date.now() + LOCKOUT_MS;
+      _loginAttempts = 0;
+      err.style.display='block';
+      err.textContent='⛔ Too many failed attempts. Locked for 60 seconds.';
+    } else {
+      err.style.display='block';
+      err.textContent=`Invalid username or password. (${MAX_ATTEMPTS - _loginAttempts} attempt${MAX_ATTEMPTS - _loginAttempts===1?'':'s'} remaining)`;
+    }
+    return;
+  }
+  _loginAttempts = 0; // reset on success
   err.style.display='none';
   USER=userObj;
   // Show UI immediately, then run license check in background
@@ -1223,10 +1278,10 @@ function renderDash(){
 
   // Recent activity with time
   const allActivity=[
-    ...DATA.generalInventory.map(x=>({date:x.date,time:x.time||'',desc:`RECEIVED: ${x.itemName}`,qty:`${x.received} units`,type:'rec'})),
-    ...DATA.generalIssued.map(x=>({date:x.date,time:x.time||'',desc:`ISSUED: ${x.itemName}`,qty:`${x.issued} units`,type:'iss'})),
-    ...DATA.maizeReceived.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE RECEIVED: ${x.batchName}`,qty:`${x.received} bags`,type:'rec'})),
-    ...DATA.maizeIssued.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE ISSUED: ${x.batchName}`,qty:`${x.issued} bags`,type:'iss'})),
+    ...DATA.generalInventory.map(x=>({date:x.date,time:x.time||'',desc:`RECEIVED: ${esc(x.itemName)}`,qty:`${x.received} units`,type:'rec'})),
+    ...DATA.generalIssued.map(x=>({date:x.date,time:x.time||'',desc:`ISSUED: ${esc(x.itemName)}`,qty:`${x.issued} units`,type:'iss'})),
+    ...DATA.maizeReceived.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE RECEIVED: ${esc(x.batchName)}`,qty:`${x.received} bags`,type:'rec'})),
+    ...DATA.maizeIssued.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE ISSUED: ${esc(x.batchName)}`,qty:`${x.issued} bags`,type:'iss'})),
   ].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,8);
 
   return `
@@ -1329,7 +1384,7 @@ function renderGenReceived(){
       <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
       <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
     </td>
-    <td style="font-weight:600">${item.itemName}</td>
+    <td style="font-weight:600">${esc(item.itemName)}</td>
     <td style="color:var(--green);text-align:right;font-weight:700">${Number(item.received||0).toLocaleString()}</td>
     <td style="color:var(--green);text-align:right;font-size:12px">${Number(item.good||0).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-size:12px">${Number(item.damaged||0).toLocaleString()}</td>
@@ -1377,9 +1432,9 @@ function renderGenIssued(){
       <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
       <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
     </td>
-    <td style="font-weight:600">${item.itemName}</td>
+    <td style="font-weight:600">${esc(item.itemName)}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
-    <td style="font-size:12px;color:var(--muted)">${item.notes||'—'}</td>
+    <td style="font-size:12px;color:var(--muted)">${esc(item.notes)||'—'}</td>
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
@@ -1520,8 +1575,8 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
   closeModal();
 }
 
-function delGenRec(id){if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
-function delGenIss(id){if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
+function delGenRec(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
+function delGenIss(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
 
 // ── EDIT HELPERS ─────────────────────────────────────────────────────────────
 function isWithin24h(record){
@@ -1643,7 +1698,7 @@ function renderMaizeRec(){
       <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
       <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
     </td>
-    <td style="font-weight:600">${item.batchName}</td>
+    <td style="font-weight:600">${esc(item.batchName)}</td>
     <td style="color:var(--green);text-align:right;font-weight:700">${Number(item.received||0).toLocaleString()}</td>
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName).toLocaleString()}</td>
     <td style="color:var(--green);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
@@ -1686,8 +1741,8 @@ function renderMaizeIss(){
       <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
       <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
     </td>
-    <td style="font-weight:600">${item.batchName}</td>
-    <td style="color:var(--blue);font-size:12px">${item.transporter||'—'}</td>
+    <td style="font-weight:600">${esc(item.batchName)}</td>
+    <td style="color:var(--blue);font-size:12px">${esc(item.transporter)||'—'}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
@@ -1740,12 +1795,12 @@ function renderMaizeVariance(){
     const varColor=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
     const varTxt=variance<0?`${variance.toLocaleString()}`:(variance===0?'0':'+'+variance.toLocaleString());
     return `<tr>
-      <td style="font-weight:600">${c.batchName}</td>
+      <td style="font-weight:600">${esc(c.batchName)}</td>
       <td style="white-space:nowrap">${fmtDate(c.date)}</td>
       <td style="color:var(--blue);text-align:right">${avail.toLocaleString()}</td>
       <td style="color:var(--green);text-align:right">${Number(c.physicalCount).toLocaleString()}</td>
       <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
-      <td style="font-size:11px;color:var(--muted)">${c.notes||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(c.notes)||'—'}</td>
       ${USER.role==='admin'?`<td><button class="delbtn" onclick="delStockCount('${c.id}')">🗑</button></td>`:''}
     </tr>`;}).join('');
 
@@ -1899,9 +1954,9 @@ function saveStockCount(){if(isReadOnly()){alert("🔒 This account is in read-o
   MTAB='variance';
   closeModal();
 }
-function delMaizeRec(id){if(!confirm('Delete this maize receive record?'))return;updateData(d=>({...d,maizeReceived:d.maizeReceived.filter(x=>x.id!==id)}));}
-function delMaizeIss(id){if(!confirm('Delete this maize issue record?'))return;updateData(d=>({...d,maizeIssued:d.maizeIssued.filter(x=>x.id!==id)}));}
-function delStockCount(id){if(!confirm('Delete this stock count?'))return;updateData(d=>({...d,maizeStockCounts:(d.maizeStockCounts||[]).filter(x=>x.id!==id)}));}
+function delMaizeRec(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this maize receive record?'))return;updateData(d=>({...d,maizeReceived:d.maizeReceived.filter(x=>x.id!==id)}));}
+function delMaizeIss(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this maize issue record?'))return;updateData(d=>({...d,maizeIssued:d.maizeIssued.filter(x=>x.id!==id)}));}
+function delStockCount(id){if(!requireAdmin('delete stock counts'))return;if(!confirm('Delete this stock count?'))return;updateData(d=>({...d,maizeStockCounts:(d.maizeStockCounts||[]).filter(x=>x.id!==id)}));}
 
 // ── EDIT: Maize Received ─────────────────────────────────────────────────────
 function openEditMaizeRec(id){
@@ -1911,7 +1966,7 @@ function openEditMaizeRec(id){
   openModal(`
     <div class="mtitle">✏️ Edit Maize Received</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
-    <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="emr-batch" value="${rec.batchName}" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="emr-batch" value="${esc(rec.batchName)}" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="fw"><div class="fl">Bags Received</div><input class="fi" type="number" id="emr-rec" value="${rec.received}" inputmode="numeric"/></div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="emr-date" value="${rec.date}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveEditMaizeRec('${id}')">✓ Save Changes</button></div>`);
@@ -2007,7 +2062,7 @@ function renderStaffLogs(){
     return `<tr>
       <td style="white-space:nowrap"><div style='font-size:12px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:10px;color:var(--muted)'>${log.time||'—'}</div></td>
       <td style="font-weight:700">${s?.name||'—'}</td>
-      <td><span class="tag">${log.role}</span></td>
+      <td><span class="tag">${esc(log.role)}</span></td>
       <td style="font-size:12px;color:var(--muted)">${log.task||'—'}</td>
       <td style="text-align:right">${Number(log.bags||0).toLocaleString()}</td>
       <td style="color:var(--green);font-weight:600;text-align:right">${zm(log.earnings)}</td>
@@ -2073,8 +2128,8 @@ function renderRoster(){
       return`<div style="display:flex;flex-direction:column;padding:12px 0;border-bottom:1px solid var(--border);gap:8px;${dimmed}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
-            <div style="font-weight:700;font-size:14px">${s.name} ${statusBadge(s)}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">${s.phone||'No phone'} · ${sLogs.length} logs</div>
+            <div style="font-weight:700;font-size:14px">${esc(s.name)} ${statusBadge(s)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(s.phone)||'No phone'} · ${sLogs.length} logs</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:14px;font-weight:700;color:var(--green)">K${net.toFixed(2)}</div>
@@ -2103,14 +2158,15 @@ function renderEarnings(){
     const ded=sLogs.reduce((a,b)=>a+Number(b.deduction||0),0);
     const net=gross-ded;
     return `<tr>
-      <td style="font-weight:700">${s.name}</td>
-      <td><span class="tag">${s.role}</span></td>
+      <td style="font-weight:700">${esc(s.name)}</td>
+      <td><span class="tag">${esc(s.role)}</span></td>
       <td>${totBags.toLocaleString()}</td>
       <td style="color:var(--green)">${zm(gross)}</td>
       <td style="color:var(--red)">-${zm(ded)}</td>
       <td style="color:var(--green);font-weight:700">${zm(net)}</td>
     </tr>`;}).join('');
   return `
+    <div style="background:#3d2a00;border:1px solid var(--amber);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.6"><b>\u26a0\ufe0f Wage Disclaimer:</b> All wage figures must be verified by management before payment. This app does not constitute an official payroll system.</div>
     <div class="card" style="padding:0"><div class="tw"><table>
       <thead><tr><th>Staff Name</th><th>Role</th><th>Total Bags</th><th>Gross Earn</th><th>Deductions</th><th>Net Earn</th></tr></thead>
       <tbody>${staffList.length===0?`<tr><td colspan="6" class="empty">No staff registered</td></tr>`:rows}</tbody>
@@ -2137,7 +2193,7 @@ function openLogForm(){
   if(DATA.staff.length===0){alert('Register staff members first.');return;}
   const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
   if(activeStaff.length===0){alert('No active staff. Check roster for suspended/expelled staff.');return;}
-  const opts=activeStaff.map(s=>`<option value="${s.id}">${s.name} (${s.role})</option>`).join('');
+  const opts=activeStaff.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} (${esc(s.role)})</option>`).join('');
   openModal(`
     <div class="mtitle">📋 Log Work ${!ONLINE?'<span style="font-size:14px;color:var(--amber)">· Offline</span>':''}</div>
     <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lf-staff" onchange="onStaffChange()">${opts}</select></div>
@@ -2239,7 +2295,7 @@ function renderPayments(){
         return `<tr class="pay-row">
           <td style="white-space:nowrap">${fmtDate(ev.date)}</td>
           <td><span class="bdg bg2">WORK</span></td>
-          <td style="font-size:12px;color:var(--muted)">${ev.role} · ${ev.task} · ${Number(ev.bags||0)} BAGS</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(ev.role)} · ${esc(ev.task)} · ${Number(ev.bags||0)} BAGS</td>
           <td style="color:var(--green);font-weight:700;text-align:right">${zm(ev.amount)}</td>
           <td style="color:var(--muted);text-align:right">—</td>
           <td style="color:var(--green);font-weight:700;text-align:right">${zm(cumEarned)}</td>
@@ -2263,7 +2319,7 @@ function renderPayments(){
     }).join('');
     const unpaid=cumEarned-cumPaid;
     return `<div class="card" style="margin-bottom:14px">
-      <div class="ctitle" style="margin-bottom:4px">${s.name} <span class="tag" style="font-size:11px;margin-left:4px">${s.role}</span></div>
+      <div class="ctitle" style="margin-bottom:4px">${esc(s.name)} <span class="tag" style="font-size:11px;margin-left:4px">${esc(s.role)}</span></div>
       <div class="srow" style="margin-bottom:10px">
         <div class="sbox"><div class="sv" style="font-size:18px">${zm(cumEarned)}</div><div class="sl">TOTAL EARNED</div></div>
         <div class="sbox bl"><div class="sv" style="font-size:18px">${zm(cumPaid)}</div><div class="sl">TOTAL PAID</div></div>
@@ -2320,10 +2376,10 @@ function renderStaffList(){
           <div class="sl-avatar ${avatarClass}">${initials(s.name)}</div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span style="font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white)">${s.name}</span>
+              <span style="font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white)">${esc(s.name)}</span>
               ${statusBadge(s)}
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.phone||'No phone'}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(s.phone)||'No phone'}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-family:var(--fh);font-size:14px;font-weight:800;color:${unpaid>0?'var(--amber)':'var(--green)'}">${zm(unpaid)}</div>
@@ -2402,9 +2458,9 @@ function openStaffDetail(id){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
       <div class="sl-avatar ${s.role==='Loader'?'lo':'st'}" style="width:50px;height:50px;font-size:20px">${s.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>
       <div>
-        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">${s.name}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="tag">${s.role}</span>${statusBadge}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">${s.phone||'No phone on record'}</div>
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">${esc(s.name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="tag">${esc(s.role)}</span>${statusBadge}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${esc(s.phone)||'No phone on record'}</div>
       </div>
     </div>
     <div class="srow">
@@ -2476,7 +2532,7 @@ function openPayForm(){
   const opts=DATA.staff.map(s=>{
     const earned=DATA.staffLogs.filter(l=>l.staffId===s.id).reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
     const paid=(DATA.staffPayments||[]).filter(p=>p.staffId===s.id).reduce((a,b)=>a+Number(b.amount||0),0);
-    return `<option value="${s.id}">${s.name} (${s.role}) — Balance: K${(earned-paid).toFixed(2)}</option>`;
+    return `<option value="${s.id}">${esc(s.name)} (${esc(s.role)}) — Balance: K${(earned-paid).toFixed(2)}</option>`;
   }).join('');
   openModal(`
     <div class="mtitle">💳 Record Payment</div>
@@ -2495,9 +2551,9 @@ function savePayment(){if(isReadOnly()){alert("🔒 This account is in read-only
   STAB='payments';
   closeModal();
 }
-function delPayment(id){if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
+function delPayment(id){if(!requireAdmin('delete payment records'))return;if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
 
-function delLog(id){if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
+function delLog(id){if(!requireAdmin('delete work logs'))return;if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
 
 // ── EDIT: Staff Work Log ─────────────────────────────────────────────────────
 function openEditLog(id){
@@ -2505,7 +2561,7 @@ function openEditLog(id){
   if(!log){alert('Record not found.');return;}
   if(!isWithin24h(log)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
   const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
-  const staffOpts=activeStaff.map(s=>`<option value="${s.id}"${String(s.id)===String(log.staffId)?' selected':''}>${s.name} (${s.role})</option>`).join('');
+  const staffOpts=activeStaff.map(s=>`<option value="${s.id}"${String(s.id)===String(log.staffId)?' selected':''}>${esc(s.name)} (${esc(s.role)})</option>`).join('');
   const staffRec=DATA.staff.find(s=>String(s.id)===String(log.staffId));
   const isStitcher=staffRec?.role==='Stitcher';
   const taskOpts=isStitcher?`<option>Stitching</option>`:`<option${log.task==='Stacking'?' selected':''}>Stacking</option><option${log.task==='Loading'?' selected':''}>Loading</option>`;
@@ -2567,7 +2623,7 @@ function renderPaymentSection() {
       <div class="pm-info">
         <div class="pm-label">Airtel Money</div>
         <div class="pm-num" style="font-size:17px">+260 970 962 902</div>
-        <div class="pm-name">Goodson Chongo</div>
+        <div class="pm-name">MDM Developer</div>
       </div>
       <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
     </div>
@@ -2576,7 +2632,7 @@ function renderPaymentSection() {
       <div class="pm-info">
         <div class="pm-label">MTN Mobile Money</div>
         <div class="pm-num" style="font-size:17px">+260 960 271 128</div>
-        <div class="pm-name">Goodson Chongo</div>
+        <div class="pm-name">MDM Developer</div>
       </div>
       <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
     </div>
@@ -2656,8 +2712,8 @@ function renderLicenseCard(){
 function renderSettings(){
   const users=DATA.users.map(u=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div><div style="font-weight:700">${u.username}</div><span class="bdg ${u.role==='admin'?'bg2':'ba2'}">${u.role}</span></div>
-      ${u.username!=='admin'?`<button class="delbtn" onclick="removeUser('${u.username}')">🗑</button>`:''}
+      <div><div style="font-weight:700">${esc(u.username)}</div><span class="bdg ${u.role==='admin'?'bg2':'ba2'}">${esc(u.role)}</span></div>
+      ${u.username!=='admin'?`<button class="delbtn" onclick="removeUser('${esc(u.username)}')">🗑</button>`:''}
     </div>`).join('');
   return `
     ${statusBanner()}
@@ -2680,7 +2736,7 @@ function renderSettings(){
     <div class="sh">Change Password</div>
     <div class="card">
       <div id="pw-msg"></div>
-      <div class="fw"><div class="fl">Account</div><select class="fi" id="pw-target">${DATA.users.filter(u=>USER.role==='admin'||u.username===USER.username).map(u=>`<option value="${u.username}">${u.username} (${u.role})</option>`).join('')}</select></div>
+      <div class="fw"><div class="fl">Account</div><select class="fi" id="pw-target">${DATA.users.filter(u=>USER.role==='admin'||u.username===USER.username).map(u=>`<option value="${esc(u.username)}">${esc(u.username)} (${esc(u.role)})</option>`).join('')}</select></div>
       <div class="fw"><div class="fl">New Password</div><input class="fi" type="password" id="pw-new"/></div>
       <div class="fw"><div class="fl">Confirm Password</div><input class="fi" type="password" id="pw-conf"/></div>
       <button class="btn ba" onclick="changePw()">🔒 Update Password</button>
@@ -2735,11 +2791,11 @@ function renderSettings(){
     <div class="sh">Contact &amp; Support</div>
     <div class="card">
       <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">For technical support, licensing enquiries or assistance, reach out to the developer:</div>
-      <a href="mailto:chongos909@gmail.com" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;text-decoration:none;color:var(--text)">
+      <a href="mailto:mdmdeveloper@gmail.com" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;text-decoration:none;color:var(--text)">
         <span style="font-size:22px">✉️</span>
         <div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:2px">EMAIL</div>
-          <div style="font-weight:700;color:var(--blue)">chongos909@gmail.com</div>
+          <div style="font-weight:700;color:var(--blue)">mdmdeveloper@gmail.com</div>
         </div>
       </a>
       <a href="tel:+260960271128" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--text)">
@@ -2772,7 +2828,7 @@ function renderSettings(){
         <div class="pm-info">
           <div class="pm-label">Airtel Money</div>
           <div class="pm-num" style="font-size:17px">+260 970 962 902</div>
-          <div class="pm-name">Goodson Chongo</div>
+          <div class="pm-name">MDM Developer</div>
         </div>
         <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
       </div>
@@ -2781,7 +2837,7 @@ function renderSettings(){
         <div class="pm-info">
           <div class="pm-label">MTN Mobile Money</div>
           <div class="pm-num" style="font-size:17px">+260 960 271 128</div>
-          <div class="pm-name">Goodson Chongo</div>
+          <div class="pm-name">MDM Developer</div>
         </div>
         <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
       </div>
@@ -2794,7 +2850,7 @@ function renderSettings(){
       <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px">Read the Terms of Service and Disclaimer that govern your use of My Depot Master.</div>
       <button class="btn bo" onclick="showTOS()" style="width:100%">📄 View Terms of Service &amp; Disclaimer</button>
     </div>
-    <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} Goodson Chongo · General Purpose Business Management Software</div>
+    <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} MDM Developer · General Purpose Business Management Software</div>
     <div style="height:20px"></div>`;
 }
 
@@ -2803,19 +2859,20 @@ function showTOS(){
   openModal(`<div class="mtitle">📄 Terms of Service</div>
     <div style="font-size:12px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
       <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">PLEASE READ BEFORE USING THIS APPLICATION.</div>
-      <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with Goodson Chongo ("the Developer").</p>
+      <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with MDM Developer ("the Developer").</p>
       <b style="color:var(--white)">2. General-Purpose Tool — No Official Affiliation</b><p style="margin:4px 0 10px">My Depot Master is a <b>general-purpose business management tool</b> for internal record-keeping. It is <b>NOT</b> an official government system and is NOT affiliated with the FRA, any ministry, PACRA, ZRA, or any authority.</p>
       <b style="color:var(--white)">3. No Warranties</b><p style="margin:4px 0 10px">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY. Calculations may not be accurate, complete, or suitable for any official, legal, or financial purpose.</p>
       <b style="color:var(--white)">4. Limitation of Liability</b><p style="margin:4px 0 10px">THE DEVELOPER IS NOT LIABLE FOR: data loss; financial loss; wage or count errors; labour disputes; regulatory penalties; or any indirect damages. Maximum liability = 3 months' subscription fees.</p>
       <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
       <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally and synced to Google Firebase (USA) where configured. You consent to this. You are the data controller and responsible for compliance with the Zambia Data Protection Act No. 3 of 2021. The Developer does not sell your data.</p>
-      <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to Goodson Chongo. You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
-      <b style="color:var(--white)">8. Subscription</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Access may be suspended for non-payment.</p>
+      <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to MDM Developer. You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
+      <b style="color:var(--white)">8. Subscription &amp; Activation</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Activation will be completed within 48 hours of confirmed payment receipt. Access may be suspended for non-payment.</p>
       <b style="color:var(--white)">9. Indemnification</b><p style="margin:4px 0 10px">You indemnify the Developer from any claims, costs, or legal fees from your use, misuse, or breach of these Terms.</p>
       <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of Zambia. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
       <b style="color:var(--white)">11. Modifications</b><p style="margin:4px 0 10px">Terms may be updated at any time. Continued use = acceptance.</p>
+      <b style="color:var(--white)">12. Age &amp; Legal Capacity</b><p style="margin:4px 0 10px">By using this Software you confirm you are at least 18 years old and legally capable of entering a binding agreement under Zambian law. Minors may not use this Software.</p>
       <div style="background:#3d1515;border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#ff8080"><b>\u26a0\ufe0f IMPORTANT:</b> This is a general-purpose admin tool only — NOT legal, financial, or accounting advice. All figures must be independently verified.</div>
-      <div style="text-align:center;font-size:11px">My Depot Master \u00b7 \u00a9 ${yr} Goodson Chongo \u00b7 All Rights Reserved</div>
+      <div style="text-align:center;font-size:11px">My Depot Master \u00b7 \u00a9 ${yr} MDM Developer \u00b7 All Rights Reserved</div>
     </div>
     <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 I Understand &amp; Accept</button></div>`);
 }
@@ -2857,11 +2914,13 @@ async function addUser(){
   alert('✅ User added!');
 }
 function removeUser(username){
+  if(!requireAdmin('remove users'))return;
   if(username==='admin'){alert('Cannot remove admin.');return;}
   if(!confirm(`Remove user "${username}"?`))return;
   updateData(d=>({...d,users:d.users.filter(u=>u.username!==username)}));
 }
 function addInvItem(){
+  if(!requireAdmin('manage inventory items'))return;
   const val=uc(document.getElementById('new-inv-item')?.value);
   if(!val){alert('Enter an item name.');return;}
   if((DATA.inventoryItems||[]).includes(val)){alert('Item already exists.');return;}
@@ -2869,6 +2928,7 @@ function addInvItem(){
   document.getElementById('new-inv-item').value='';
 }
 function removeInvItem(idx){
+  if(!requireAdmin('remove inventory items'))return;
   if(!confirm('Remove this inventory item?'))return;
   updateData(d=>({...d,inventoryItems:(d.inventoryItems||[]).filter((_,i)=>i!==idx)}));
 }
