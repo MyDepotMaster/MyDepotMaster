@@ -252,7 +252,7 @@ body.trial-mode .content{padding-top:44px;}
     <div class="login-card">
       <div class="err-box" id="login-err" style="display:none"></div>
       <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none"/></div>
-      <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password"/></div>
+      <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password" autocapitalize="none" autocorrect="off" autocomplete="current-password" spellcheck="false"/></div>
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px" id="tos-box">
         <input type="checkbox" id="tos-check" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
         <div style="font-size:12px;color:var(--muted);line-height:1.8">
@@ -1022,7 +1022,8 @@ async function doLogin(){
     await initData();
 
     // Normalise stored usernames to lowercase for comparison (handle legacy mixed-case)
-    const users = DATA.users.map(u => ({...u, username: (u.username||'').toLowerCase()}));
+    // (mapping is kept only to normalise legacy usernames in DATA)
+    DATA.users = DATA.users.map(u => ({...u, username: (u.username||'').toLowerCase()}));
 
     // Migrate any plain-text passwords to hashes on first use
     let needsSave = false;
@@ -1034,7 +1035,7 @@ async function doLogin(){
     }
     if (needsSave) { DATA._v=(DATA._v||0)+1; sv(DATA); }
 
-    // Find user (case-insensitive) and verify password
+    // Find user AFTER migration so userObj always has the up-to-date hashed password
     const userObj = DATA.users.find(x=>(x.username||'').toLowerCase()===u);
     const valid = userObj ? await verifyPassword(p, userObj.password) : false;
 
