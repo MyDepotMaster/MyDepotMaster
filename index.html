@@ -828,7 +828,8 @@ const DEFAULT={
   inventoryItems:[],    // admin-defined list of inventory names
   maizeReceived:[],     // {id,batchName,date,received,good,damaged}
   maizeIssued:[],       // {id,batchName,date,transporter,issued}
-  maizeStockCounts:[],  // {id,batchName,date,physicalCount,notes}
+  maizeStockCounts:[],   // {id,batchName,date,physicalCount,notes}
+  generalStockCounts:[], // {id,itemName,date,time,physicalCount,notes}
   staff:[],             // {id,name,role,phone}
   staffLogs:[],         // {id,staffId,date,task,bags,earnings,deduction,deductionReason,timeIn,timeOut}
   staffPayments:[],     // {id,staffId,date,amount,notes}
@@ -1277,6 +1278,20 @@ function renderDash(){
     }
   });
 
+  // General inventory stock count variances
+  const genItems=[...new Set([...(DATA.inventoryItems||[]),...DATA.generalInventory.map(x=>x.itemName)])];
+  genItems.forEach(name=>{
+    const avail=itemAvail(name);
+    const latest=itemPhysical(name);
+    if(latest!==null){
+      const variance=Number(latest.physicalCount)-avail;
+      if(variance!==0){
+        const dir=variance<0?'SHORTAGE':'SURPLUS';
+        warnings.push({icon:'⚖️',title:`STOCK VARIANCE — ${name}`,msg:`Physical count: <strong>${Number(latest.physicalCount).toLocaleString()}</strong> · System available: <strong>${avail.toLocaleString()}</strong> · <strong style="color:${variance<0?'var(--red)':'var(--amber)'}">${variance>=0?'+':''}${variance} units (${dir})</strong>`});
+      }
+    }
+  });
+
   // Negative inventory balances
   const warnItems=[...(DATA.inventoryItems||[]),...new Set(DATA.generalInventory.map(x=>x.itemName))];
   [...new Set(warnItems)].forEach(name=>{
@@ -1403,18 +1418,20 @@ function renderGeneral(){
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="sh" style="margin:0">General Inventory</div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn bg bsm" id="btn-add-gen-rec">+ Receive</button>
         <button class="btn ba bsm" id="btn-add-gen-iss">+ Issue</button>
+        <button class="btn bo bsm" id="btn-add-gen-sc">&#x1F4E6; Stock Count</button>
       </div>
     </div>
     <div class="stabs">
       <button class="stab${GTAB==='inventory'?' act':''}" id="gtab-inventory">Received Stock</button>
       <button class="stab${GTAB==='issued'?' act':''}" id="gtab-issued">Issued</button>
+      <button class="stab${GTAB==='stockcount'?' act':''}" id="gtab-stockcount">Stock Count</button>
       <button class="stab${GTAB==='summary'?' act':''}" id="gtab-summary">Summary</button>
     </div>
     <div class="prow">${pBtns('general')}</div>
-    ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():renderGenSummary()}`;
+    ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():GTAB==='stockcount'?renderGenStockCount():renderGenSummary()}`;
 }
 
 function renderGenReceived(){
@@ -1628,6 +1645,156 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
 
 function delGenRec(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
 function delGenIss(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
+
+// ── GENERAL INVENTORY STOCK COUNT ────────────────────────────────────────────
+// Helper: compute system-available for a general inventory item (all-time)
+function itemAvail(itemName){
+  const rec=DATA.generalInventory.filter(r=>r.itemName===itemName).reduce((a,b)=>a+Number(b.received||0),0);
+  const iss=DATA.generalIssued.filter(i=>i.itemName===itemName).reduce((a,b)=>a+Number(b.issued||0),0);
+  return rec-iss;
+}
+// Helper: latest physical stock count for a general inventory item
+function itemPhysical(itemName){
+  const counts=(DATA.generalStockCounts||[]).filter(c=>c.itemName===itemName);
+  if(counts.length===0)return null;
+  counts.sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
+  return counts[0];
+}
+
+function openGenStockCountForm(){
+  const defined=(DATA.inventoryItems||[]);
+  const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
+  const allNames=[...new Set([...defined,...fromData])].sort();
+  if(allNames.length===0){alert('No inventory items received yet.');return;}
+  const opts=allNames.map(n=>{
+    const avail=itemAvail(n);
+    return `<option value="${esc(n)}">${esc(n)} (Available: ${avail.toLocaleString()})</option>`;
+  }).join('');
+  openModal(`
+    <div class="mtitle">&#x1F4E6; Physical Stock Count</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+      Count the actual units physically present and enter the number below. The app will calculate the variance automatically.
+    </div>
+    <div class="fw"><div class="fl">Item</div><select class="fi" id="gsc-item" onchange="updateGenAvailHint()">${opts}</select></div>
+    <div id="gsc-avail-hint"></div>
+    <div class="fw"><div class="fl">Physical Units Counted</div><input class="fi" type="number" id="gsc-phys" placeholder="Enter actual count" inputmode="numeric" oninput="updateGenVarianceHint()"/></div>
+    <div id="gsc-var-hint"></div>
+    <div class="fw"><div class="fl">Date of Count</div><input class="fi" type="date" id="gsc-date" value="${today()}"/></div>
+    <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="gsc-notes" placeholder="e.g. counted by supervisor…" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveGenStockCount()">&#x2713; Save Count</button></div>`);
+  updateGenAvailHint();
+}
+function updateGenAvailHint(){
+  const item=document.getElementById('gsc-item')?.value;
+  const hint=document.getElementById('gsc-avail-hint');
+  if(!item||!hint)return;
+  const avail=itemAvail(item);
+  hint.innerHTML=`<div class="hint" style="margin-bottom:12px">System Available for <strong>${esc(item)}</strong>: <strong>${avail.toLocaleString()} units</strong></div>`;
+  updateGenVarianceHint();
+}
+function updateGenVarianceHint(){
+  const item=document.getElementById('gsc-item')?.value;
+  const physVal=document.getElementById('gsc-phys')?.value;
+  const hint=document.getElementById('gsc-var-hint');
+  if(!hint||physVal===''||physVal===null||physVal===undefined)return;
+  const phys=Number(physVal);
+  const avail=itemAvail(item);
+  const variance=phys-avail;
+  const color=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
+  const label=variance<0?`SHORTAGE OF ${Math.abs(variance).toLocaleString()} UNITS`:variance===0?'EXACT MATCH — NO VARIANCE':`SURPLUS OF ${variance.toLocaleString()} UNITS`;
+  hint.innerHTML=`<div style="background:var(--surface2);border:1px solid ${color};border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:13px;color:${color};font-weight:700">VARIANCE: ${variance >= 0 ? '+' : ''}${variance} &nbsp;&middot;&nbsp; ${label}</div>`;
+}
+function saveGenStockCount(){
+  if(isReadOnly()){alert('&#x1F512; This account is in read-only mode. Contact your administrator.');return;}
+  const item=document.getElementById('gsc-item').value;
+  const phys=document.getElementById('gsc-phys').value;
+  if(!item){alert('Select an item.');return;}
+  if(phys===''||phys===null){alert('Enter the physical unit count.');return;}
+  const payload={id:uid(),itemName:item,date:document.getElementById('gsc-date').value,time:nowTime(),physicalCount:Number(phys),notes:uc(document.getElementById('gsc-notes').value)};
+  updateData(d=>({...d,generalStockCounts:[...(d.generalStockCounts||[]),payload]}));
+  GTAB='stockcount';
+  closeModal();
+}
+function delGenStockCount(id){
+  if(!requireAdmin('delete stock counts'))return;
+  if(!confirm('Delete this stock count record?'))return;
+  updateData(d=>({...d,generalStockCounts:(d.generalStockCounts||[]).filter(x=>x.id!==id)}));
+}
+
+function renderGenStockCount(){
+  const allItems=[...(DATA.inventoryItems||[]),...new Set(DATA.generalInventory.map(x=>x.itemName))];
+  const uniqueItems=[...new Set(allItems)].sort();
+  const counts=filterPeriod(DATA.generalStockCounts||[],PERIOD.general);
+
+  // Per-item variance summary table
+  const summaryRows=uniqueItems.map(name=>{
+    const avail=itemAvail(name);
+    const latest=itemPhysical(name);
+    const physCount=latest?Number(latest.physicalCount):null;
+    const variance=physCount!==null?physCount-avail:null;
+    const varColor=variance===null?'var(--muted)':variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
+    const varLabel=variance===null?'&#x2014;':variance<0?`${variance.toLocaleString()} (SHORT)`:(variance===0?'0 (EXACT)':'+'+variance.toLocaleString()+' (SURPLUS)');
+    return `<tr>
+      <td style="font-weight:700">${esc(name)}</td>
+      <td style="color:var(--blue);font-weight:700;text-align:right">${avail.toLocaleString()}</td>
+      <td style="color:var(--green);text-align:right">${physCount!==null?physCount.toLocaleString():'<span style="color:var(--muted)">Not counted</span>'}</td>
+      <td style="color:${varColor};font-weight:700;text-align:right">${varLabel}</td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${latest?fmtDate(latest.date):'&#x2014;'}</td>
+      <td style="font-size:11px;color:var(--muted)">${latest&&latest.notes?esc(latest.notes):'&#x2014;'}</td>
+    </tr>`;
+  }).join('');
+
+  // Count history table for current period
+  const countRows=counts.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).map(c=>{
+    const avail=itemAvail(c.itemName);
+    const variance=Number(c.physicalCount)-avail;
+    const varColor=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
+    const varTxt=(variance>=0?'+':'')+variance.toLocaleString();
+    return `<tr>
+      <td style="font-weight:600">${esc(c.itemName)}</td>
+      <td style="white-space:nowrap">${fmtDate(c.date)}<br><span style="font-size:10px;color:var(--muted)">${c.time||'&#x2014;'}</span></td>
+      <td style="color:var(--blue);text-align:right">${avail.toLocaleString()}</td>
+      <td style="color:var(--green);text-align:right">${Number(c.physicalCount).toLocaleString()}</td>
+      <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(c.notes)||'&#x2014;'}</td>
+      ${USER.role==='admin'?`<td><button class="delbtn" onclick="delGenStockCount('${c.id}')">&#x1F5D1;</button></td>`:''}
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:12px;color:var(--muted)">
+      <strong style="color:var(--text)">VARIANCE = PHYSICAL COUNT &#x2212; SYSTEM AVAILABLE</strong><br>
+      Negative = shortage (missing units) &nbsp;&#x2022;&nbsp; Positive = surplus (extra units found)
+    </div>
+    ${uniqueItems.length===0
+      ?`<div class="card"><div class="empty">No inventory items yet. Add items in Settings and receive stock first.</div></div>`
+      :`<div class="card" style="padding:0">
+          <div style="padding:14px 16px 8px;font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white)">&#x2696;&#xFE0F; Latest Count vs System</div>
+          <div class="tw"><table>
+            <thead><tr>
+              <th>Item</th>
+              <th style="text-align:right;color:var(--blue)">System Avail.</th>
+              <th style="text-align:right;color:var(--green)">Physical Count</th>
+              <th style="text-align:right">Variance</th>
+              <th>Last Counted</th>
+              <th>Notes</th>
+            </tr></thead>
+            <tbody>${summaryRows}</tbody>
+          </table></div>
+        </div>`}
+    <div class="sh">Count History (Period)</div>
+    <div class="card" style="padding:0"><div class="tw"><table>
+      <thead><tr>
+        <th>Item</th><th>Date</th>
+        <th style="text-align:right;color:var(--blue)">System Avail.</th>
+        <th style="text-align:right;color:var(--green)">Physical</th>
+        <th style="text-align:right">Variance</th>
+        <th>Notes</th>
+        ${USER.role==='admin'?'<th></th>':''}
+      </tr></thead>
+      <tbody>${counts.length===0?`<tr><td colspan="${USER.role==='admin'?7:6}" class="empty">No stock counts recorded for this period</td></tr>`:countRows}</tbody>
+    </table></div></div>`;
+}
 
 // ── EDIT HELPERS ─────────────────────────────────────────────────────────────
 function isWithin24h(record){
@@ -3149,9 +3316,11 @@ function attachTabListeners(){
   // General
   const addGenRec=document.getElementById('btn-add-gen-rec');
   const addGenIss=document.getElementById('btn-add-gen-iss');
+  const addGenSc=document.getElementById('btn-add-gen-sc');
   if(addGenRec)addGenRec.addEventListener('click',openGenRecForm);
   if(addGenIss)addGenIss.addEventListener('click',openGenIssForm);
-  ['inventory','issued','summary'].forEach(t=>{
+  if(addGenSc)addGenSc.addEventListener('click',openGenStockCountForm);
+  ['inventory','issued','stockcount','summary'].forEach(t=>{
     const el=document.getElementById('gtab-'+t);
     if(el)el.addEventListener('click',()=>{GTAB=t;render();});
   });
