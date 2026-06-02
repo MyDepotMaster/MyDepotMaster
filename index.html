@@ -209,6 +209,13 @@ body.trial-mode .content{padding-top:44px;}
 .pm-copy:active{border-color:var(--green);color:var(--green);}
 /* Firebase config screen */
 #fb-config-screen{position:fixed;inset:0;background:var(--bg);z-index:1100;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:24px 20px 40px;}
+/* Font size control */
+.fs-ctrl{display:flex;align-items:center;gap:0;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;width:100%;}
+.fs-btn{flex:0 0 48px;height:44px;border:none;background:transparent;color:var(--text);font-size:20px;font-weight:700;cursor:pointer;touch-action:manipulation;transition:.15s;display:flex;align-items:center;justify-content:center;}
+.fs-btn:active{background:var(--surface2);color:var(--green);}
+.fs-btn:disabled{opacity:.3;cursor:not-allowed;}
+.fs-divider{width:1px;background:var(--border);height:28px;flex-shrink:0;}
+.fs-label{flex:1;text-align:center;font-family:var(--fh);font-size:16px;font-weight:700;color:var(--green);}
 </style>
 </head>
 <body>
@@ -3230,6 +3237,22 @@ function renderSettings(){
       </div>
     </div>
 
+    <div class="sh">Display Preferences</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Adjust the text size to suit your screen. Changes apply instantly and are remembered across sessions.</div>
+      <div class="fw">
+        <div class="fl">Text Size</div>
+        <div class="fs-ctrl">
+          <button class="fs-btn" id="fs-btn-minus" onclick="changeFontSize(-${FS_STEP})" title="Decrease font size">A−</button>
+          <div class="fs-divider"></div>
+          <div class="fs-label" id="fs-value-label">${getFontSize()}%</div>
+          <div class="fs-divider"></div>
+          <button class="fs-btn" id="fs-btn-plus" onclick="changeFontSize(${FS_STEP})" title="Increase font size">A+</button>
+        </div>
+      </div>
+      <button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="resetFontSize()">↺ Reset to Default (100%)</button>
+    </div>
+
     <div class="sh">Change Password</div>
     <div class="card">
       <div id="pw-msg"></div>
@@ -3577,6 +3600,28 @@ function clearAll(){
   DATA=JSON.parse(JSON.stringify(DEFAULT));sv(DATA);render();
 }
 
+// ── FONT SIZE ────────────────────────────────────────────────────────────────
+const FS_KEY='mdm_font_size';
+const FS_MIN=80, FS_MAX=130, FS_STEP=5, FS_DEFAULT=100;
+function getFontSize(){return parseInt(localStorage.getItem(FS_KEY)||FS_DEFAULT,10);}
+function applyFontSize(pct){
+  document.documentElement.style.fontSize=pct+'%';
+  localStorage.setItem(FS_KEY,pct);
+  // update label if visible
+  const lbl=document.getElementById('fs-value-label');
+  if(lbl)lbl.textContent=pct+'%';
+  const btnM=document.getElementById('fs-btn-minus');
+  const btnP=document.getElementById('fs-btn-plus');
+  if(btnM)btnM.disabled=(pct<=FS_MIN);
+  if(btnP)btnP.disabled=(pct>=FS_MAX);
+}
+function changeFontSize(delta){
+  let cur=getFontSize();
+  cur=Math.min(FS_MAX,Math.max(FS_MIN,cur+delta));
+  applyFontSize(cur);
+}
+function resetFontSize(){applyFontSize(FS_DEFAULT);}
+
 // ── TAB LISTENERS ─────────────────────────────────────────────────────────────
 function attachTabListeners(){
   // General
@@ -3619,6 +3664,7 @@ function attachTabListeners(){
 // If depot is already configured (returning user), go straight to login.
 setTimeout(()=>{
   try{
+    applyFontSize(getFontSize());
     updateConnStatus();
     initData().then(()=>{
       const di=DATA.depotInfo||{};
