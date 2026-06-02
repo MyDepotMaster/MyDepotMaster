@@ -216,6 +216,56 @@ body.trial-mode .content{padding-top:44px;}
 .fs-btn:disabled{opacity:.3;cursor:not-allowed;}
 .fs-divider{width:1px;background:var(--border);height:28px;flex-shrink:0;}
 .fs-label{flex:1;text-align:center;font-family:var(--fh);font-size:16px;font-weight:700;color:var(--green);}
+
+/* ── BOOKS TAB ─────────────────────────────────────────────── */
+.book-card{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px;cursor:pointer;transition:.15s;touch-action:manipulation;}
+.book-card:active{border-color:var(--blue);}
+.book-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.book-icon.xlsx{background:linear-gradient(135deg,#003d2e,#00b87a);}
+.book-icon.docx{background:linear-gradient(135deg,#0d2a4a,#3b9eff);}
+.book-meta{flex:1;min-width:0;}
+.book-name{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.book-info{font-size:11px;color:var(--muted);line-height:1.5;}
+.book-actions{display:flex;gap:6px;flex-shrink:0;}
+.book-btn{background:none;border:1.5px solid var(--border);border-radius:8px;color:var(--muted);padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;white-space:nowrap;}
+.book-btn:active{border-color:var(--green);color:var(--green);}
+.book-btn.dl{border-color:var(--green);color:var(--green);}
+.book-btn.dl:active{background:var(--green);color:#0a1628;}
+.book-btn.del{border-color:var(--red);color:var(--red);}
+/* ── END BOOKS ─────────────────────────────────────────────── */
+
+/* ── BOOK EDITOR ───────────────────────────────────────────── */
+#book-editor-screen{position:fixed;inset:0;background:var(--bg);z-index:600;display:none;flex-direction:column;max-width:480px;margin:0 auto;}
+.be-hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.be-title-input{flex:1;background:transparent;border:none;outline:none;font-family:var(--fh);font-size:18px;font-weight:700;color:var(--white);min-width:0;}
+.be-title-input::placeholder{color:var(--muted);}
+.be-toolbar{background:var(--surface2);border-bottom:1px solid var(--border);padding:6px 10px;display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0;}
+.be-tb-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 9px;font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;white-space:nowrap;font-family:var(--fb);}
+.be-tb-btn:active,.be-tb-btn.act{background:var(--green);color:#0a1628;border-color:var(--green);}
+.be-tb-sep{width:1px;background:var(--border);margin:2px 2px;}
+.be-doc-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;}
+.be-word-area{min-height:100%;background:#fff;border-radius:10px;padding:18px 16px;color:#111;font-family:'Times New Roman',serif;font-size:14px;line-height:1.8;outline:none;word-break:break-word;}
+.be-word-area:focus{box-shadow:0 0 0 2px var(--green);}
+.be-grid-wrap{overflow:auto;-webkit-overflow-scrolling:touch;}
+.be-grid{border-collapse:collapse;font-size:12px;min-width:100%;}
+.be-grid th.row-hdr{background:#0a1628;color:var(--muted);font-size:10px;padding:4px 6px;border:1px solid var(--border);min-width:28px;text-align:center;position:sticky;left:0;z-index:2;}
+.be-grid th.col-hdr{background:#0a1628;color:var(--muted);font-size:10px;padding:4px 8px;border:1px solid var(--border);min-width:90px;text-align:center;position:sticky;top:0;z-index:1;}
+.be-grid td{border:1px solid var(--border);padding:0;min-width:90px;}
+.be-grid td input{width:100%;border:none;background:transparent;color:var(--text);font-size:12px;padding:5px 7px;outline:none;font-family:var(--fb);}
+.be-grid td input:focus{background:#0d2a4a;color:#fff;}
+.be-grid td input.formula-cell{color:var(--green);}
+.be-grid td input.formula-editing{color:var(--amber);}
+.be-grid td.row-hdr-cell{background:#0a1628;color:var(--muted);font-size:10px;text-align:center;padding:4px 6px;border:1px solid var(--border);min-width:28px;position:sticky;left:0;z-index:1;}
+/* Word doc table styles */
+.be-word-area table{border-collapse:collapse;width:100%;margin:8px 0;}
+.be-word-area table td,.be-word-area table th{border:1px solid #aaa;padding:5px 8px;min-width:40px;vertical-align:top;}
+.be-word-area table th{background:#f0f0f0;font-weight:bold;}
+/* Formula bar */
+.be-formula-bar{background:#0a1628;border-bottom:1px solid var(--border);padding:4px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:28px;}
+.be-formula-bar-label{font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0;}
+.be-formula-bar-input{flex:1;background:transparent;border:none;outline:none;font-size:12px;color:var(--text);font-family:monospace;}
+.be-footer{background:var(--surface);border-top:1px solid var(--border);padding:8px 14px;display:flex;gap:8px;flex-shrink:0;}
+/* ── END BOOK EDITOR ────────────────────────────────────────── */
 </style>
 </head>
 <body>
@@ -388,6 +438,9 @@ body.trial-mode .content{padding-top:44px;}
     <button class="nb" id="nb-staff" data-tab="staff">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Staff</span>
     </button>
+    <button class="nb" id="nb-books" data-tab="books">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg><span>Books</span>
+    </button>
     <button class="nb" id="nb-settings" data-tab="settings" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span>
     </button>
@@ -397,6 +450,26 @@ body.trial-mode .content{padding-top:44px;}
 <!-- Modal -->
 <div class="movl" id="modal-ovl" style="display:none">
   <div class="modal" id="modal-body"></div>
+</div>
+
+<!-- BOOK EDITOR SCREEN -->
+<div id="book-editor-screen">
+  <div class="be-hdr">
+    <button style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 4px;touch-action:manipulation;" onclick="closeBookEditor()">←</button>
+    <input class="be-title-input" id="be-title" placeholder="Untitled" autocomplete="off" spellcheck="false"/>
+    <div style="font-size:11px;color:var(--muted);flex-shrink:0" id="be-type-badge">—</div>
+  </div>
+  <div class="be-toolbar" id="be-toolbar"><!-- injected by JS --></div>
+  <div class="be-formula-bar" id="be-formula-bar" style="display:none">
+    <span class="be-formula-bar-label" id="be-cell-ref">A1</span>
+    <span style="color:var(--border)">fx</span>
+    <input class="be-formula-bar-input" id="be-formula-input" placeholder="Enter value or =formula" autocomplete="off" spellcheck="false"/>
+  </div>
+  <div class="be-doc-area" id="be-doc-area"><!-- injected by JS --></div>
+  <div class="be-footer">
+    <button class="btn bg" style="flex:1" onclick="saveBookFromEditor()">💾 Save</button>
+    <button class="btn bo" style="flex:1" onclick="downloadBookFromEditor()">⬇ Download</button>
+  </div>
 </div>
 
 <div id="update-toast">🔄 New version available — tap to update</div>
@@ -952,7 +1025,7 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
 }
 
 // ── DATA DEFAULTS ───────────────────────────────────────────────────────────
-const LK='fra_depot_v2';
+const LK='mdm_depot_v2';
 const DEFAULT={
   // SECURITY: passwords below are plain-text ONLY because they are hashed on first login.
   // Change these immediately after first use via Settings > User Accounts.
@@ -967,13 +1040,10 @@ const DEFAULT={
   staff:[],             // {id,name,role,phone}
   staffLogs:[],         // {id,staffId,date,task,bags,earnings,deduction,deductionReason,timeIn,timeOut}
   staffPayments:[],     // {id,staffId,date,amount,notes}
-  rates:{loader_stack:2,loader_load:3,stitcher:1.5},
-  staffRoles:[
-    {id:'role_loader',name:'Loader',tasks:[{id:'task_stacking',name:'Stacking',rate:2},{id:'task_loading',name:'Loading',rate:3}]},
-    {id:'role_stitcher',name:'Stitcher',tasks:[{id:'task_stitching',name:'Stitching',rate:1.5}]}
-  ],
+  staffRoles:[],
   deductionReasons:['Damaged bags','Late arrival','Misconduct','Short count'],
   depotInfo:{name:'',district:'',country:'',setupDone:false},
+  books:[],          // {id,name,type,size,createdAt,updatedAt,data,mimeType}
   installId:'',
   trialStart:0,
   _v:0
@@ -1156,7 +1226,7 @@ function renderSignupStep() {
       <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Tell us about your depot. These details are permanent and become your unique identifier.</div>
       <div id="su-err1" class="err-box" style="display:none"></div>
       <div class="fw"><div class="fl">Company / Depot Name <span style="color:var(--red)">*</span></div>
-        <input class="fi" id="su-name" placeholder="E.G. MANSA FRA DEPOT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.name||'')}"/></div>
+        <input class="fi" id="su-name" placeholder="E.G. MANSA DEPOT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.name||'')}"/></div>
       <div class="fw"><div class="fl">District <span style="color:var(--red)">*</span></div>
         <input class="fi" id="su-district" placeholder="E.G. MANSA DISTRICT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.district||'')}"/></div>
       <div class="fw"><div class="fl">Country <span style="color:var(--red)">*</span></div>
@@ -1254,6 +1324,7 @@ async function signupFinish() {
     document.getElementById('content').style.display = 'block';
     document.getElementById('nav').style.display = 'flex';
     document.getElementById('nb-settings').style.display = 'flex';
+    document.getElementById('nb-books').style.display = 'flex';
     updPill();
     applyDepotInfo();
     initFirebase();
@@ -1325,6 +1396,7 @@ async function doLogin(){
     document.getElementById('content').style.display='block';
     document.getElementById('nav').style.display='flex';
     document.getElementById('nb-settings').style.display='flex';
+    document.getElementById('nb-books').style.display='flex';
     updPill();
     applyDepotInfo();
     initFirebase();
@@ -1366,6 +1438,7 @@ function doLogout(){
   document.getElementById('content').style.display='none';
   document.getElementById('nav').style.display='none';
   document.getElementById('nb-settings').style.display='none';
+  document.getElementById('nb-books').style.display='none';
   document.getElementById('login-err').style.display='none';
   document.getElementById('l-user').value='';
   document.getElementById('l-pass').value='';
@@ -1463,6 +1536,7 @@ function render(){
   else if(TAB==='general')c.innerHTML=renderGeneral();
   else if(TAB==='maize')c.innerHTML=renderMaize();
   else if(TAB==='staff')c.innerHTML=renderStaff();
+  else if(TAB==='books')c.innerHTML=renderBooks();
   else if(TAB==='settings'){c.innerHTML=renderSettings();setTimeout(updateLastSyncDisplay,50);}
   attachTabListeners();
 }
@@ -1522,18 +1596,21 @@ function renderDash(){
 
   // ── Build warnings ──────────────────────────────────────────────────────
   const warnings=[];
-  const stackBags=DATA.staffLogs.filter(l=>l.task==='Stacking').reduce((a,b)=>a+Number(b.bags||0),0);
-  const stitchBags=DATA.staffLogs.filter(l=>l.task==='Stitching').reduce((a,b)=>a+Number(b.bags||0),0);
-  const loadBags=DATA.staffLogs.filter(l=>l.task==='Loading').reduce((a,b)=>a+Number(b.bags||0),0);
+  // Dynamic task mismatch warnings — checks all defined tasks across all roles
+  (function(){
+    const allTasks=[...(DATA.staffRoles||[]).flatMap(r=>(r.tasks||[]).map(t=>t.name))];
+    const uniqueTasks=[...new Set(allTasks)];
+    uniqueTasks.forEach(taskName=>{
+      const taskLogs=DATA.staffLogs.filter(l=>l.task===taskName);
+      if(taskLogs.length===0)return;
+      const taskBags=taskLogs.reduce((a,b)=>a+Number(b.bags||0),0);
+      // Compare against maize received for receive-side tasks, issued for dispatch tasks
 
-  if(DATA.staffLogs.filter(l=>l.task==='Stacking').length>0 && stackBags!==maizeRec)
-    warnings.push({icon:'📦',title:'STACKING MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags stacked: <strong>${stackBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${(maizeRec-stackBags).toLocaleString()}</strong>`});
-
-  if(DATA.staffLogs.filter(l=>l.task==='Stitching').length>0 && stitchBags!==maizeRec)
-    warnings.push({icon:'🧵',title:'STITCHING MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags stitched: <strong>${stitchBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${(maizeRec-stitchBags).toLocaleString()}</strong>`});
-
-  if(DATA.staffLogs.filter(l=>l.task==='Loading').length>0 && loadBags!==maizeIss)
-    warnings.push({icon:'🚛',title:'LOADING MISMATCH',msg:`Bags issued: <strong>${maizeIss.toLocaleString()}</strong> · Bags loaded: <strong>${loadBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${(maizeIss-loadBags).toLocaleString()}</strong>`});
+      const diff=taskBags-maizeRec;
+      if(diff!==0)
+        warnings.push({icon:'📦',title:taskName.toUpperCase()+' MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags logged (${taskName}): <strong>${taskBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${Math.abs(diff).toLocaleString()}</strong>`});
+    });
+  })();
 
   // Stock count variances
   const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
@@ -1679,7 +1756,27 @@ function renderDash(){
           </div>
           <div style="text-align:right;margin-left:8px;font-size:13px;font-weight:700;white-space:nowrap">${a.qty}</div>
         </div>`).join('')}
-    </div>`;
+    </div>
+
+    ${(()=>{
+      const books=(DATA.books||[]).slice().sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0)).slice(0,5);
+      if(!books.length) return '';
+      return `<div class="card">
+        <div class="ctitle" style="justify-content:space-between">
+          <span>📚 Books</span>
+          <button class="book-btn" style="font-size:11px" onclick="showTab('books')">View All →</button>
+        </div>
+        ${books.map(b=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+            <div class="book-icon ${b.type}" style="width:32px;height:32px;font-size:16px">${b.type==='xlsx'?'📊':'📄'}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(b.name)}</div>
+              <div style="font-size:10px;color:var(--muted)">${b.type.toUpperCase()} · ${fmtDate(new Date(b.updatedAt||b.createdAt||0).toISOString().slice(0,10))}</div>
+            </div>
+            <button class="book-btn dl" onclick="openBookEditor('${b.id}')">✏️ Open</button>
+          </div>`).join('')}
+      </div>`;
+    })()}`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2497,14 +2594,49 @@ function saveEditMaizeIss(id){
 // ══════════════════════════════════════════════════════════
 // STAFF
 // ══════════════════════════════════════════════════════════
-function getEarnings(bags,role,task){
-  const b=Number(bags||0);
+function getEarnings(qty,role,task){
+  const q=Number(qty||0);
   const roles=DATA.staffRoles||[];
   const roleObj=roles.find(r=>r.name===role);
   if(!roleObj)return 0;
   const taskObj=(roleObj.tasks||[]).find(t=>t.name===task);
   if(!taskObj)return 0;
-  return b*(Number(taskObj.rate)||0);
+  return q*(Number(taskObj.rate)||0);
+}
+// Return the rate unit label for a task (e.g. "/bag", "/day", "/hour", "/trip", "/custom")
+function taskRateUnit(role,taskName){
+  const roles=DATA.staffRoles||[];
+  const roleObj=roles.find(r=>r.name===role);
+  if(!roleObj)return 'bag';
+  const taskObj=(roleObj.tasks||[]).find(t=>t.name===taskName);
+  if(!taskObj)return 'bag';
+  return taskObj.rateUnit||'bag';
+}
+function taskRateUnitLabel(role,taskName){
+  const u=taskRateUnit(role,taskName);
+  if(u==='custom'){
+    const roles=DATA.staffRoles||[];
+    const roleObj=roles.find(r=>r.name===role);
+    const taskObj=(roleObj?.tasks||[]).find(t=>t.name===taskName);
+    return taskObj?.customUnit||'unit';
+  }
+  return u;
+}
+// For bag-based tasks qty = bags; for others qty = count/hours/days etc.
+function qtyLabelForTask(role,taskName){
+  const u=taskRateUnit(role,taskName);
+  if(u==='bag')return'Bags Handled';
+  if(u==='day')return'Days Worked';
+  if(u==='hour')return'Hours Worked';
+  if(u==='trip')return'Trips Made';
+  if(u==='ton')return'Tons Handled';
+  if(u==='custom'){
+    const roles=DATA.staffRoles||[];
+    const roleObj=roles.find(r=>r.name===role);
+    const taskObj=(roleObj?.tasks||[]).find(t=>t.name===taskName);
+    return 'Quantity ('+(taskObj?.customUnit||'units')+')';
+  }
+  return'Quantity';
 }
 // Helper: get all role names
 function allRoleNames(){return(DATA.staffRoles||[]).map(r=>r.name);}
@@ -2559,7 +2691,7 @@ function renderStaffLogs(){
       <td style="font-weight:700">${s?.name||'—'}</td>
       <td><span class="tag">${esc(log.role)}</span></td>
       <td style="font-size:12px;color:var(--muted)">${log.task||'—'}</td>
-      <td style="text-align:right">${Number(log.bags||0).toLocaleString()}</td>
+      <td style="text-align:right">${(()=>{const q=log.qty!=null?log.qty:log.bags;const ul=log.rateUnit&&log.rateUnit!=='bag'?log.rateUnit:'bag';return Number(q||0).toLocaleString()+'<br><span style="font-size:9px;color:var(--muted)">'+ul+'</span>';})()}</td>
       <td style="color:var(--green);font-weight:600;text-align:right">${zm(log.earnings)}</td>
       <td style="color:${Number(log.deduction||0)>0?'var(--red)':'var(--muted)'};text-align:right">-${zm(log.deduction||0)}</td>
       <td style="color:var(--green);font-weight:700;text-align:right">${zm(net)}</td>
@@ -2572,7 +2704,7 @@ function renderStaffLogs(){
   return `
     <div class="prow">${pBtns('staff')}</div>
     <div class="srow">
-      <div class="sbox"><div class="sv">${totBags.toLocaleString()}</div><div class="sl">Bags (Period)</div></div>
+      <div class="sbox"><div class="sv">${totBags.toLocaleString()}</div><div class="sl">Bag-task Qty (Period)</div></div>
       <div class="sbox bl"><div class="sv">K${totNet.toFixed(0)}</div><div class="sl">Net (Period)</div></div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
@@ -2581,7 +2713,7 @@ function renderStaffLogs(){
     <div class="card" style="padding:0"><div class="tw"><table>
       <thead><tr>
         <th>Date</th><th>Staff</th><th>Role</th><th>Task</th>
-        <th style="text-align:right">Bags</th>
+        <th style="text-align:right">Qty</th>
         <th style="text-align:right">Gross</th>
         <th style="text-align:right">Deduct</th>
         <th style="text-align:right">Net</th>
@@ -2695,8 +2827,8 @@ function openLogForm(){
     <div class="mtitle">📋 Log Work ${!ONLINE?'<span style="font-size:14px;color:var(--amber)">· Offline</span>':''}</div>
     <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lf-staff" onchange="onStaffChange()">${opts}</select></div>
     <div class="fw"><div class="fl">Role</div><div class="fi" id="lf-role-display" style="background:#0a1628;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="lf-role"/></div>
-    <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="calcGross()"><option>—</option></select></div>
-    <div class="fw"><div class="fl">Bags Handled</div><input class="fi" type="number" id="lf-bags" placeholder="e.g. 200" inputmode="numeric" oninput="calcGross()"/></div>
+    <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="onTaskChange()"><option>—</option></select></div>
+    <div class="fw" id="lf-qty-wrap"><div class="fl" id="lf-qty-label">Quantity</div><input class="fi" type="number" id="lf-bags" placeholder="0" inputmode="decimal" step="0.01" oninput="calcGross()"/></div>
     <div id="gross-hint"></div>
     <div class="fw"><div class="fl">Deduction (ZMW)</div><input class="fi" type="number" id="lf-ded" value="0" inputmode="decimal" oninput="calcGross()"/></div>
     <div class="fw"><div class="fl">Deduction Reason</div><select class="fi" id="lf-dr"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option>${r}</option>`).join('')}</select></div>
@@ -2717,40 +2849,59 @@ function onStaffChange(){
     const hidden=document.getElementById('lf-role');
     if(display)display.textContent=s.role.toUpperCase();
     if(hidden)hidden.value=s.role;
-    // Populate task options from role definition
     const taskEl=document.getElementById('lf-task');
     if(taskEl){
       const tasks=tasksForRole(s.role);
-      taskEl.innerHTML=tasks.length>0?tasks.map(t=>`<option value="${esc(t.name)}">${esc(t.name)} (K${Number(t.rate||0).toFixed(2)}/bag)</option>`).join(''):'<option>No tasks defined</option>';
+      taskEl.innerHTML=tasks.length>0?tasks.map(t=>{
+        const u=t.rateUnit||'bag';
+        const ul=u==='custom'?(t.customUnit||'unit'):u;
+        return `<option value="${esc(t.name)}">${esc(t.name)} — K${Number(t.rate||0).toFixed(2)}/${ul}</option>`;
+      }).join(''):'<option>No tasks defined</option>';
     }
+    updateQtyLabel();
     calcGross();
   }
 }
+function onTaskChange(){
+  updateQtyLabel();
+  calcGross();
+}
+function updateQtyLabel(){
+  const role=document.getElementById('lf-role')?.value;
+  const task=document.getElementById('lf-task')?.value;
+  const lbl=document.getElementById('lf-qty-label');
+  if(lbl&&role&&task){lbl.textContent=qtyLabelForTask(role,task);}
+}
 function onTaskRoleChange(){
-  // kept for compatibility — role is now read from hidden field
+  updateQtyLabel();
   calcGross();
 }
 function calcGross(){
-  const bags=document.getElementById('lf-bags')?.value;
+  const qty=document.getElementById('lf-bags')?.value;
   const role=document.getElementById('lf-role')?.value;
   const task=document.getElementById('lf-task')?.value;
   const ded=Number(document.getElementById('lf-ded')?.value||0);
   const hint=document.getElementById('gross-hint');
-  if(bags&&hint){
-    const g=getEarnings(bags,role,task);
+  if(qty&&hint){
+    const g=getEarnings(qty,role,task);
     const net=Math.max(0,g-ded);
-    hint.innerHTML=`<div class="hint">Gross: K${g.toFixed(2)} &nbsp;|&nbsp; Net after deduction: K${net.toFixed(2)}</div>`;
+    const ul=role&&task?taskRateUnitLabel(role,task):'unit';
+    const rate=role&&task?(()=>{const ro=DATA.staffRoles.find(r=>r.name===role);const to=(ro?.tasks||[]).find(t=>t.name===task);return Number(to?.rate||0)})():0;
+    hint.innerHTML=`<div class="hint">${Number(qty).toLocaleString()} ${ul}${Number(qty)!==1?'s':''} × K${rate.toFixed(2)}/${ul} = <strong>K${g.toFixed(2)} gross</strong> &nbsp;|&nbsp; Net: K${net.toFixed(2)}</div>`;
   }
 }
 function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const sid=document.getElementById('lf-staff').value;
-  const bags=Number(document.getElementById('lf-bags').value||0);
-  if(!sid||!bags){alert('Select staff and enter bags handled.');return;}
+  const qty=Number(document.getElementById('lf-bags').value||0);
   const role=document.getElementById('lf-role').value;
   const task=document.getElementById('lf-task').value;
-  const earnings=getEarnings(bags,role,task);
+  if(!sid||!qty){alert('Select staff and enter a quantity greater than zero.');return;}
+  const ru=taskRateUnit(role,task);
+  const earnings=getEarnings(qty,role,task);
   const ded=Number(document.getElementById('lf-ded').value||0);
-  const payload={id:uid(),staffId:Number(sid),role,task,bags,earnings,deduction:ded,deductionReason:document.getElementById('lf-dr').value,timeIn:document.getElementById('lf-in').value,timeOut:document.getElementById('lf-out').value,date:document.getElementById('lf-date').value,time:nowTime()};
+  // bags field: for bag-based tasks store qty as bags; for others store as qty (bags stays 0 for non-bag tasks)
+  const bagsVal=ru==='bag'?qty:0;
+  const payload={id:uid(),staffId:Number(sid),role,task,bags:bagsVal,qty,rateUnit:ru,earnings,deduction:ded,deductionReason:document.getElementById('lf-dr').value,timeIn:document.getElementById('lf-in').value,timeOut:document.getElementById('lf-out').value,date:document.getElementById('lf-date').value,time:nowTime()};
   updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
   closeModal();
 }
@@ -2926,11 +3077,12 @@ function openStaffDetail(id){
     const task=tObj.name;
     const tLogs=sLogs.filter(l=>l.task===task);
     if(tLogs.length===0)return'';
-    const tBags=tLogs.reduce((a,b)=>a+Number(b.bags||0),0);
+    const tQty=tLogs.reduce((a,b)=>a+Number(b.qty!=null?b.qty:b.bags||0),0);
     const tNet=tLogs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+    const ul=taskRateUnitLabel(s.role,task);
     return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:12px;color:var(--muted)">${task}</span>
-      <span style="font-size:12px;font-weight:700">${tBags.toLocaleString()} bags · ${zm(tNet)}</span>
+      <span style="font-size:12px;font-weight:700">${tQty.toLocaleString()} ${ul}s · ${zm(tNet)}</span>
     </div>`;
   }).join('');
   const recentLogs=sLogs.slice(0,5).map(l=>{
@@ -2939,7 +3091,7 @@ function openStaffDetail(id){
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:12px;font-weight:700">${fmtDate(l.date)} <span style="color:var(--muted);font-weight:400;font-size:11px">${l.task}</span></div>
-          <div style="font-size:11px;color:var(--muted)">${Number(l.bags||0)} bags · ${zm(Number(l.earnings||0)-Number(l.deduction||0))} net</div>
+          <div style="font-size:11px;color:var(--muted)">${(()=>{const q=l.qty!=null?l.qty:l.bags;const ul=l.rateUnit&&l.rateUnit!=='bag'?taskRateUnitLabel(l.role||'',l.task||''):'bags';return Number(q||0).toLocaleString()+' '+ul;})()}· ${zm(Number(l.earnings||0)-Number(l.deduction||0))} net</div>
         </div>
         ${USER.role==='admin'?`<button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`closeModal();setTimeout(()=>openEditLog('${l.id}'),50)`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button>`:''}
       </div>
@@ -2983,44 +3135,42 @@ function openStaffDetail(id){
 function renderBagCheck(){
   const totalRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
   const totalIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
-  const stackBags=DATA.staffLogs.filter(l=>l.task==='Stacking').reduce((a,b)=>a+Number(b.bags||0),0);
-  const loadBags=DATA.staffLogs.filter(l=>l.task==='Loading').reduce((a,b)=>a+Number(b.bags||0),0);
-  const stitchBags=DATA.staffLogs.filter(l=>l.task==='Stitching').reduce((a,b)=>a+Number(b.bags||0),0);
   function chk(a,b){return a===b?'🟢':'🔴';}
-  function diff(a,b){const d=a-b;return d===0?'EXACT MATCH':d>0?`+${d} (SYSTEM HAS MORE)`:` ${d} (STAFF HANDLED MORE)`;}
+  function diff(a,b){const d=a-b;return d===0?'EXACT MATCH':d>0?`+${d.toLocaleString()} (SYSTEM HAS MORE)`:` ${d.toLocaleString()} (STAFF HANDLED MORE)`;}
+  // Dynamic: build one card per task defined across all roles
+  const allTaskNames=[...new Set((DATA.staffRoles||[]).flatMap(r=>(r.tasks||[]).map(t=>t.name)))];
+  const loggedTaskNames=[...new Set(DATA.staffLogs.map(l=>l.task).filter(Boolean))];
+  const visibleTasks=[...new Set([...allTaskNames,...loggedTaskNames])].sort();
+  const taskCards=visibleTasks.length===0
+    ?'<div class="empty">No tasks defined yet. Go to Settings → Staff Roles &amp; Rates to add roles and tasks.</div>'
+    :visibleTasks.map(taskName=>{
+      const taskBags=DATA.staffLogs.filter(l=>l.task===taskName).reduce((a,b)=>a+Number(b.bags||0),0);
+      const matchRec=taskBags===totalRec, matchIss=taskBags===totalIss;
+      const borderCol=(matchRec||matchIss)?'var(--green)':'var(--red)';
+      return `<div style="border-radius:10px;padding:14px;background:#0a1628;border:1px solid ${borderCol};margin-bottom:10px">
+        <div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--white);margin-bottom:10px">📦 ${esc(taskName)}</div>
+        <div class="srow" style="margin-bottom:8px">
+          <div class="sbox"><div class="sv" style="font-size:16px">${taskBags.toLocaleString()}</div><div class="sl">BAGS LOGGED</div></div>
+          <div class="sbox"><div class="sv" style="font-size:16px">${totalRec.toLocaleString()}</div><div class="sl">TOTAL RECEIVED</div></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:${matchRec?'var(--green)':'var(--red)'};margin-bottom:4px">${chk(totalRec,taskBags)} vs Received: ${diff(totalRec,taskBags)}</div>
+        <div style="font-size:12px;font-weight:700;color:${matchIss?'var(--green)':'var(--amber)'}">${chk(totalIss,taskBags)} vs Issued: ${diff(totalIss,taskBags)}</div>
+      </div>`;
+    }).join('');
   return `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.8">
-      These checks verify that staff bag handling records match the system maize records.<br>
-      <strong style="color:var(--text)">All three checks should be 🟢 for records to be consistent.</strong>
+      Each task's logged bags are compared against total maize received and issued.<br>
+      <strong style="color:var(--text)">🟢 = exact match · 🔴 = discrepancy found</strong>
+    </div>
+    <div style="background:#0a1628;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap">
+        <span>📥 Total Received: <strong style="color:var(--green)">${totalRec.toLocaleString()} bags</strong></span>
+        <span>📤 Total Issued: <strong style="color:var(--amber)">${totalIss.toLocaleString()} bags</strong></span>
+      </div>
     </div>
     <div class="card">
-      <div class="ctitle">🌽 Bag Count Verification</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="border-radius:10px;padding:14px;background:#0a1628;border:1px solid ${stackBags===totalRec?'var(--green)':'var(--red)'}">
-          <div style="font-size:20px;margin-bottom:4px">${chk(totalRec,stackBags)} Received vs Stacking</div>
-          <div class="srow" style="margin-bottom:4px">
-            <div class="sbox"><div class="sv" style="font-size:18px">${totalRec.toLocaleString()}</div><div class="sl">TOTAL BAGS RECEIVED</div></div>
-            <div class="sbox"><div class="sv" style="font-size:18px">${stackBags.toLocaleString()}</div><div class="sl">BAGS STACKED</div></div>
-          </div>
-          <div style="font-size:13px;font-weight:700;color:${stackBags===totalRec?'var(--green)':'var(--red)'}">${diff(totalRec,stackBags)}</div>
-        </div>
-        <div style="border-radius:10px;padding:14px;background:#0a1628;border:1px solid ${stitchBags===totalRec?'var(--green)':'var(--red)'}">
-          <div style="font-size:20px;margin-bottom:4px">${chk(totalRec,stitchBags)} Received vs Stitching</div>
-          <div class="srow" style="margin-bottom:4px">
-            <div class="sbox"><div class="sv" style="font-size:18px">${totalRec.toLocaleString()}</div><div class="sl">TOTAL BAGS RECEIVED</div></div>
-            <div class="sbox"><div class="sv" style="font-size:18px">${stitchBags.toLocaleString()}</div><div class="sl">BAGS STITCHED</div></div>
-          </div>
-          <div style="font-size:13px;font-weight:700;color:${stitchBags===totalRec?'var(--green)':'var(--red)'}">${diff(totalRec,stitchBags)}</div>
-        </div>
-        <div style="border-radius:10px;padding:14px;background:#0a1628;border:1px solid ${loadBags===totalIss?'var(--green)':'var(--red)'}">
-          <div style="font-size:20px;margin-bottom:4px">${chk(totalIss,loadBags)} Issued vs Loading</div>
-          <div class="srow" style="margin-bottom:4px">
-            <div class="sbox am"><div class="sv" style="font-size:18px">${totalIss.toLocaleString()}</div><div class="sl">TOTAL BAGS ISSUED</div></div>
-            <div class="sbox"><div class="sv" style="font-size:18px">${loadBags.toLocaleString()}</div><div class="sl">BAGS LOADED</div></div>
-          </div>
-          <div style="font-size:13px;font-weight:700;color:${loadBags===totalIss?'var(--green)':'var(--red)'}">${diff(totalIss,loadBags)}</div>
-        </div>
-      </div>
+      <div class="ctitle">🌽 Task-by-Task Bag Verification</div>
+      ${taskCards}
     </div>`;
 }
 
@@ -3063,13 +3213,18 @@ function openEditLog(id){
   const staffRec=DATA.staff.find(s=>String(s.id)===String(log.staffId));
   const staffRole=staffRec?.role||log.role||'';
   const tasks=tasksForRole(staffRole);
-  const taskOpts=tasks.length>0?tasks.map(t=>`<option value="${esc(t.name)}"${t.name===log.task?' selected':''}>${esc(t.name)} (K${Number(t.rate||0).toFixed(2)}/bag)</option>`).join(''):`<option>${log.task||'Unknown'}</option>`;
+  const taskOpts=tasks.length>0?tasks.map(t=>{
+    const u=t.rateUnit||'bag';const ul=u==='custom'?(t.customUnit||'unit'):u;
+    return`<option value="${esc(t.name)}"${t.name===log.task?' selected':''}>${esc(t.name)} — K${Number(t.rate||0).toFixed(2)}/${ul}</option>`;
+  }).join(''):`<option>${log.task||'Unknown'}</option>`;
+  const logQty=log.qty!=null?log.qty:log.bags; // support both old and new records
+  const qtyLbl=qtyLabelForTask(staffRole,log.task||'');
   openModal(`
     <div class="mtitle">✏️ Edit Work Log</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
     <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="elg-staff">${staffOpts}</select></div>
     <div class="fw"><div class="fl">Task</div><select class="fi" id="elg-task" onchange="calcEditGross()">${taskOpts}</select></div>
-    <div class="fw"><div class="fl">Bags Handled</div><input class="fi" type="number" id="elg-bags" value="${log.bags}" inputmode="numeric" oninput="calcEditGross()"/></div>
+    <div class="fw"><div class="fl" id="elg-qty-label">${qtyLbl}</div><input class="fi" type="number" id="elg-bags" value="${logQty}" inputmode="decimal" step="0.01" oninput="calcEditGross()"/></div>
     <div id="edit-gross-hint"></div>
     <div class="fw"><div class="fl">Deduction (ZMW)</div><input class="fi" type="number" id="elg-ded" value="${log.deduction||0}" inputmode="decimal" oninput="calcEditGross()"/></div>
     <div class="fw"><div class="fl">Deduction Reason</div><select class="fi" id="elg-dr"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option${r===log.deductionReason?' selected':''}>${r}</option>`).join('')}</select></div>
@@ -3084,23 +3239,33 @@ function openEditLog(id){
 function calcEditGross(){
   const staffId=document.getElementById('elg-staff')?.value;
   const s=DATA.staff.find(x=>String(x.id)===String(staffId));
-  const role=s?.role||'Loader';
+  const role=s?.role||'';
   const task=document.getElementById('elg-task')?.value;
-  const bags=document.getElementById('elg-bags')?.value;
+  const qty=document.getElementById('elg-bags')?.value;
   const ded=Number(document.getElementById('elg-ded')?.value||0);
   const hint=document.getElementById('edit-gross-hint');
-  if(bags&&hint){const g=getEarnings(bags,role,task);const net=Math.max(0,g-ded);hint.innerHTML=`<div class="hint">Gross: K${g.toFixed(2)} · Net: K${net.toFixed(2)}</div>`;}
+  // Update qty label
+  const lbl=document.getElementById('elg-qty-label');
+  if(lbl&&role&&task)lbl.textContent=qtyLabelForTask(role,task);
+  if(qty&&hint){
+    const g=getEarnings(qty,role,task);const net=Math.max(0,g-ded);
+    const ul=role&&task?taskRateUnitLabel(role,task):'unit';
+    const rate=(()=>{const ro=DATA.staffRoles.find(r=>r.name===role);const to=(ro?.tasks||[]).find(t=>t.name===task);return Number(to?.rate||0);})();
+    hint.innerHTML=`<div class="hint">${Number(qty).toLocaleString()} ${ul}${Number(qty)!==1?'s':''} × K${rate.toFixed(2)}/${ul} = <strong>K${g.toFixed(2)}</strong> · Net: K${net.toFixed(2)}</div>`;
+  }
 }
 function saveEditLog(id){
   const sid=document.getElementById('elg-staff').value;
-  const bags=Number(document.getElementById('elg-bags').value||0);
-  if(!sid||!bags){alert('Select staff and enter bags.');return;}
+  const qty=Number(document.getElementById('elg-bags').value||0);
+  if(!sid||!qty){alert('Select staff and enter a quantity.');return;}
   const s=DATA.staff.find(x=>String(x.id)===String(sid));
-  const role=s?.role||'Loader';
+  const role=s?.role||'';
   const task=document.getElementById('elg-task').value;
-  const earnings=getEarnings(bags,role,task);
+  const ru=taskRateUnit(role,task);
+  const earnings=getEarnings(qty,role,task);
   const ded=Number(document.getElementById('elg-ded').value||0);
-  updateData(d=>({...d,staffLogs:d.staffLogs.map(l=>String(l.id)===String(id)?{...l,staffId:Number(sid),role,task,bags,earnings,deduction:ded,deductionReason:document.getElementById('elg-dr').value,timeIn:document.getElementById('elg-in').value,timeOut:document.getElementById('elg-out').value,date:document.getElementById('elg-date').value}:l)}));
+  const bagsVal=ru==='bag'?qty:0;
+  updateData(d=>({...d,staffLogs:d.staffLogs.map(l=>String(l.id)===String(id)?{...l,staffId:Number(sid),role,task,bags:bagsVal,qty,rateUnit:ru,earnings,deduction:ded,deductionReason:document.getElementById('elg-dr').value,timeIn:document.getElementById('elg-in').value,timeOut:document.getElementById('elg-out').value,date:document.getElementById('elg-date').value}:l)}));
   closeModal();
 }
 function setStaffStatus(id,status){
@@ -3412,31 +3577,55 @@ function saveRates(){
 }
 
 // ── DYNAMIC ROLES & RATES MANAGEMENT ─────────────────────────────────────────
+const RATE_UNITS=[
+  {value:'bag',  label:'Per Bag',  icon:'🌽'},
+  {value:'day',  label:'Per Day',  icon:'📅'},
+  {value:'hour', label:'Per Hour', icon:'⏱'},
+  {value:'trip', label:'Per Trip', icon:'🚛'},
+  {value:'ton',  label:'Per Ton',  icon:'⚖️'},
+  {value:'custom',label:'Custom…', icon:'✏️'},
+];
+function rateUnitLabel(u){const r=RATE_UNITS.find(x=>x.value===u);return r?r.label:'Per Bag';}
+
 function renderRolesEditor(){
   const roles=DATA.staffRoles||[];
   if(roles.length===0)return'<div style="color:var(--muted);font-size:13px;margin-bottom:12px">No roles defined yet. Add a role below.</div>';
   return roles.map((role,ri)=>{
-    const tasks=(role.tasks||[]).map((task,ti)=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-        <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${esc(task.name)}</div>
-        <div style="display:flex;align-items:center;gap:4px">
-          <span style="font-size:11px;color:var(--muted)">K</span>
-          <input type="number" step="0.01" min="0" value="${Number(task.rate||0).toFixed(2)}"
-            style="width:72px;background:#0a1628;border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;appearance:none;"
-            oninput="this.dataset.dirty='1'"
-            onblur="saveTaskRate(${ri},${ti},this.value)"
-            inputmode="decimal"/>
-          <span style="font-size:10px;color:var(--muted)">/bag</span>
+    const tasks=(role.tasks||[]).map((task,ti)=>{
+      const u=task.rateUnit||'bag';
+      const isCustom=u==='custom';
+      const unitOpts=RATE_UNITS.map(ru=>`<option value="${ru.value}"${ru.value===u?' selected':''}>${ru.icon} ${ru.label}</option>`).join('');
+      return `
+      <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:7px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(task.name)}</div>
+          <button class="delbtn" title="Remove task" onclick="removeTask(${ri},${ti})">🗑</button>
         </div>
-        <button class="delbtn" title="Remove task" onclick="removeTask(${ri},${ti})">🗑</button>
-      </div>`).join('');
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+            <span style="font-size:11px;color:var(--muted)">K</span>
+            <input type="number" step="0.01" min="0" value="${Number(task.rate||0).toFixed(2)}"
+              style="width:72px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;appearance:none;"
+              oninput="this.dataset.dirty='1'"
+              onblur="saveTaskRate(${ri},${ti},this.value)"
+              inputmode="decimal"/>
+          </div>
+          <select style="flex:1;min-width:120px;background:#0a1628;border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236a90b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;"
+            onchange="saveTaskRateUnit(${ri},${ti},this.value)">${unitOpts}</select>
+          ${isCustom?`<input type="text" placeholder="unit label" value="${esc(task.customUnit||'')}"
+            style="width:80px;background:var(--surface);border:1.5px solid var(--green);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-transform:uppercase;"
+            oninput="this.value=this.value.toUpperCase()"
+            onblur="saveTaskCustomUnit(${ri},${ti},this.value)"/>`:''}
+        </div>
+      </div>`;
+    }).join('');
     const tasksSection=tasks||'<div style="color:var(--muted);font-size:12px;padding:6px 0">No tasks — add one below</div>';
     return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white)">👷 ${esc(role.name)}</div>
         <button class="delbtn" title="Remove role" onclick="removeRole(${ri})">🗑 Role</button>
       </div>
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px">Tasks &amp; Rates per Bag</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Tasks &amp; Pay Rates</div>
       ${tasksSection}
       <div style="display:flex;gap:6px;margin-top:10px">
         <input class="fi" id="new-task-${ri}" placeholder="E.G. WEIGHING, BAGGING…" style="flex:1;font-size:13px;padding:8px 12px" oninput="this.value=this.value.toUpperCase()"/>
@@ -3505,9 +3694,29 @@ function removeTask(ri,ti){
 
 function saveTaskRate(ri,ti,val){
   const rate=Math.max(0,Number(val)||0);
-  // Direct save without triggering full render (avoids losing input focus)
   const roles=JSON.parse(JSON.stringify(DATA.staffRoles||[]));
   if(roles[ri]&&roles[ri].tasks&&roles[ri].tasks[ti])roles[ri].tasks[ti].rate=rate;
+  DATA=Object.assign({},DATA,{staffRoles:roles});
+  DATA._v=(DATA._v||0)+1;
+  sv(DATA);
+  scheduleFbSync();
+}
+function saveTaskRateUnit(ri,ti,unit){
+  const roles=JSON.parse(JSON.stringify(DATA.staffRoles||[]));
+  if(roles[ri]&&roles[ri].tasks&&roles[ri].tasks[ti]){
+    roles[ri].tasks[ti].rateUnit=unit;
+    if(unit!=='custom')delete roles[ri].tasks[ti].customUnit;
+  }
+  DATA=Object.assign({},DATA,{staffRoles:roles});
+  DATA._v=(DATA._v||0)+1;
+  sv(DATA);
+  scheduleFbSync();
+  refreshRolesEditor();
+}
+function saveTaskCustomUnit(ri,ti,val){
+  const roles=JSON.parse(JSON.stringify(DATA.staffRoles||[]));
+  if(roles[ri]&&roles[ri].tasks&&roles[ri].tasks[ti])
+    roles[ri].tasks[ti].customUnit=(val||'').toUpperCase().trim()||'UNIT';
   DATA=Object.assign({},DATA,{staffRoles:roles});
   DATA._v=(DATA._v||0)+1;
   sv(DATA);
@@ -3690,6 +3899,599 @@ setTimeout(()=>{
 
 // Periodic FB sync every 5 minutes while online
 setInterval(()=>{ if(ONLINE && USER) scheduleFbSync(); }, 5*60*1000);
+
+// ══════════════════════════════════════════════════════════
+// ██ BOOKS TAB — In-app document creator (Word / Spreadsheet)
+// Documents are stored as structured JSON in DATA.books[].
+// ══════════════════════════════════════════════════════════
+
+// Current editor state
+let _beBookId   = null;   // null = new doc
+let _beType     = 'docx'; // 'docx' | 'xlsx'
+let _beGrid     = [];     // spreadsheet rows: [[cell,...],...]
+const BE_ROWS   = 30;
+const BE_COLS   = 8;
+const BE_COL_LABELS = ['A','B','C','D','E','F','G','H'];
+
+function booksFmtSize(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+// ── RENDER BOOKS LIST ─────────────────────────────────────
+function renderBooks() {
+  const books = (DATA.books||[]).slice().sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
+  const xlsxBooks = books.filter(b=>b.type==='xlsx');
+  const docxBooks = books.filter(b=>b.type==='docx');
+
+  function bookRow(b) {
+    const dt = fmtDate(new Date(b.updatedAt||b.createdAt||0).toISOString().slice(0,10));
+    const icon = b.type==='xlsx'?'📊':'📄';
+    const label = b.type==='xlsx'?'SPREADSHEET':'WORD DOC';
+    return `
+      <div class="book-card" onclick="openBookEditor('${b.id}')">
+        <div class="book-icon ${b.type}">${icon}</div>
+        <div class="book-meta">
+          <div class="book-name">${esc(b.name||'Untitled')}</div>
+          <div class="book-info">${label} · ${dt}</div>
+        </div>
+        <div class="book-actions" onclick="event.stopPropagation()">
+          <button class="book-btn dl" onclick="downloadBookById('${b.id}')" title="Download">⬇</button>
+          ${isAdmin()?`<button class="book-btn del" onclick="deleteBook('${b.id}')" title="Delete">🗑</button>`:''}
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="sh" style="margin:0">📚 Books</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg bsm" onclick="newBookEditor('docx')">📄 Word</button>
+        <button class="btn bg bsm" onclick="newBookEditor('xlsx')">📊 Sheet</button>
+      </div>
+    </div>
+    <div class="hint" style="font-size:12px;margin-bottom:14px">✏️ Create Word documents or spreadsheets directly in the app. Tap a document to open and edit it. Download anytime.</div>
+
+    <div class="sh" style="margin-top:0">📊 Spreadsheets <span style="color:var(--muted);font-weight:400">(${xlsxBooks.length})</span></div>
+    ${xlsxBooks.length===0
+      ? `<div class="empty" style="margin-bottom:14px">No spreadsheets yet. Tap 📊 Sheet to create one.</div>`
+      : xlsxBooks.map(bookRow).join('')}
+
+    <div class="sh">📄 Word Documents <span style="color:var(--muted);font-weight:400">(${docxBooks.length})</span></div>
+    ${docxBooks.length===0
+      ? `<div class="empty" style="margin-bottom:14px">No documents yet. Tap 📄 Word to create one.</div>`
+      : docxBooks.map(bookRow).join('')}`;
+}
+
+// ── OPEN EDITOR (new) ─────────────────────────────────────
+function newBookEditor(type) {
+  if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
+  _beBookId = null;
+  _beType   = type;
+  _beGrid   = Array.from({length:BE_ROWS},()=>Array(BE_COLS).fill(''));
+  _openEditorScreen('', type);
+}
+
+// ── OPEN EDITOR (existing) ────────────────────────────────
+function openBookEditor(id) {
+  const book = (DATA.books||[]).find(b=>b.id===id);
+  if(!book){alert('Document not found.');return;}
+  _beBookId = id;
+  _beType   = book.type;
+  if(book.type==='xlsx'){
+    // Restore grid from saved rows or blank
+    const saved = book.gridData||[];
+    _beGrid = Array.from({length:Math.max(BE_ROWS,saved.length)},(_,r)=>
+      Array.from({length:Math.max(BE_COLS,(saved[r]||[]).length)},(_,c)=>
+        (saved[r]||[])[c]||''));
+    // Ensure minimum size
+    while(_beGrid.length<BE_ROWS)_beGrid.push(Array(BE_COLS).fill(''));
+    _beGrid=_beGrid.map(r=>{while(r.length<BE_COLS)r.push('');return r;});
+  }
+  _openEditorScreen(book.name||'', book.type, book.htmlContent||'');
+}
+
+function _openEditorScreen(name, type, htmlContent='') {
+  const screen = document.getElementById('book-editor-screen');
+  const titleEl = document.getElementById('be-title');
+  const badge   = document.getElementById('be-type-badge');
+  const toolbar = document.getElementById('be-toolbar');
+  const docArea = document.getElementById('be-doc-area');
+
+  if(titleEl) titleEl.value = name;
+  if(badge)   badge.textContent = type==='xlsx'?'📊 SPREADSHEET':'📄 WORD DOC';
+
+  if(type==='docx') {
+    // Hide formula bar
+    const fbarEl = document.getElementById('be-formula-bar');
+    if(fbarEl) fbarEl.style.display='none';
+    // Word toolbar
+    toolbar.innerHTML = `
+      <button class="be-tb-btn" onclick="beCmd('bold')" title="Bold"><b>B</b></button>
+      <button class="be-tb-btn" onclick="beCmd('italic')" title="Italic"><i>I</i></button>
+      <button class="be-tb-btn" onclick="beCmd('underline')" title="Underline"><u>U</u></button>
+      <div class="be-tb-sep"></div>
+      <button class="be-tb-btn" onclick="beCmd('justifyLeft')" title="Left">⬛</button>
+      <button class="be-tb-btn" onclick="beCmd('justifyCenter')" title="Center">≡</button>
+      <button class="be-tb-btn" onclick="beCmd('justifyRight')" title="Right">⬜</button>
+      <div class="be-tb-sep"></div>
+      <button class="be-tb-btn" onclick="beCmd('insertUnorderedList')" title="Bullet">• List</button>
+      <button class="be-tb-btn" onclick="beCmd('insertOrderedList')" title="Numbered">1. List</button>
+      <div class="be-tb-sep"></div>
+      <button class="be-tb-btn" onclick="beInsertTable()" title="Insert Table" style="color:var(--blue);border-color:var(--blue)">⊞ Table</button>
+      <div class="be-tb-sep"></div>
+      <select class="be-tb-btn" style="font-size:12px;padding:3px 6px;" onchange="beCmd('fontSize',this.value);this.value=''">
+        <option value="">Size</option>
+        <option value="1">Small</option>
+        <option value="3">Normal</option>
+        <option value="5">Large</option>
+        <option value="7">Huge</option>
+      </select>
+      <select class="be-tb-btn" style="font-size:12px;padding:3px 6px;" onchange="beHeading(this.value);this.value=''">
+        <option value="">Style</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+        <option value="p">Paragraph</option>
+      </select>`;
+    docArea.innerHTML = `<div class="be-word-area" id="be-word-editor" contenteditable="true" spellcheck="true">${htmlContent||'<p>Start typing your document…</p>'}</div>`;
+  } else {
+    // Show formula bar
+    const fbarEl = document.getElementById('be-formula-bar');
+    if(fbarEl) fbarEl.style.display='flex';
+    const fbarInput = document.getElementById('be-formula-input');
+    if(fbarInput){
+      fbarInput.oninput = function(){ _beFormulaBarInput(this.value); };
+      fbarInput.onblur = function(){
+        if(_beActiveCell){
+          const {r,c}=_beActiveCell;
+          const inp=document.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+          if(inp) _beGridBlur(inp,r,c);
+        }
+      };
+    }
+    // Spreadsheet toolbar
+    toolbar.innerHTML = `
+      <button class="be-tb-btn" onclick="beAddRow()">+ Row</button>
+      <button class="be-tb-btn" onclick="beAddCol()">+ Col</button>
+      <div class="be-tb-sep"></div>
+      <button class="be-tb-btn" onclick="beInsertSheetTable()" style="color:var(--blue);border-color:var(--blue)" title="Insert pre-filled table area">⊞ Table</button>
+      <div class="be-tb-sep"></div>
+      <button class="be-tb-btn" onclick="_refreshFormulaCells()" title="Recalculate all formulas">⟳ Calc</button>
+      <div class="be-tb-sep"></div>
+      <span style="font-size:10px;color:var(--muted);align-self:center;padding:0 4px">= for formulas</span>`;
+    docArea.innerHTML = `<div class="be-grid-wrap">${_renderGrid()}</div>`;
+  }
+
+  screen.style.display = 'flex';
+  // Focus title if new
+  if(!_beBookId && titleEl) setTimeout(()=>titleEl.focus(),100);
+}
+
+// ── WORD COMMANDS ─────────────────────────────────────────
+function beCmd(cmd, val) {
+  document.getElementById('be-word-editor')?.focus();
+  document.execCommand(cmd, false, val||null);
+}
+function beHeading(tag) {
+  document.getElementById('be-word-editor')?.focus();
+  document.execCommand('formatBlock', false, tag);
+}
+
+// ── WORD DOC — INSERT TABLE ────────────────────────────────
+function beInsertTable() {
+  const rows = parseInt(prompt('Rows (e.g. 3):', '3'));
+  if(!rows || rows < 1 || rows > 50) { alert('Enter a valid row count (1–50).'); return; }
+  const cols = parseInt(prompt('Columns (e.g. 3):', '3'));
+  if(!cols || cols < 1 || cols > 20) { alert('Enter a valid column count (1–20).'); return; }
+
+  const thCells = Array.from({length:cols}, (_,i)=>
+    `<th style="border:1px solid #999;padding:5px 8px;background:#e8e8e8;font-weight:bold;min-width:60px">Col ${i+1}</th>`
+  ).join('');
+  const tdCells = Array.from({length:cols}, ()=>
+    `<td style="border:1px solid #999;padding:5px 8px;min-width:60px">&nbsp;</td>`
+  ).join('');
+  const bodyRows = Array.from({length:rows}, ()=>`<tr>${tdCells}</tr>`).join('');
+
+  const tableHtml =
+    `<table style="border-collapse:collapse;width:100%;margin:8px 0">` +
+    `<thead><tr>${thCells}</tr></thead>` +
+    `<tbody>${bodyRows}</tbody>` +
+    `</table><p><br></p>`;
+
+  const editor = document.getElementById('be-word-editor');
+  if(!editor) return;
+  editor.focus();
+  document.execCommand('insertHTML', false, tableHtml);
+}
+
+// ── SPREADSHEET — INSERT TABLE TEMPLATE ───────────────────
+function beInsertSheetTable() {
+  // Find next empty row, fill in a header + data template
+  let startRow = 0;
+  for(let r=0;r<_beGrid.length;r++){
+    if(_beGrid[r].every(c=>!c)){startRow=r;break;}
+  }
+  const cols = parseInt(prompt('Number of columns for table (e.g. 4):', '4'));
+  if(!cols||cols<1||cols>8){alert('Enter 1–8 columns.');return;}
+  const rows = parseInt(prompt('Number of data rows (e.g. 5):', '5'));
+  if(!rows||rows<1||rows>30){alert('Enter 1–30 rows.');return;}
+
+  // Ensure grid is big enough
+  while(_beGrid.length < startRow + rows + 2) _beGrid.push(Array(_beGrid[0]?.length||BE_COLS).fill(''));
+  _beGrid.forEach(r=>{while(r.length<Math.max(BE_COLS,cols))r.push('');});
+
+  // Write headers
+  for(let c=0;c<cols;c++){
+    _beGrid[startRow][c] = 'Header '+(c+1);
+  }
+  // Write empty data rows (already blank)
+  // Add SUM row at bottom
+  const sumRow = startRow + rows + 1;
+  while(_beGrid.length <= sumRow) _beGrid.push(Array(_beGrid[0]?.length||BE_COLS).fill(''));
+  _beGrid[sumRow][0] = 'TOTAL';
+  for(let c=1;c<cols;c++){
+    const colLetter = BE_COL_LABELS[c]||String(c+1);
+    const r1 = startRow+2, r2 = startRow+rows+1;
+    _beGrid[sumRow][c] = `=SUM(${colLetter}${r1}:${colLetter}${r2})`;
+  }
+
+  // Re-render
+  const wrap = document.getElementById('be-doc-area').querySelector('.be-grid-wrap');
+  if(wrap) wrap.innerHTML = _renderGrid();
+  showToast('✅ Table template inserted at row '+(startRow+1));
+}
+
+// ── FORMULA ENGINE ────────────────────────────────────────
+// Supported: SUM, AVERAGE/AVG, MIN, MAX, COUNT, IF, ROUND, ABS
+// Cell refs: A1, B3 | Ranges: A1:C5 | Arithmetic: +−×÷^
+// Usage: =SUM(A1:A10), =A1+B1*2, =IF(A1>0,"Yes","No")
+
+const _COL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function _colIndex(letter) {
+  return _COL_LETTERS.indexOf(letter.toUpperCase());
+}
+
+function _resolveRange(ref, selfR, selfC) {
+  // Range: A1:C5
+  const m = ref.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i);
+  if (!m) return null;
+  const c1=_colIndex(m[1]), r1=parseInt(m[2])-1, c2=_colIndex(m[3]), r2=parseInt(m[4])-1;
+  const vals=[];
+  for(let r=Math.min(r1,r2);r<=Math.max(r1,r2);r++){
+    for(let c=Math.min(c1,c2);c<=Math.max(c1,c2);c++){
+      if(r===selfR&&c===selfC){vals.push(0);continue;} // prevent circular
+      const raw=(_beGrid[r]||[])[c]||'';
+      vals.push(_evalCellRaw(r,c,raw,new Set([selfR+','+selfC])));
+    }
+  }
+  return vals;
+}
+
+function _resolveCell(ref, selfR, selfC) {
+  const m = ref.match(/^([A-Z]+)(\d+)$/i);
+  if(!m) return null;
+  const c=_colIndex(m[1]), r=parseInt(m[2])-1;
+  if(r===selfR&&c===selfC) return 0;
+  const raw=(_beGrid[r]||[])[c]||'';
+  return _evalCellRaw(r,c,raw,new Set([selfR+','+selfC]));
+}
+
+function _evalCellRaw(r, c, raw, visited) {
+  if(!raw||!String(raw).startsWith('=')) return isNaN(Number(raw))||raw===''?raw:Number(raw);
+  const key=r+','+c;
+  if(visited&&visited.has(key)) return '#CIRC';
+  const newVisited=new Set(visited||[]);
+  newVisited.add(key);
+  try { return _computeFormula(String(raw).slice(1).trim(), r, c, newVisited); }
+  catch(e){ return '#ERR'; }
+}
+
+function _computeFormula(expr, ri, ci, visited) {
+  const up = expr.toUpperCase().trim();
+
+  // Replace functions
+  let processed = expr;
+  processed = processed.replace(/\b(SUM|AVERAGE|AVG|MIN|MAX|COUNT|COUNTA)\s*\(([^)]*)\)/gi, (_, fn, args) => {
+    const fnUp = fn.toUpperCase();
+    const allVals = [];
+    args.split(',').forEach(arg => {
+      arg = arg.trim();
+      const rangeVals = _resolveRange(arg, ri, ci);
+      if(rangeVals) { allVals.push(...rangeVals); return; }
+      const cellVal = _resolveCell(arg, ri, ci);
+      if(cellVal !== null) { allVals.push(cellVal); return; }
+      if(!isNaN(Number(arg))) allVals.push(Number(arg));
+    });
+    const nums = allVals.map(Number).filter(v=>!isNaN(v));
+    switch(fnUp){
+      case 'SUM':     return nums.length ? nums.reduce((a,b)=>a+b,0) : 0;
+      case 'AVERAGE': case 'AVG': return nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : 0;
+      case 'MIN':     return nums.length ? Math.min(...nums) : 0;
+      case 'MAX':     return nums.length ? Math.max(...nums) : 0;
+      case 'COUNT':   return nums.length;
+      case 'COUNTA':  return allVals.filter(v=>v!==''&&v!==null&&v!==undefined).length;
+      default: return 0;
+    }
+  });
+
+  // ROUND(val, digits)
+  processed = processed.replace(/\bROUND\s*\(([^,)]+),\s*([^)]+)\)/gi, (_, val, dig) => {
+    const v=Number(_computeFormula(val.trim(),ri,ci,visited));
+    const d=parseInt(dig.trim())||0;
+    return isNaN(v)?'#ERR':Number(v.toFixed(d));
+  });
+
+  // ABS(val)
+  processed = processed.replace(/\bABS\s*\(([^)]+)\)/gi, (_, val) => {
+    const v=Number(_computeFormula(val.trim(),ri,ci,visited));
+    return isNaN(v)?'#ERR':Math.abs(v);
+  });
+
+  // IF(cond, true_val, false_val)
+  processed = processed.replace(/\bIF\s*\(([^,)]+),\s*([^,)]+),\s*([^)]+)\)/gi, (_, cond, tv, fv) => {
+    let condResult;
+    try{ condResult = _computeFormula(cond.trim(),ri,ci,visited); }
+    catch(e){ condResult=false; }
+    if(condResult===true||condResult===1||condResult==='TRUE') return _computeFormula(tv.trim(),ri,ci,visited);
+    return _computeFormula(fv.trim(),ri,ci,visited);
+  });
+
+  // Replace standalone cell refs A1, B2 etc
+  processed = processed.replace(/\b([A-Z]+)(\d+)\b/gi, (match, col, row) => {
+    const c=_colIndex(col), r=parseInt(row)-1;
+    if(c<0||r<0) return match;
+    if(r===ri&&c===ci) return 0;
+    const raw=(_beGrid[r]||[])[c]||'';
+    const val=_evalCellRaw(r,c,raw,visited);
+    if(typeof val==='string'&&!/^-?\d/.test(val)) return JSON.stringify(val);
+    return val===''?0:val;
+  });
+
+  // Boolean operators (handle before math)
+  processed = processed.replace(/\b(TRUE|FALSE)\b/gi, m=>m.toUpperCase()==='TRUE'?1:0);
+
+  // Safe numeric eval
+  // Only allow safe chars: digits, operators, dots, whitespace, parens, quotes
+  if(/^[0-9+\-*/^().,\s"'<>=!%]+$/.test(processed)){
+    // Convert ^ to **
+    processed = processed.replace(/\^/g, '**');
+    // eslint-disable-next-line no-new-func
+    const result = Function('"use strict";return ('+processed+')')();
+    return result;
+  }
+  return processed; // return as string if not pure math
+}
+
+function _evalCell(ri, ci) {
+  const raw = (_beGrid[ri]||[])[ci]||'';
+  if(!raw||!String(raw).startsWith('=')) return raw;
+  try{ return _evalCellRaw(ri,ci,raw,new Set()); }
+  catch(e){ return '#ERR'; }
+}
+
+function _fmtCellDisplay(val) {
+  if(val===null||val===undefined||val==='') return '';
+  if(typeof val==='number'){
+    // Show up to 8 significant digits
+    return parseFloat(val.toPrecision(8)).toString();
+  }
+  return String(val);
+}
+
+// Active cell tracking for formula bar
+let _beActiveCell = null;
+
+function _beGridFocus(inp, r, c) {
+  _beActiveCell = {r, c};
+  // Show raw formula in the input
+  const raw = _beGrid[r]?.[c] || '';
+  inp.value = raw;
+  inp.classList.remove('formula-cell');
+  if(raw.startsWith('=')) inp.classList.add('formula-editing');
+  // Update formula bar
+  const cellRef = document.getElementById('be-cell-ref');
+  const fbar = document.getElementById('be-formula-input');
+  if(cellRef) cellRef.textContent = (_COL_LETTERS[c]||String(c+1)) + (r+1);
+  if(fbar) fbar.value = raw;
+}
+
+function _beGridBlur(inp, r, c) {
+  const val = inp.value;
+  _beGrid[r][c] = val;
+  inp.classList.remove('formula-editing');
+  if(val && String(val).startsWith('=')) {
+    const result = _evalCell(r, c);
+    inp.value = _fmtCellDisplay(result);
+    inp.classList.add('formula-cell');
+  } else {
+    inp.value = val;
+    inp.classList.remove('formula-cell');
+  }
+  // Refresh all formula cells
+  _refreshFormulaCells(r, c);
+}
+
+function _refreshFormulaCells(changedR, changedC) {
+  document.querySelectorAll('#be-doc-area [data-r]').forEach(inp=>{
+    const r=Number(inp.dataset.r), c=Number(inp.dataset.c);
+    if(inp===document.activeElement) return;
+    const raw=_beGrid[r]?.[c]||'';
+    if(raw.startsWith('=')){
+      inp.value=_fmtCellDisplay(_evalCell(r,c));
+      inp.classList.add('formula-cell');
+    } else {
+      inp.classList.remove('formula-cell');
+    }
+  });
+}
+
+function _beFormulaBarInput(val) {
+  if(!_beActiveCell) return;
+  const {r,c}=_beActiveCell;
+  _beGrid[r][c]=val;
+  const inp=document.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+  if(inp) inp.value=val;
+}
+
+// ── SPREADSHEET GRID ──────────────────────────────────────
+function _renderGrid() {
+  const colHdrs = BE_COL_LABELS.slice(0, _beGrid[0]?.length||BE_COLS);
+  const head = `<thead><tr>
+    <th class="col-hdr" style="background:#0a1628;border:1px solid var(--border);min-width:28px;position:sticky;top:0;left:0;z-index:3"></th>
+    ${colHdrs.map(c=>`<th class="col-hdr">${c}</th>`).join('')}
+  </tr></thead>`;
+  const body = _beGrid.map((row,ri)=>`<tr>
+    <td class="row-hdr-cell">${ri+1}</td>
+    ${row.map((cell,ci)=>{
+      const isFormula = cell && String(cell).startsWith('=');
+      const displayed = isFormula ? _fmtCellDisplay(_evalCell(ri,ci)) : cell;
+      return `<td><input type="text" value="${esc(String(displayed))}" data-r="${ri}" data-c="${ci}"
+        class="${isFormula?'formula-cell':''}"
+        onfocus="_beGridFocus(this,${ri},${ci})"
+        onblur="_beGridBlur(this,${ri},${ci})"
+        oninput="_beGridCell(${ri},${ci},this.value)"
+        onkeydown="_beGridKey(event,${ri},${ci})"/></td>`;
+    }).join('')}
+  </tr>`).join('');
+  return `<table class="be-grid">${head}<tbody>${body}</tbody></table>`;
+}
+
+function _beGridCell(r,c,val){
+  _beGrid[r][c]=val;
+}
+function _beGridKey(e,r,c){
+  // Tab → next cell, Enter → next row
+  if(e.key==='Tab'){
+    e.preventDefault();
+    const nc=e.shiftKey?c-1:c+1;
+    const nr=r;
+    const next=document.querySelector(`[data-r="${nr}"][data-c="${nc}"]`)||document.querySelector(`[data-r="${nr+1}"][data-c="0"]`);
+    if(next)next.focus();
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    const next=document.querySelector(`[data-r="${r+1}"][data-c="${c}"]`);
+    if(next)next.focus();
+  }
+}
+function beAddRow(){
+  _beGrid.push(Array(_beGrid[0]?.length||BE_COLS).fill(''));
+  const wrap=document.getElementById('be-doc-area').querySelector('.be-grid-wrap');
+  if(wrap)wrap.innerHTML=_renderGrid();
+}
+function beAddCol(){
+  const newLen=((_beGrid[0]?.length||BE_COLS)+1);
+  _beGrid=_beGrid.map(r=>[...r,'']);
+  // Add label
+  if(newLen<=26)BE_COL_LABELS[newLen-1]=String.fromCharCode(64+newLen);
+  document.getElementById('be-doc-area').querySelector('.be-grid-wrap').innerHTML=_renderGrid();
+}
+
+// ── SAVE ──────────────────────────────────────────────────
+function saveBookFromEditor() {
+  if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
+  const titleEl = document.getElementById('be-title');
+  const name = (titleEl?.value||'').trim() || 'Untitled';
+  const now  = Date.now();
+
+  let book;
+  if(_beType==='docx') {
+    const editor = document.getElementById('be-word-editor');
+    const html = editor ? editor.innerHTML : '';
+    const text = editor ? editor.innerText : '';
+    book = {
+      type:'docx', name: name.endsWith('.docx')?name:name+'.docx',
+      htmlContent: html, textContent: text,
+      updatedAt: now, createdAt: _beBookId ? undefined : now,
+      createdBy: (USER||{}).username||''
+    };
+  } else {
+    // Sync grid from DOM inputs before saving
+    document.querySelectorAll('#be-doc-area [data-r]').forEach(inp=>{
+      const r=Number(inp.dataset.r), c=Number(inp.dataset.c);
+      if(_beGrid[r])_beGrid[r][c]=inp.value;
+    });
+    book = {
+      type:'xlsx', name: name.endsWith('.csv')?name:name+'.csv',
+      gridData: _beGrid.map(r=>[...r]),
+      updatedAt: now, createdAt: _beBookId ? undefined : now,
+      createdBy: (USER||{}).username||''
+    };
+  }
+
+  if(_beBookId) {
+    // Update existing
+    updateData(d=>({...d, books:(d.books||[]).map(b=>b.id===_beBookId?{...b,...book}:b)}));
+  } else {
+    // New doc
+    book.id = 'book_'+now+'_'+Math.floor(Math.random()*9999);
+    book.createdAt = now;
+    _beBookId = book.id;
+    updateData(d=>({...d, books:[...(d.books||[]),book]}));
+  }
+  showToast('✅ Saved — "'+book.name+'"');
+}
+
+// ── DOWNLOAD ──────────────────────────────────────────────
+function downloadBookFromEditor() {
+  // Save first to capture latest edits
+  saveBookFromEditor();
+  const book = (DATA.books||[]).find(b=>b.id===_beBookId);
+  if(!book){alert('Save the document first.');return;}
+  _triggerDownload(book);
+}
+function downloadBookById(id) {
+  const book = (DATA.books||[]).find(b=>b.id===id);
+  if(!book){alert('Document not found.');return;}
+  _triggerDownload(book);
+}
+function _triggerDownload(book) {
+  let content, mime, filename;
+  if(book.type==='docx') {
+    // Download as plain HTML file (opens in Word/browser)
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(book.name)}</title>
+<style>body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.8;margin:2.5cm;color:#111;}</style></head>
+<body>${book.htmlContent||''}</body></html>`;
+    content = html; mime = 'text/html';
+    filename = book.name.replace(/\.docx$/i,'')+'.html';
+  } else {
+    // Download as CSV
+    const grid = book.gridData||[[]];
+    content = grid.map(row=>row.map(cell=>{
+      const s=String(cell||'');
+      return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'\"\"')+'"':s;
+    }).join(',')).join('\n');
+    mime='text/csv'; filename=book.name.replace(/\.csv$/i,'')+'.csv';
+  }
+  const blob = new Blob([content],{type:mime});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+// ── CLOSE EDITOR ──────────────────────────────────────────
+function closeBookEditor() {
+  document.getElementById('book-editor-screen').style.display='none';
+  if(TAB==='books') render();
+}
+
+// ── DELETE ────────────────────────────────────────────────
+function deleteBook(id) {
+  if(!isAdmin()){alert('⛔ Admin access required.');return;}
+  if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
+  const book = (DATA.books||[]).find(b=>b.id===id);
+  if (!book) return;
+  if (!confirm(`Delete "${book.name||'this document'}"? This cannot be undone.`)) return;
+  updateData(d=>({...d, books:(d.books||[]).filter(b=>b.id!==id)}));
+  if(TAB==='books') render();
+}
+
+// ══ END BOOKS ═════════════════════════════════════════════
 </script>
 </body>
 </html>
