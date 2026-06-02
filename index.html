@@ -768,11 +768,8 @@ function checkLicense(callback) {
   function applyLocalFallback() {
     const msElapsed = now - trialStart;
     const trialOver = msElapsed > TRIAL_MS;
-    const hasKey = DATA.installId && /^MDM-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(DATA.installId);
     const daysLeft = Math.max(0, Math.ceil((TRIAL_MS - msElapsed) / (24*60*60*1000)));
-    if (hasKey) {
-      LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
-    } else if (trialOver) {
+    if (trialOver) {
       LICENSE = { status: 'trial_expired', effectiveStatus: 'trial_expired', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: 0 };
     } else {
       LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
@@ -1115,7 +1112,7 @@ function updPill(){
 
 // ── LANDING / SIGNUP FLOW ────────────────────────────────────────────────────
 let _signupData = {};
-let _signupStep = 1; // 1=company details, 2=license key, 3=create account
+let _signupStep = 1; // 1=company details, 2=create account
 
 function showLanding() {
   document.getElementById('landing-screen').style.display = 'flex';
@@ -1142,7 +1139,6 @@ function renderSignupStep() {
   const prog = `<div class="signup-progress">
     <div class="signup-prog-dot ${_signupStep>=1?(_signupStep===1?'active':'done'):''}"></div>
     <div class="signup-prog-dot ${_signupStep>=2?(_signupStep===2?'active':'done'):''}"></div>
-    <div class="signup-prog-dot ${_signupStep>=3?(_signupStep===3?'active':'done'):''}"></div>
   </div>`;
 
   if (_signupStep === 1) {
@@ -1161,28 +1157,6 @@ function renderSignupStep() {
       <button class="btn bg" style="margin-top:8px" onclick="signupStep1Next()">Next →</button>`;
 
   } else if (_signupStep === 2) {
-    inner.innerHTML = `
-      <button class="signup-back" onclick="signupGoBack()">← Back</button>
-      ${prog}
-      <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px">🔑 License Key</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">
-        Have a key? Enter it to activate full access. No key yet? Skip — you get <strong style="color:var(--purple)">14 days free</strong> automatically.
-      </div>
-      <div style="background:linear-gradient(90deg,#002b1f,#0d2a4a);border:1.5px solid var(--green);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.8">
-        <div style="font-weight:700;color:var(--green);margin-bottom:6px">💳 Get a key after your trial</div>
-        <a href="https://wa.me/260960271128?text=Hi%2C%20I%20want%20a%20My%20Depot%20Master%20license%20key" target="_blank" style="display:flex;align-items:center;gap:8px;background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:8px 11px;color:var(--green);text-decoration:none;font-weight:700;margin-bottom:6px;font-size:12px">💬 WhatsApp: +260 960 271 128</a>
-        <a href="tel:+260970962902" style="display:flex;align-items:center;gap:8px;background:#0d2a4a;border:1px solid var(--blue);border-radius:8px;padding:8px 11px;color:var(--blue);text-decoration:none;font-weight:700;font-size:12px">📞 Call: +260 970 962 902</a>
-      </div>
-      <div id="su-err2" class="err-box" style="display:none"></div>
-      <div class="fw">
-        <div class="fl">License Key <span style="color:var(--muted);font-weight:400;font-size:10px">(optional — skip to start trial)</span></div>
-        <input class="fi" id="su-lickey" placeholder="MDM-XXXX-XXXX-XXXX" style="font-family:monospace;letter-spacing:2px;font-size:16px;text-transform:uppercase" value="${esc(_signupData.lickey||'')}" oninput="formatLicKey(this)"/>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px">Format: MDM-XXXX-XXXX-XXXX</div>
-      </div>
-      <button class="btn bg" style="margin-top:4px" onclick="signupStep2Next()">✓ Activate with Key</button>
-      <button class="btn bo" style="margin-top:10px;border-color:var(--purple);color:var(--purple)" onclick="signupSkipKey()">⏳ Skip — Start 14-Day Free Trial</button>`;
-
-  } else if (_signupStep === 3) {
     inner.innerHTML = `
       <button class="signup-back" onclick="signupGoBack()">← Back</button>
       ${prog}
@@ -1223,41 +1197,6 @@ function signupStep1Next() {
   renderSignupStep();
 }
 
-function signupSkipKey() {
-  _signupData.lickey = '';
-  _signupStep = 3;
-  renderSignupStep();
-}
-
-function signupStep2Next() {
-  const raw = (document.getElementById('su-lickey')?.value||'').trim().toUpperCase().replace(/\s/g,'');
-  const err = document.getElementById('su-err2');
-  // If something is typed, it must be valid format
-  if (raw && !/^MDM-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(raw)) {
-    err.style.display='block';
-    err.textContent='❌ Invalid key format. Must be MDM-XXXX-XXXX-XXXX. Leave blank to skip and start your free trial.';
-    return;
-  }
-  err.style.display='none';
-  _signupData.lickey = raw; // empty string = trial
-  _signupStep = 3;
-  renderSignupStep();
-}
-
-// Auto-format license key input as user types
-function formatLicKey(el) {
-  let v = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
-  if (v.length > 8) v = v.slice(0,8) + '-' + v.slice(8);
-  if (v.length > 13) v = v.slice(0,13) + '-' + v.slice(13);
-  if (v.length > 16) v = v.slice(0,16); // MDM-4-4-4 = 3+1+4+1+4+1+4 = 16 chars? No: M+D+M+hyphen+4+hyphen+4+hyphen+4 = 15... let's cap at full key
-  // Ensure MDM prefix
-  if (!v.startsWith('MDM')) {
-    if (v.length <= 3) { el.value = ('MDM'.slice(0, v.length)); return; }
-  }
-  el.value = v;
-}
-
 async function signupFinish() {
   const username = (document.getElementById('su-user')?.value||'').trim().toLowerCase();
   const pass = document.getElementById('su-pass')?.value||'';
@@ -1276,39 +1215,32 @@ async function signupFinish() {
 
   try {
     const hashed = hashPassword(pass);
-    const lickey = _signupData.lickey; // empty = trial, MDM-xxx = active key
-    const hasKey = !!lickey;
-    const installId = hasKey ? lickey : genInstallId(); // trial gets random ID; keyed uses the key
+    const installId = genInstallId();
 
     const fresh = JSON.parse(JSON.stringify(DEFAULT));
     fresh.users = [{ username, password: hashed, role: 'admin' }];
     fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true };
     fresh.installId = installId;
-    fresh.trialStart = Date.now(); // always record when depot was created
+    fresh.trialStart = Date.now();
     fresh._v = 1;
 
     DATA = Object.assign(DATA, fresh);
     sv(DATA);
 
-    // Register depot in Firebase — key-holders go active, others start 14-day trial
+    // Register in Firebase as trial
     const now = Date.now();
-    const licStatus = hasKey ? 'active' : 'trial';
-    const licRecord = hasKey
-      ? { status: 'active', depotName: _signupData.name || 'Unnamed Depot', createdAt: now, trialStart: now, activatedOn: now, activeUntil: now + (60 * 24 * 60 * 60 * 1000) }
-      : { status: 'trial',  depotName: _signupData.name || 'Unnamed Depot', createdAt: now, trialStart: now };
     try {
-      await fbSet('licenses/' + installId, licRecord);
+      await fbSet('licenses/' + installId, {
+        status: 'trial',
+        depotName: _signupData.name || 'Unnamed Depot',
+        createdAt: now,
+        trialStart: now
+      });
     } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
 
-    // Set local LICENSE state
-    if (hasKey) {
-      LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: licRecord.activeUntil, trialDaysLeft: 60 };
-    } else {
-      LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
-    }
+    LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
     saveCachedLicense(LICENSE);
 
-    // Auto-login for both trial and key-activated depots
     USER = DATA.users[0];
     document.getElementById('signup-screen').style.display = 'none';
     document.getElementById('main-hdr').style.display = 'flex';
@@ -1321,8 +1253,7 @@ async function signupFinish() {
     applyLicenseMode();
     showTab('dashboard');
     scheduleFbSync();
-    const welcome = hasKey ? '✅ Depot activated! Welcome, ' + username : '⏳ 14-day trial started! Welcome, ' + username;
-    showToast(welcome);
+    showToast('⏳ 14-day trial started! Welcome, ' + username);
   } catch(e) {
     if (btn) { btn.disabled=false; btn.textContent='✅ Create Depot & Sign In'; }
     err.style.display='block';
