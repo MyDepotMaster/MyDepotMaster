@@ -732,6 +732,7 @@ function depotKey() {
 // Compute effective status from raw Firebase data
 function computeEffectiveStatus(raw, trialStart, activeUntil) {
   if (raw === 'suspended') return 'suspended';
+  if (raw === 'pending_approval') return 'pending_approval';
   if (raw === 'trial' || raw === 'active') {
     if (raw === 'trial') {
       const ts = trialStart || Date.now();
@@ -756,27 +757,70 @@ function activeDaysRemaining(activeUntil) {
   return Math.max(0, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
 }
 
-// License check — reads trialStart from DATA so the 14-day clock is accurate
-// even across logins, devices, and Firebase restores.
+// License check — fetches live from Firebase so admin approval is enforced in real-time.
+// Falls back to local logic only when offline.
 function checkLicense(callback) {
   const now = Date.now();
   const trialStart = DATA.trialStart || now;
-  const msElapsed = now - trialStart;
-  const trialOver = msElapsed > TRIAL_MS;
-  const hasKey = DATA.installId && /^MDM-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(DATA.installId);
-  const daysLeft = Math.max(0, Math.ceil((TRIAL_MS - msElapsed) / (24*60*60*1000)));
+  const key = depotKey();
 
-  if (hasKey) {
-    // Key-activated depot — always active
-    LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
-  } else if (trialOver) {
-    LICENSE = { status: 'trial_expired', effectiveStatus: 'trial_expired', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: 0 };
-  } else {
-    LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
+  // Helper: apply local fallback when Firebase is unreachable
+  function applyLocalFallback() {
+    const msElapsed = now - trialStart;
+    const trialOver = msElapsed > TRIAL_MS;
+    const hasKey = DATA.installId && /^MDM-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(DATA.installId);
+    const daysLeft = Math.max(0, Math.ceil((TRIAL_MS - msElapsed) / (24*60*60*1000)));
+    if (hasKey) {
+      LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
+    } else if (trialOver) {
+      LICENSE = { status: 'trial_expired', effectiveStatus: 'trial_expired', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: 0 };
+    } else {
+      LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
+    }
+    saveCachedLicense(LICENSE);
+    applyLicenseMode();
+    if (callback) callback();
   }
-  saveCachedLicense(LICENSE);
-  applyLicenseMode();
-  if (callback) callback();
+
+  // Fetch live license from Firebase
+  if (!key || !navigator.onLine || !isFbConfigured()) {
+    applyLocalFallback();
+    return;
+  }
+
+  const fbUrl = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/licenses/' + key + '.json';
+  fetch(fbUrl).then(async res => {
+    if (!res.ok) { applyLocalFallback(); return; }
+    const lic = await res.json();
+    if (!lic) {
+      // Not in Firebase yet — apply local fallback (trial by default)
+      applyLocalFallback();
+      return;
+    }
+
+    const raw         = lic.status || 'trial';
+    const licTrial    = lic.trialStart || trialStart;
+    const activeUntil = lic.activeUntil || 0;
+    const eff         = computeEffectiveStatus(raw, licTrial, activeUntil);
+    const daysLeft    = eff === 'trial'  ? trialDaysRemaining(licTrial)
+                      : eff === 'active' ? activeDaysRemaining(activeUntil)
+                      : 0;
+
+    LICENSE = {
+      status: raw,
+      effectiveStatus: eff,
+      suspendedMsg: lic.suspendedMsg || '',
+      checkedAt: now,
+      trialStart: licTrial,
+      activeUntil,
+      trialDaysLeft: daysLeft || 0
+    };
+    saveCachedLicense(LICENSE);
+    applyLicenseMode();
+    if (callback) callback();
+  }).catch(() => {
+    applyLocalFallback();
+  });
 }
 
 function applyLicenseMode() {
@@ -798,7 +842,14 @@ function applyLicenseMode() {
   if (trialBnr) trialBnr.style.display= 'none';
   if (blocked)  blocked.style.display = 'none';
 
-  if (eff === 'suspended') {
+  if (eff === 'pending_approval') {
+    if (bsIcon)  bsIcon.textContent  = '⏳';
+    if (bsTitle) bsTitle.textContent = 'Awaiting Approval';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your depot is <strong style="color:var(--amber)">pending admin approval</strong>.<br><br>You will be activated shortly. Please message or call the developer to follow up.';
+    if (bsKey)   bsKey.textContent   = depotKey();
+    if (blocked) blocked.style.display = 'flex';
+
+  } else if (eff === 'suspended') {
     document.body.classList.add('readonly-mode');
     if (banner) banner.style.display = 'flex';
     if (msg) msg.textContent = LICENSE.suspendedMsg || 'This account is suspended. Contact your administrator.';
@@ -1239,16 +1290,25 @@ async function signupFinish() {
     DATA = Object.assign(DATA, fresh);
     sv(DATA);
 
-    // Set LICENSE state: key-holders get active, trial users get trial
+    // Register depot in Firebase — key-holders go active, others start 14-day trial
     const now = Date.now();
+    const licStatus = hasKey ? 'active' : 'trial';
+    const licRecord = hasKey
+      ? { status: 'active', depotName: _signupData.name || 'Unnamed Depot', createdAt: now, trialStart: now, activatedOn: now, activeUntil: now + (60 * 24 * 60 * 60 * 1000) }
+      : { status: 'trial',  depotName: _signupData.name || 'Unnamed Depot', createdAt: now, trialStart: now };
+    try {
+      await fbSet('licenses/' + installId, licRecord);
+    } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
+
+    // Set local LICENSE state
     if (hasKey) {
-      LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
+      LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: licRecord.activeUntil, trialDaysLeft: 60 };
     } else {
       LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
     }
     saveCachedLicense(LICENSE);
 
-    // Auto-login
+    // Auto-login for both trial and key-activated depots
     USER = DATA.users[0];
     document.getElementById('signup-screen').style.display = 'none';
     document.getElementById('main-hdr').style.display = 'flex';
@@ -1258,7 +1318,7 @@ async function signupFinish() {
     updPill();
     applyDepotInfo();
     initFirebase();
-    applyLicenseMode(); // LICENSE already set correctly above — don't call checkLicense (it forces active)
+    applyLicenseMode();
     showTab('dashboard');
     scheduleFbSync();
     const welcome = hasKey ? '✅ Depot activated! Welcome, ' + username : '⏳ 14-day trial started! Welcome, ' + username;
