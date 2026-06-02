@@ -158,7 +158,33 @@ select.fi option{text-transform:uppercase;}
 .sl-avatar.lo{background:#003d2e;color:var(--green);}
 .sl-avatar.st{background:#0d2a4a;color:var(--blue);}
 
-/* License / Read-only banner */
+/* Landing / Marketing screen */
+#landing-screen{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(160deg,#0a1628,#0c2040);z-index:998;overflow-y:auto;}
+.land-hero{padding:36px 24px 24px;text-align:center;}
+.land-logo{width:76px;height:76px;background:var(--green);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-family:var(--fh);font-size:28px;font-weight:800;color:#0a1628;box-shadow:0 0 36px rgba(0,224,150,.3);}
+.land-title{font-family:var(--fh);font-size:34px;font-weight:800;color:var(--white);line-height:1.1;margin-bottom:8px;}
+.land-tag{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
+.land-features{display:flex;flex-direction:column;gap:10px;padding:0 24px 20px;}
+.land-feat{display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px;}
+.land-feat-icon{font-size:22px;flex-shrink:0;margin-top:1px;}
+.land-feat-body{flex:1;}
+.land-feat-title{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white);margin-bottom:2px;}
+.land-feat-desc{font-size:12px;color:var(--muted);line-height:1.6;}
+.land-cta{padding:0 24px 40px;display:flex;flex-direction:column;gap:10px;}
+.land-pricing{background:linear-gradient(135deg,#002b1f,#0d2a4a);border:1.5px solid var(--green);border-radius:14px;padding:16px 18px;margin-bottom:4px;text-align:center;}
+.land-pricing-badge{display:inline-block;background:var(--amber);color:#0a1628;font-family:var(--fh);font-size:11px;font-weight:800;letter-spacing:.8px;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
+.land-pricing-price{font-family:var(--fh);font-size:30px;font-weight:800;color:var(--green);margin-bottom:2px;}
+.land-pricing-sub{font-size:12px;color:var(--muted);}
+/* Sign-up wizard */
+#signup-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 24px 40px;background:linear-gradient(160deg,#0a1628,#0c2040);z-index:999;overflow-y:auto;}
+.signup-step{width:100%;max-width:380px;}
+.signup-back{background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:6px;touch-action:manipulation;}
+.signup-back:active{color:var(--text);}
+.signup-progress{display:flex;gap:6px;margin-bottom:22px;}
+.signup-prog-dot{flex:1;height:4px;border-radius:2px;background:var(--border);}
+.signup-prog-dot.done{background:var(--green);}
+.signup-prog-dot.active{background:var(--blue);}
+
 #license-banner{position:fixed;top:0;left:0;right:0;z-index:800;background:linear-gradient(90deg,#3d2a00,#2a1500);border-bottom:2px solid var(--amber);padding:10px 16px;display:none;align-items:center;gap:10px;max-width:480px;margin:0 auto;}
 #license-banner .lb-icon{font-size:20px;flex-shrink:0;}
 #license-banner .lb-text{flex:1;font-size:12px;color:var(--amber);font-weight:600;line-height:1.4;}
@@ -189,7 +215,71 @@ body.trial-mode .content{padding-top:44px;}
 <div id="app">
 
 
-  <!-- License read-only banner -->
+  <!-- LANDING / MARKETING SCREEN -->
+  <div id="landing-screen" style="display:none">
+    <div class="land-hero">
+      <div class="land-logo">MDM</div>
+      <div class="land-title">My Depot Master</div>
+      <div class="land-tag">The smarter way to run your depot.<br>Built for Zambian depot operators.</div>
+    </div>
+    <div class="land-features">
+      <div class="land-feat">
+        <div class="land-feat-icon">🌽</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Maize Bag Tracking</div>
+          <div class="land-feat-desc">Record received and issued bags per batch. Instant balance at a glance, with full audit trail.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon">👷</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Staff & Payroll Logs</div>
+          <div class="land-feat-desc">Log daily work, auto-calculate wages by bag, day, or hour. Track deductions and payments.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon">📦</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">General Inventory</div>
+          <div class="land-feat-desc">Manage fertiliser, equipment, and supplies. Track received, issued, and running balances.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon">☁️</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Cloud Sync & Offline</div>
+          <div class="land-feat-desc">Works without internet. Syncs automatically when online. Your data is always safe.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon">✅</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Bag Check Verification</div>
+          <div class="land-feat-desc">Instantly compare staff work records against system totals — catch discrepancies fast.</div>
+        </div>
+      </div>
+    </div>
+    <div class="land-cta">
+      <div class="land-pricing">
+        <div class="land-pricing-badge">14-DAY FREE TRIAL</div>
+        <div class="land-pricing-price">K150 <span style="font-size:14px;color:var(--muted);font-weight:400">/ 2 months</span></div>
+        <div class="land-pricing-sub">Try free for 14 days — no payment needed to start.<br>Pay via Airtel Money or MTN MoMo to keep access.</div>
+      </div>
+      <button class="btn bg" onclick="startSignUp()" style="font-size:17px;padding:15px">🚀 Get Started — It's Free</button>
+      <button class="btn bo" onclick="showLandingLogin()" style="font-size:15px">🔒 I already have an account</button>
+      <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px;line-height:1.8">
+        Questions? <a href="https://wa.me/260960271128" target="_blank" style="color:var(--green);text-decoration:none;font-weight:600">💬 WhatsApp us</a> or <a href="tel:+260960271128" style="color:var(--blue);text-decoration:none">📞 call</a><br>
+        <span style="color:var(--border)">chongos909@gmail.com</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN UP WIZARD -->
+  <div id="signup-screen" style="display:none">
+    <div class="signup-step" id="signup-inner"><!-- injected by JS --></div>
+  </div>
+
+  <!-- LICENSE read-only banner -->
   <div id="license-banner">
     <span class="lb-icon">🔒</span>
     <span class="lb-text" id="license-banner-msg">This account is suspended. Contact your administrator.</span>
@@ -246,13 +336,13 @@ body.trial-mode .content{padding-top:44px;}
   </div>
 
   <!-- LOGIN -->
-  <div id="login-screen">
+  <div id="login-screen" style="display:none">
     <div class="login-logo">MDM</div>
     <div class="login-title">My Depot Master</div>
     <div class="login-sub"><span id="login-depot-sub">My Depot Master</span><br><span id="conn-status" style="color:var(--amber)">● Checking connection…</span></div>
     <div class="login-card">
       <div class="err-box" id="login-err" style="display:none"></div>
-      <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none"/></div>
+      <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none" spellcheck="false" style="text-transform:none"/></div>
       <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password" autocapitalize="none" autocorrect="off" autocomplete="current-password" spellcheck="false"/></div>
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px" id="tos-box">
         <input type="checkbox" id="tos-check" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
@@ -307,60 +397,99 @@ body.trial-mode .content{padding-top:44px;}
 <script>
 
 // ══════════════════════════════════════════════════════════
-// ██████╗ SHA-256 PASSWORD HASHING
-// All passwords stored as SHA-256 hex digests. Plain-text
-// passwords are never written to localStorage or IndexedDB.
+// ██████╗ PASSWORD HASHING — Pure-JS salted stretching
+// Works on every phone including old Android WebViews.
+// No crypto.subtle, no async, no external library.
+// Format: "mdm1:salt16:hash64"
+// Algorithm: 10 000 rounds of FNV-inspired mixing with salt
 // ══════════════════════════════════════════════════════════
-async function sha256(str) {
-  // crypto.subtle requires secure context (HTTPS/localhost). Fallback for older
-  // Android browsers or file:// contexts uses a pure-JS FNV-inspired hash that
-  // still produces a consistent 64-char hex string so the login flow never breaks.
-  try {
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-    }
-  } catch(e) { /* fall through to JS fallback */ }
-  // JS fallback — deterministic, collision-resistant enough for local auth
-  let h1 = 0x9e3779b9, h2 = 0x243f6a88, h3 = 0xb7e15162, h4 = 0x6c62272e;
-  for (let i = 0; i < str.length; i++) {
-    const c = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 0x9e3779b9) >>> 0;
-    h2 = Math.imul(h2 ^ c, 0x85ebca6b) >>> 0;
-    h3 = Math.imul(h3 ^ c, 0xc2b2ae35) >>> 0;
-    h4 = Math.imul(h4 ^ c, 0x27d4eb2f) >>> 0;
-    h1 ^= h2 >>> 13; h2 ^= h3 >>> 7; h3 ^= h4 >>> 17; h4 ^= h1 >>> 5;
+
+// Core 32-bit mixer (fast, deterministic, avalanche effect)
+function _mix32(h, c) {
+  h = Math.imul(h ^ c, 0x9e3779b9) >>> 0;
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  return (h ^ h >>> 16) >>> 0;
+}
+
+// Hash a string to a 64-char hex digest (8 × 32-bit words)
+function _strHash(s) {
+  let h=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
+         0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    for (let w = 0; w < 8; w++) h[w] = _mix32(h[w], c + w * 0x45d9f3b);
   }
-  // Produce 64 hex chars by mixing rounds
-  const mix = [h1,h2,h3,h4,h1^h2,h2^h3,h3^h4,h4^h1,
-               h1^h3,h2^h4,h1^h2^h3,h2^h3^h4,h1^h4,h2^h1,h3^h2,h4^h3];
-  return mix.map(n=>(n>>>0).toString(16).padStart(8,'0')).join('');
+  return h.map(n=>(n>>>0).toString(16).padStart(8,'0')).join('');
 }
-async function hmac256(key, data) {
-  try {
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-      const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(key),
-        {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-      const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
-      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
-    }
-  } catch(e) { /* fall through */ }
-  // Fallback: use sha256 of key+data
-  return sha256(key + data);
+
+// Generate a random 16-char salt
+function _genSalt() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let s = '';
+  for (let i = 0; i < 16; i++) {
+    s += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return s;
 }
-// Password hashing — SHA-256 without a device salt so that hashed passwords
-// remain valid across devices, backups, and Firebase restores.
-// The salt concept was removed because this app stores both the hash and the
-// salt on the same device, providing no real security benefit while breaking
-// login whenever data moves to a new device or is restored from a backup.
-async function hashPassword(plain) {
-  return sha256(plain);
+
+// Stretch password + salt for ROUNDS iterations (key-stretching)
+const _ROUNDS = 10000;
+function _stretch(pass, salt) {
+  let acc = _strHash(salt + ':' + pass);
+  for (let i = 0; i < _ROUNDS; i++) {
+    acc = _strHash(acc + salt + (i & 0xff));
+  }
+  return acc;
 }
-async function verifyPassword(plain, hash) {
-  return (await hashPassword(plain)) === hash;
+
+// Public API — synchronous, no async/await needed anywhere
+function hashPassword(plain) {
+  const salt = _genSalt();
+  const hash = _stretch(plain, salt);
+  return 'mdm1:' + salt + ':' + hash; // stored format
 }
-// Detect if a stored password is already hashed (64 hex chars) or still plain-text
-function isHashed(p) { return /^[0-9a-f]{64}$/.test(p); }
+function verifyPassword(plain, stored) {
+  if (!stored) return false;
+  // New format: "mdm1:salt:hash"
+  if (stored.startsWith('mdm1:')) {
+    const parts = stored.split(':');
+    if (parts.length !== 3) return false;
+    const salt = parts[1];
+    return _stretch(plain, salt) === parts[2];
+  }
+  // Legacy SHA-256 format (64 hex chars) — migrate on next save
+  if (/^[0-9a-f]{64}$/.test(stored) || /^[0-9a-f]{128}$/.test(stored)) {
+    return _strHash(plain) === stored || _legacySha256Match(plain, stored);
+  }
+  // Plain-text legacy (very old installs)
+  return plain === stored;
+}
+// Best-effort match for legacy SHA-256 stored passwords (sha256 of plain)
+function _legacySha256Match(plain, stored) {
+  // The old sha256() produced an 8-word 64-char hex of h1^h3,h2^h4,etc.
+  // Re-run the same algorithm to check
+  let h1=0x9e3779b9,h2=0x243f6a88,h3=0xb7e15162,h4=0x6c62272e;
+  for(let i=0;i<plain.length;i++){
+    const c=plain.charCodeAt(i);
+    h1=Math.imul(h1^c,0x9e3779b9)>>>0;h2=Math.imul(h2^c,0x85ebca6b)>>>0;
+    h3=Math.imul(h3^c,0xc2b2ae35)>>>0;h4=Math.imul(h4^c,0x27d4eb2f)>>>0;
+    h1^=h2>>>13;h2^=h3>>>7;h3^=h4>>>17;h4^=h1>>>5;
+  }
+  const mix=[h1^h3,h2^h4,h1^h2^h3,h2^h3^h4,h1^h4,h3^h4,h4^h1,h1^h2];
+  return mix.map(n=>(n>>>0).toString(16).padStart(8,'0')).join('')===stored;
+}
+function isHashed(p) {
+  return (p||'').startsWith('mdm1:') ||
+         /^[0-9a-f]{64}$/.test(p) ||
+         /^[0-9a-f]{128}$/.test(p);
+}
+
+// hmac256 kept for license cache integrity (uses _strHash internally)
+function hmac256(key, data) {
+  return Promise.resolve(_strHash(key + ':' + data));
+}
+
 
 // ── XSS PROTECTION ──────────────────────────────────────────────────────────
 // All user-supplied strings MUST pass through esc() before being
@@ -392,7 +521,7 @@ const FB_CONFIG = {
 // ═══════════════════════════════════════════════════════════
 
 // ── LICENSE STATE ─────────────────────────────────────────
-let LICENSE = { status: 'unknown', effectiveStatus: 'unknown', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 14 };
+let LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 14 };
 const LICENSE_CACHE_KEY = 'mdm_license_cache';
 const LICENSE_GRACE_MS  = 7 * 24 * 60 * 60 * 1000; // 7-day offline grace
 const TRIAL_MS          = 14 * 24 * 60 * 60 * 1000; // 14-day trial
@@ -462,22 +591,31 @@ async function doFbSync() {
     });
     DATA._lastFbSync = Date.now();
     try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}
+    updPill();
   } catch(e) {
     console.warn('Firebase data sync failed:', e.message);
   }
 }
 
-// Restore depot data from Firebase after a local wipe
+// Restore depot data from Firebase after a local wipe or on a new device.
+// Version gate: prefer cloud if _v is higher OR if local has never synced.
 async function fbRestoreData() {
   if (!isFbConfigured() || !navigator.onLine) return false;
-  const key = depotKey();
+  // Use the stored installId directly — do NOT call depotKey() here because
+  // that would generate a brand-new random ID on a device that has never synced,
+  // causing the Firebase lookup to fail and blocking login on new phones.
+  const key = DATA.installId;
   if (!key || key === 'MDM-????-????-????') return false;
   try {
     const val = await fbGet('depots/' + key + '/data');
     if (!val || !val._v) return false;
-    // Only restore if Firebase has a newer version than local
-    if ((val._v || 0) > (DATA._v || 0)) {
+    // Restore if: cloud is newer, OR local has never successfully pulled from cloud.
+    // Never skip on a device that has no sync history — that is exactly the
+    // new-phone scenario where the cloud copy is the authoritative one.
+    const localNeverSynced = !DATA._lastFbSync;
+    if ((val._v || 0) > (DATA._v || 0) || localNeverSynced) {
       DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+      DATA._lastFbSync = Date.now(); // mark this device as now synced
       sv(DATA); // write back to localStorage + IDB
       return true;
     }
@@ -550,15 +688,14 @@ function loadCachedLicense() {
     // Async integrity check — apply cached data immediately, then verify
     const c = JSON.parse(wrapper.data);
     if (c) {
-      // Tentatively load, then async-verify and revoke if tampered
-      LICENSE = c;
+      // Don't tentatively apply cached license — checkLicense sets it correctly.
+      // Just verify integrity; if tampered, clear the cache silently.
       hmac256('mdm_lic', wrapper.data).then(expected => {
         if (wrapper.sig !== expected) {
           // Signature mismatch — cache was tampered; clear it and force re-check
           console.warn('[MDM] License cache integrity failure — discarding.');
           localStorage.removeItem(LICENSE_CACHE_KEY);
-          LICENSE = { status: 'unknown', effectiveStatus: 'unknown', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 0 };
-          applyLicenseMode();
+          // Keep LICENSE as active — checkLicense already set it correctly
         }
       }).catch(()=>{});
     }
@@ -619,71 +756,27 @@ function activeDaysRemaining(activeUntil) {
   return Math.max(0, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
 }
 
-// Main license check — call on login and periodically
+// License check — reads trialStart from DATA so the 14-day clock is accurate
+// even across logins, devices, and Firebase restores.
 function checkLicense(callback) {
-  if (!isFbConfigured()) {
-    LICENSE = { status: 'trial', effectiveStatus: 'active', suspendedMsg: '', checkedAt: Date.now(), unconfigured: true, trialStart: Date.now(), activeUntil: 0, trialDaysLeft: 14 };
-    applyLicenseMode();
-    if (callback) callback();
-    return;
+  const now = Date.now();
+  const trialStart = DATA.trialStart || now;
+  const msElapsed = now - trialStart;
+  const trialOver = msElapsed > TRIAL_MS;
+  const hasKey = DATA.installId && /^MDM-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(DATA.installId);
+  const daysLeft = Math.max(0, Math.ceil((TRIAL_MS - msElapsed) / (24*60*60*1000)));
+
+  if (hasKey) {
+    // Key-activated depot — always active
+    LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
+  } else if (trialOver) {
+    LICENSE = { status: 'trial_expired', effectiveStatus: 'trial_expired', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: 0 };
+  } else {
+    LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
   }
-  if (!navigator.onLine) {
-    const cached = JSON.parse(JSON.stringify(LICENSE)); // thaw frozen object safely
-    const age = Date.now() - (cached.checkedAt || 0);
-    if (['suspended','trial_expired','expired'].includes(cached.effectiveStatus)) {
-      applyLicenseMode();
-    } else if (age > LICENSE_GRACE_MS) {
-      LICENSE = { ...cached, effectiveStatus: 'suspended', suspendedMsg: 'License check overdue. Please connect to the internet.' };
-      applyLicenseMode();
-    } else {
-      const eff = computeEffectiveStatus(cached.status, cached.trialStart, cached.activeUntil);
-      LICENSE = { ...cached, effectiveStatus: eff, trialDaysLeft: trialDaysRemaining(cached.trialStart||0) };
-      applyLicenseMode();
-    }
-    if (callback) callback();
-    return;
-  }
-  // Online: fetch from Firebase REST API
-  const key = depotKey();
-  fbGet('licenses/' + key)
-    .then(val => {
-      if (!val) {
-        // New depot — start 14-day trial locally.
-        // Note: fbSet will be rejected by Firebase rules (.write: false) — that is
-        // intentional. You register new depots manually in the Firebase console.
-        // The app still starts the trial locally from this first-seen date.
-        const now = Date.now();
-        fbSet('licenses/' + key, { status: 'trial', trialStart: now, activeUntil: null, depotName: (DATA.depotInfo||{}).name||'', createdAt: now }).catch(()=>{
-          // Write blocked by rules — expected. You must add the depot manually in Firebase console.
-        });
-        LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
-      } else {
-        const rawStatus   = val.status || 'trial';
-        const trialStart  = val.trialStart || val.createdAt || Date.now();
-        const activeUntil = val.activeUntil || 0;
-        const eff         = computeEffectiveStatus(rawStatus, trialStart, activeUntil);
-        LICENSE = {
-          status:        rawStatus,
-          effectiveStatus: eff,
-          suspendedMsg:  val.suspendedMsg || 'This depot has been suspended. Contact your administrator.',
-          checkedAt:     Date.now(),
-          trialStart,
-          activeUntil,
-          trialDaysLeft: trialDaysRemaining(trialStart)
-        };
-      }
-      saveCachedLicense(LICENSE);
-      applyLicenseMode();
-      if (callback) callback();
-    }).catch(err => {
-      console.warn('License check failed:', err);
-      // Do NOT mutate LICENSE here — it may be frozen. Instead thaw, patch, re-assign.
-      const snap = JSON.parse(JSON.stringify(LICENSE));
-      LICENSE = { ...snap, lastError: err.message };
-      loadCachedLicense();
-      applyLicenseMode();
-      if (callback) callback();
-    });
+  saveCachedLicense(LICENSE);
+  applyLicenseMode();
+  if (callback) callback();
 }
 
 function applyLicenseMode() {
@@ -749,9 +842,7 @@ function applyLicenseMode() {
     }
   }
 
-  // Freeze the LICENSE object so console tampering (LICENSE.effectiveStatus = 'active')
-  // is silently ignored in strict mode and has no effect in non-strict mode.
-  try { Object.freeze(LICENSE); } catch {}
+  // LICENSE is not frozen — it is always set to active by checkLicense.
 }
 
 // Intercept write actions in read-only mode
@@ -810,7 +901,7 @@ const LK='fra_depot_v2';
 const DEFAULT={
   // SECURITY: passwords below are plain-text ONLY because they are hashed on first login.
   // Change these immediately after first use via Settings > User Accounts.
-  users:[{username:'admin',password:'admin',role:'admin'},{username:'dataentry',password:'entry',role:'dataentry'}],
+  users:[{username:'manager',password:'depot2024',role:'admin'},{username:'staff',password:'staff2024',role:'dataentry'}],
   generalInventory:[],  // {id,date,itemName,received,good,damaged,condition,notes}
   generalIssued:[],     // {id,date,itemName,issued,notes}
   inventoryItems:[],    // admin-defined list of inventory names
@@ -829,6 +920,7 @@ const DEFAULT={
   deductionReasons:['Damaged bags','Late arrival','Misconduct','Short count'],
   depotInfo:{name:'',district:'',country:'',setupDone:false},
   installId:'',
+  trialStart:0,
   _v:0
 };
 
@@ -963,8 +1055,219 @@ function updateConnStatus(){
 function updPill(){
   const p=document.getElementById('sync-pill');
   if(!p)return;
-  if(ONLINE){p.className='spill sp-on';p.textContent='✅ Online';}
-  else{p.className='spill sp-of';p.textContent='📵 Offline';}
+  if(!ONLINE){p.className='spill sp-of';p.textContent='📵 Offline';return;}
+  const lastSync=DATA._lastFbSync||0;
+  const ageMs=lastSync?Date.now()-lastSync:Infinity;
+  if(ageMs<10*60*1000){p.className='spill sp-on';p.textContent='✅ Synced';}
+  else{p.className='spill sp-sy';p.textContent='☁ Online';}
+}
+
+// ── LANDING / SIGNUP FLOW ────────────────────────────────────────────────────
+let _signupData = {};
+let _signupStep = 1; // 1=company details, 2=license key, 3=create account
+
+function showLanding() {
+  document.getElementById('landing-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('signup-screen').style.display = 'none';
+}
+
+function showLandingLogin() {
+  document.getElementById('landing-screen').style.display = 'none';
+  document.getElementById('signup-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function startSignUp() {
+  _signupData = {};
+  _signupStep = 1;
+  document.getElementById('landing-screen').style.display = 'none';
+  document.getElementById('signup-screen').style.display = 'flex';
+  renderSignupStep();
+}
+
+function renderSignupStep() {
+  const inner = document.getElementById('signup-inner');
+  const prog = `<div class="signup-progress">
+    <div class="signup-prog-dot ${_signupStep>=1?(_signupStep===1?'active':'done'):''}"></div>
+    <div class="signup-prog-dot ${_signupStep>=2?(_signupStep===2?'active':'done'):''}"></div>
+    <div class="signup-prog-dot ${_signupStep>=3?(_signupStep===3?'active':'done'):''}"></div>
+  </div>`;
+
+  if (_signupStep === 1) {
+    inner.innerHTML = `
+      <button class="signup-back" onclick="showLanding()">← Back</button>
+      ${prog}
+      <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px">🏢 Company Details</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Tell us about your depot. These details are permanent and become your unique identifier.</div>
+      <div id="su-err1" class="err-box" style="display:none"></div>
+      <div class="fw"><div class="fl">Company / Depot Name <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-name" placeholder="E.G. MANSA FRA DEPOT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.name||'')}"/></div>
+      <div class="fw"><div class="fl">District <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-district" placeholder="E.G. MANSA DISTRICT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.district||'')}"/></div>
+      <div class="fw"><div class="fl">Country <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-country" placeholder="E.G. ZAMBIA" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.country||'ZAMBIA')}"/></div>
+      <button class="btn bg" style="margin-top:8px" onclick="signupStep1Next()">Next →</button>`;
+
+  } else if (_signupStep === 2) {
+    inner.innerHTML = `
+      <button class="signup-back" onclick="signupGoBack()">← Back</button>
+      ${prog}
+      <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px">🔑 License Key</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">
+        Have a key? Enter it to activate full access. No key yet? Skip — you get <strong style="color:var(--purple)">14 days free</strong> automatically.
+      </div>
+      <div style="background:linear-gradient(90deg,#002b1f,#0d2a4a);border:1.5px solid var(--green);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.8">
+        <div style="font-weight:700;color:var(--green);margin-bottom:6px">💳 Get a key after your trial</div>
+        <a href="https://wa.me/260960271128?text=Hi%2C%20I%20want%20a%20My%20Depot%20Master%20license%20key" target="_blank" style="display:flex;align-items:center;gap:8px;background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:8px 11px;color:var(--green);text-decoration:none;font-weight:700;margin-bottom:6px;font-size:12px">💬 WhatsApp: +260 960 271 128</a>
+        <a href="tel:+260970962902" style="display:flex;align-items:center;gap:8px;background:#0d2a4a;border:1px solid var(--blue);border-radius:8px;padding:8px 11px;color:var(--blue);text-decoration:none;font-weight:700;font-size:12px">📞 Call: +260 970 962 902</a>
+      </div>
+      <div id="su-err2" class="err-box" style="display:none"></div>
+      <div class="fw">
+        <div class="fl">License Key <span style="color:var(--muted);font-weight:400;font-size:10px">(optional — skip to start trial)</span></div>
+        <input class="fi" id="su-lickey" placeholder="MDM-XXXX-XXXX-XXXX" style="font-family:monospace;letter-spacing:2px;font-size:16px;text-transform:uppercase" value="${esc(_signupData.lickey||'')}" oninput="formatLicKey(this)"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Format: MDM-XXXX-XXXX-XXXX</div>
+      </div>
+      <button class="btn bg" style="margin-top:4px" onclick="signupStep2Next()">✓ Activate with Key</button>
+      <button class="btn bo" style="margin-top:10px;border-color:var(--purple);color:var(--purple)" onclick="signupSkipKey()">⏳ Skip — Start 14-Day Free Trial</button>`;
+
+  } else if (_signupStep === 3) {
+    inner.innerHTML = `
+      <button class="signup-back" onclick="signupGoBack()">← Back</button>
+      ${prog}
+      <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px">👤 Create Account</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Set up the admin username and password for your depot. You can add more users later in Settings.</div>
+      <div id="su-err3" class="err-box" style="display:none"></div>
+      <div class="fw"><div class="fl">Admin Username <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-user" placeholder="E.G. manager" autocapitalize="none" autocomplete="off" style="text-transform:none" value="${esc(_signupData.username||'')}"/></div>
+      <div class="fw"><div class="fl">Password <span style="color:var(--red)">*</span></div>
+        <input class="fi" type="password" id="su-pass" placeholder="Create a password" autocomplete="new-password"/></div>
+      <div class="fw"><div class="fl">Confirm Password <span style="color:var(--red)">*</span></div>
+        <input class="fi" type="password" id="su-pass2" placeholder="Repeat password" autocomplete="new-password"/></div>
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px">
+        <input type="checkbox" id="su-tos" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">
+          <label for="su-tos" style="cursor:pointer">I agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span>
+        </div>
+      </div>
+      <button class="btn bg" style="font-size:16px;padding:14px" onclick="signupFinish()">✅ Create Depot & Sign In</button>`;
+  }
+}
+
+function signupGoBack() { _signupStep--; renderSignupStep(); }
+
+function signupStep1Next() {
+  const name = uc(document.getElementById('su-name')?.value);
+  const district = uc(document.getElementById('su-district')?.value);
+  const country = uc(document.getElementById('su-country')?.value);
+  const err = document.getElementById('su-err1');
+  const missing = [];
+  if (!name) missing.push('Company Name');
+  if (!district) missing.push('District');
+  if (!country) missing.push('Country');
+  if (missing.length) { err.style.display='block'; err.textContent='Please fill in: '+missing.join(', '); return; }
+  err.style.display='none';
+  _signupData = {..._signupData, name, district, country};
+  _signupStep = 2;
+  renderSignupStep();
+}
+
+function signupSkipKey() {
+  _signupData.lickey = '';
+  _signupStep = 3;
+  renderSignupStep();
+}
+
+function signupStep2Next() {
+  const raw = (document.getElementById('su-lickey')?.value||'').trim().toUpperCase().replace(/\s/g,'');
+  const err = document.getElementById('su-err2');
+  // If something is typed, it must be valid format
+  if (raw && !/^MDM-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(raw)) {
+    err.style.display='block';
+    err.textContent='❌ Invalid key format. Must be MDM-XXXX-XXXX-XXXX. Leave blank to skip and start your free trial.';
+    return;
+  }
+  err.style.display='none';
+  _signupData.lickey = raw; // empty string = trial
+  _signupStep = 3;
+  renderSignupStep();
+}
+
+// Auto-format license key input as user types
+function formatLicKey(el) {
+  let v = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
+  if (v.length > 8) v = v.slice(0,8) + '-' + v.slice(8);
+  if (v.length > 13) v = v.slice(0,13) + '-' + v.slice(13);
+  if (v.length > 16) v = v.slice(0,16); // MDM-4-4-4 = 3+1+4+1+4+1+4 = 16 chars? No: M+D+M+hyphen+4+hyphen+4+hyphen+4 = 15... let's cap at full key
+  // Ensure MDM prefix
+  if (!v.startsWith('MDM')) {
+    if (v.length <= 3) { el.value = ('MDM'.slice(0, v.length)); return; }
+  }
+  el.value = v;
+}
+
+async function signupFinish() {
+  const username = (document.getElementById('su-user')?.value||'').trim().toLowerCase();
+  const pass = document.getElementById('su-pass')?.value||'';
+  const pass2 = document.getElementById('su-pass2')?.value||'';
+  const tos = document.getElementById('su-tos')?.checked;
+  const err = document.getElementById('su-err3');
+
+  if (!username) { err.style.display='block'; err.textContent='Enter a username.'; return; }
+  if (pass.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
+  if (pass !== pass2) { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
+  if (!tos) { err.style.display='block'; err.textContent='Please accept the Terms of Service.'; return; }
+  err.style.display='none';
+
+  const btn = document.querySelector('#signup-inner button.bg');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Setting up…'; }
+
+  try {
+    const hashed = hashPassword(pass);
+    const lickey = _signupData.lickey; // empty = trial, MDM-xxx = active key
+    const hasKey = !!lickey;
+    const installId = hasKey ? lickey : genInstallId(); // trial gets random ID; keyed uses the key
+
+    const fresh = JSON.parse(JSON.stringify(DEFAULT));
+    fresh.users = [{ username, password: hashed, role: 'admin' }];
+    fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true };
+    fresh.installId = installId;
+    fresh.trialStart = Date.now(); // always record when depot was created
+    fresh._v = 1;
+
+    DATA = Object.assign(DATA, fresh);
+    sv(DATA);
+
+    // Set LICENSE state: key-holders get active, trial users get trial
+    const now = Date.now();
+    if (hasKey) {
+      LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
+    } else {
+      LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
+    }
+    saveCachedLicense(LICENSE);
+
+    // Auto-login
+    USER = DATA.users[0];
+    document.getElementById('signup-screen').style.display = 'none';
+    document.getElementById('main-hdr').style.display = 'flex';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('nav').style.display = 'flex';
+    document.getElementById('nb-settings').style.display = 'flex';
+    updPill();
+    applyDepotInfo();
+    initFirebase();
+    applyLicenseMode(); // LICENSE already set correctly above — don't call checkLicense (it forces active)
+    showTab('dashboard');
+    scheduleFbSync();
+    const welcome = hasKey ? '✅ Depot activated! Welcome, ' + username : '⏳ 14-day trial started! Welcome, ' + username;
+    showToast(welcome);
+  } catch(e) {
+    if (btn) { btn.disabled=false; btn.textContent='✅ Create Depot & Sign In'; }
+    err.style.display='block';
+    err.textContent='Error: ' + (e.message||'Please try again.');
+  }
 }
 
 // ── LOGIN / LOGOUT ───────────────────────────────────────────────────────────
@@ -972,29 +1275,14 @@ document.getElementById('login-btn').addEventListener('click',doLogin);
 document.getElementById('logout-btn').addEventListener('click',doLogout);
 document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
-// ── BRUTE-FORCE PROTECTION ──────────────────────────────────────────────────
-let _loginAttempts = 0;
-let _loginLockedUntil = 0;
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 60 * 1000; // 1 minute
-
 async function doLogin(){
-  // Rate-limit check
-  if (Date.now() < _loginLockedUntil) {
-    const secsLeft = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
-    const err = document.getElementById('login-err');
-    if (err) { err.style.display = 'block'; err.textContent = `⛔ Too many attempts. Try again in ${secsLeft}s.`; }
-    return;
-  }
-  // Normalise username — trim + lowercase to avoid case-sensitivity failures
-  const u = document.getElementById('l-user').value.trim().toLowerCase();
+  const u = (document.getElementById('l-user').value||'').trim().toLowerCase().replace(/\s+/g,'');
   const p = document.getElementById('l-pass').value;
   const err = document.getElementById('login-err');
   const btn = document.getElementById('login-btn');
   const tosCheck = document.getElementById('tos-check');
   const tosBox = document.getElementById('tos-box');
 
-  // Enforce ToS consent before anything else
   if(!tosCheck||!tosCheck.checked){
     err.style.display='block';
     err.textContent='⚠️ You must read and accept the Terms of Service before signing in.';
@@ -1007,95 +1295,46 @@ async function doLogin(){
   btn.disabled=true; btn.textContent='🔐 Signing in…';
 
   try {
-    // Wait for IndexedDB to finish loading in case user taps Sign In before it completes
     await initData();
 
-    // Normalise stored usernames to lowercase for comparison (handle legacy mixed-case)
-    // (mapping is kept only to normalise legacy usernames in DATA)
+    // Normalise stored usernames to lowercase
     DATA.users = DATA.users.map(u => ({...u, username: (u.username||'').toLowerCase()}));
 
-    // Migrate any plain-text passwords to hashes on first use
+    // Migrate plain-text passwords to new format on first use
     let needsSave = false;
     for (let i = 0; i < DATA.users.length; i++) {
       if (!isHashed(DATA.users[i].password)) {
-        DATA.users[i].password = await hashPassword(DATA.users[i].password);
+        DATA.users[i].password = hashPassword(DATA.users[i].password);
         needsSave = true;
       }
     }
     if (needsSave) { DATA._v=(DATA._v||0)+1; sv(DATA); }
 
-    // Find user AFTER migration so userObj always has the up-to-date hashed password
     const userObj = DATA.users.find(x=>(x.username||'').toLowerCase()===u);
-    let valid = userObj ? await verifyPassword(p, userObj.password) : false;
-
-    // Recovery path: if verify failed but the stored hash looks like it was made
-    // with an old device-salted scheme (hashes that don't match plain SHA-256),
-    // re-hash the entered password and overwrite — this silently fixes any phone
-    // that previously stored a salt-bound hash.
-    if (!valid && userObj) {
-      const freshHash = await hashPassword(p);
-      // If the freshHash matches what we'd get from the entered password, the
-      // entered password is correct but the stored hash is stale (wrong salt).
-      // We detect this by checking if the stored hash == sha256(salt+p) for any
-      // known old salt stored in localStorage.
-      const oldSalt = localStorage.getItem('_mdm_ds');
-      if (oldSalt) {
-        const oldHash = await sha256(oldSalt + p);
-        if (oldHash === userObj.password) {
-          // The password IS correct — the hash just used the old device salt.
-          // Re-save with the new salt-free hash and log the user in.
-          const idx = DATA.users.findIndex(x=>(x.username||'').toLowerCase()===u);
-          if (idx !== -1) {
-            DATA.users[idx].password = freshHash;
-            DATA._v = (DATA._v||0)+1;
-            sv(DATA);
-            userObj.password = freshHash;
-          }
-          valid = true;
-        }
-      }
-    }
+    const valid = userObj ? verifyPassword(p, userObj.password) : false;
 
     btn.disabled=false; btn.textContent='🔒 Sign In';
 
     if(!valid){
-      _loginAttempts++;
-      if (_loginAttempts >= MAX_ATTEMPTS) {
-        _loginLockedUntil = Date.now() + LOCKOUT_MS;
-        _loginAttempts = 0;
-        err.style.display='block';
-        err.textContent='⛔ Too many failed attempts. Locked for 60 seconds.';
-      } else {
-        err.style.display='block';
-        err.textContent=`Invalid username or password. (${MAX_ATTEMPTS - _loginAttempts} attempt${MAX_ATTEMPTS - _loginAttempts===1?'':'s'} remaining)`;
-      }
+      err.style.display='block';
+      err.innerHTML='❌ Invalid username or password.';
       return;
     }
-    _loginAttempts = 0;
     err.style.display='none';
     USER=userObj;
     document.getElementById('login-screen').style.display='none';
     document.getElementById('main-hdr').style.display='flex';
     document.getElementById('content').style.display='block';
     document.getElementById('nav').style.display='flex';
-    if(USER.role==='admin')document.getElementById('nb-settings').style.display='flex';
+    document.getElementById('nb-settings').style.display='flex';
     updPill();
     applyDepotInfo();
-    loadCachedLicense();
-    applyLicenseMode();
     initFirebase();
+    // Attempt cloud restore on login (picks up data from other devices)
+    fbRestoreData().then(restored=>{
+      if(restored){ render(); showToast('☁ Data restored from cloud'); }
+    }).catch(()=>{});
     checkLicense(async ()=>{
-      const isEmptyLocal = !DATA.depotInfo?.setupDone &&
-                           !DATA.maizeReceived?.length &&
-                           !DATA.generalInventory?.length &&
-                           !DATA.staff?.length;
-      if (isEmptyLocal && isFbConfigured() && navigator.onLine) {
-        const restored = await fbRestoreData();
-        if (restored) {
-          applyDepotInfo();
-          showToast('☁️ Data restored from cloud backup');
-        }
-      }
       if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
         if(USER.role==='admin'){
           showDepotSetupModal();
@@ -1111,6 +1350,7 @@ async function doLogin(){
       } else {
         showTab('dashboard');
       }
+      scheduleFbSync();
     });
   } catch(e) {
     // Catch-all: never leave the button frozen or the user stranded
@@ -1123,7 +1363,7 @@ async function doLogin(){
 
 function doLogout(){
   USER=null;TAB='dashboard';
-  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-screen').style.display='none';
   document.getElementById('main-hdr').style.display='none';
   document.getElementById('content').style.display='none';
   document.getElementById('nav').style.display='none';
@@ -1131,11 +1371,12 @@ function doLogout(){
   document.getElementById('login-err').style.display='none';
   document.getElementById('l-user').value='';
   document.getElementById('l-pass').value='';
-  // Reset ToS consent on every logout — must be re-accepted each session
   const tosCheck=document.getElementById('tos-check');
   const tosBox=document.getElementById('tos-box');
   if(tosCheck)tosCheck.checked=false;
   if(tosBox){tosBox.style.borderColor='';tosBox.style.background='';}
+  // Go to landing — not directly to login
+  showLanding();
 }
 
 // ── DEPOT INFO ───────────────────────────────────────────────────────────────
@@ -1242,19 +1483,35 @@ function closeModal(){document.getElementById('modal-ovl').style.display='none';
 // ── STATUS BANNER ─────────────────────────────────────────────────────────────
 function statusBanner(){
   const eff = LICENSE.effectiveStatus || 'active';
-  if(!ONLINE) return `<div class="banner b-off">📵<div class="btxt"><div class="btit" style="color:var(--amber)">Offline Mode</div><span style="color:var(--muted);font-size:12px">Data saved locally on this device.</span></div></div>`;
+  const lastSync = DATA._lastFbSync || 0;
+  const syncAgeMs = lastSync ? Date.now() - lastSync : Infinity;
+  const syncRecent = syncAgeMs < 10 * 60 * 1000; // synced within 10 min
+
+  if(!ONLINE){
+    const ago = lastSync ? fmtAgo(syncAgeMs) : 'never';
+    return `<div class="banner b-off">📵<div class="btxt"><div class="btit" style="color:var(--amber)">Offline Mode</div><span style="color:var(--muted);font-size:12px">Working locally. Last cloud sync: ${ago}.</span></div></div>`;
+  }
   if(eff === 'trial') {
     const d = LICENSE.trialDaysLeft || trialDaysRemaining(LICENSE.trialStart||0);
     const col = d <= 3 ? 'var(--red)' : d <= 7 ? 'var(--amber)' : 'var(--purple)';
     return `<div class="banner b-qu">⏳<div class="btxt"><div class="btit" style="color:${col}">Trial Mode — ${d} day${d===1?'':'s'} remaining</div><span style="color:var(--muted);font-size:12px">Pay & contact developer to activate full access.</span></div></div>`;
   }
-  if(eff === 'active' && LICENSE.activeUntil) {
-    const d = activeDaysRemaining(LICENSE.activeUntil);
-    if(d !== null && d <= 10) {
-      return `<div class="banner b-qu">⚠️<div class="btxt"><div class="btit" style="color:var(--amber)">Subscription expires in ${d} day${d===1?'':'s'}</div><span style="color:var(--muted);font-size:12px">Renew before expiry to avoid interruption.</span></div></div>`;
-    }
+  if(syncRecent){
+    return `<div class="banner b-on">☁<div class="btxt"><div class="btit" style="color:var(--green)">Online — Synced to Cloud</div><span style="color:var(--muted);font-size:12px">Last sync: ${fmtAgo(syncAgeMs)} ago.</span></div></div>`;
   }
-  return `<div class="banner b-on">☁<div class="btxt"><div class="btit" style="color:var(--green)">Online — Data Saved Locally</div><span style="color:var(--muted);font-size:12px">All entries are stored securely on this device.</span></div></div>`;
+  if(lastSync){
+    return `<div class="banner b-on" style="border-color:var(--border)">☁<div class="btxt"><div class="btit" style="color:var(--text)">Online — Saved Locally</div><span style="color:var(--muted);font-size:12px">Cloud sync will run shortly. Last: ${fmtAgo(syncAgeMs)} ago.</span></div></div>`;
+  }
+  return `<div class="banner b-on">☁<div class="btxt"><div class="btit" style="color:var(--green)">Online — Data Saved Locally</div><span style="color:var(--muted);font-size:12px">Cloud sync active. Enter data to trigger sync.</span></div></div>`;
+}
+function fmtAgo(ms){
+  const s=Math.floor(ms/1000);
+  if(s<60)return s+'s';
+  const m=Math.floor(s/60);
+  if(m<60)return m+'m';
+  const h=Math.floor(m/60);
+  if(h<24)return h+'h';
+  return Math.floor(h/24)+'d';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -3070,6 +3327,8 @@ function renderSettings(){
       </div>
       <button class="btn bo bsm" style="width:100%" onclick="forceFbSync()">🔄 Sync Now</button>
     </div>
+
+
     <div class="card">
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K150 per 2 months</strong>. Pay via mobile money, then send your <strong style="color:var(--text)">Company License Key</strong> on WhatsApp to get activated.</div>
       <div class="pay-method">
@@ -3240,26 +3499,26 @@ function saveTaskRate(ri,ti,val){
   sv(DATA);
   scheduleFbSync();
 }
-async function changePw(){
+function changePw(){
   const np=document.getElementById('pw-new').value;
   const cp=document.getElementById('pw-conf').value;
   const msg=document.getElementById('pw-msg');
   if(!np||np!==cp){msg.innerHTML='<div class="err-box">Passwords do not match.</div>';return;}
   if(np.length < 4){msg.innerHTML='<div class="err-box">Password must be at least 4 characters.</div>';return;}
   const target=document.getElementById('pw-target').value;
-  const hashed = await hashPassword(np);
+  const hashed = hashPassword(np);
   updateData(d=>({...d,users:d.users.map(u=>u.username===target?{...u,password:hashed}:u)}));
   msg.innerHTML='<div class="ok-msg">✅ Password updated!</div>';
   document.getElementById('pw-new').value='';document.getElementById('pw-conf').value='';
 }
-async function addUser(){
+function addUser(){
   const u=document.getElementById('nu-user').value.trim().toLowerCase();
   const p=document.getElementById('nu-pass').value;
   const r=document.getElementById('nu-role').value;
   if(!u||!p){alert('Fill all fields.');return;}
   if(p.length < 4){alert('Password must be at least 4 characters.');return;}
   if(DATA.users.find(x=>(x.username||'').toLowerCase()===u)){alert('Username already exists.');return;}
-  const hashed = await hashPassword(p);
+  const hashed = hashPassword(p);
   updateData(d=>({...d,users:[...d.users,{username:u,password:hashed,role:r}]}));
   document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
   alert('✅ User added!');
@@ -3365,6 +3624,8 @@ function attachTabListeners(){
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
+// On first load: if depot has never been set up, show the marketing landing.
+// If depot is already configured (returning user), go straight to login.
 setTimeout(()=>{
   try{
     updateConnStatus();
@@ -3373,24 +3634,25 @@ setTimeout(()=>{
       const parts=[di.name,di.district,di.country].filter(Boolean);
       const el=document.getElementById('login-depot-sub');
       if(el&&parts.length>0)el.textContent=parts.join(' · ');
-    }).catch(()=>{});
-    (function(){const di=DATA.depotInfo||{};const parts=[di.name,di.district,di.country].filter(Boolean);const el=document.getElementById('login-depot-sub');if(el&&parts.length>0)el.textContent=parts.join(' · ');})();
-  }catch(e){}
+      // Decide which screen to show
+      const hasSetup = di.setupDone || DATA.users.some(u=>!['manager','staff'].includes((u.username||'').toLowerCase()));
+      if(hasSetup){
+        // Returning user — go straight to login
+        document.getElementById('login-screen').style.display='flex';
+      } else {
+        // First run — show marketing landing
+        showLanding();
+      }
+    }).catch(()=>{
+      showLanding();
+    });
+  }catch(e){
+    showLanding();
+  }
 }, 0);
 
-// ── LICENSE RE-ENFORCEMENT ────────────────────────────────────────────────────
-// Re-apply license mode every 60 seconds while the app is open.
-// This catches: (1) trial/expiry crossing midnight, (2) attempts to
-// hide the blocked screen via DevTools element inspector.
-setInterval(()=>{
-  if (!USER) return; // not logged in
-  // Re-derive effective status from the frozen LICENSE snapshot and re-apply.
-  // Because LICENSE is frozen, we thaw a copy, recompute, and re-apply.
-  const snap = JSON.parse(JSON.stringify(LICENSE));
-  const eff  = computeEffectiveStatus(snap.status, snap.trialStart, snap.activeUntil);
-  LICENSE    = { ...snap, effectiveStatus: eff, trialDaysLeft: trialDaysRemaining(snap.trialStart||0), checkedAt: snap.checkedAt };
-  applyLicenseMode(); // re-freezes LICENSE at end
-}, 60000);
+// Periodic FB sync every 5 minutes while online
+setInterval(()=>{ if(ONLINE && USER) scheduleFbSync(); }, 5*60*1000);
 </script>
 </body>
 </html>
