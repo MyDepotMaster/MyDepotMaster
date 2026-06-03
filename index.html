@@ -1564,11 +1564,64 @@ function saveRecoveryEmail() {
 }
 
 function startSignUp() {
-  _signupData = {};
-  _signupStep = 1;
-  document.getElementById('landing-screen').style.display = 'none';
-  document.getElementById('signup-screen').style.display = 'flex';
-  renderSignupStep();
+  const overlay = document.createElement('div');
+  overlay.id = 'signup-warning-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+  overlay.innerHTML = `
+    <div style="background:#0d1f35;border:1.5px solid #1e3a5f;border-radius:18px;max-width:420px;width:100%;padding:28px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.6)">
+      <div style="text-align:center;margin-bottom:6px;font-size:36px">⚠️</div>
+      <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white);text-align:center;margin-bottom:6px">Before You Continue</div>
+      <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.6">Please read this carefully before creating your account.</div>
+      <div style="background:#0a1628;border:1.5px solid #f59e0b55;border-radius:12px;padding:16px 14px;margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:.06em;margin-bottom:10px">🔒 PERMANENT COMPANY DETAILS</div>
+        <div style="font-size:13px;color:#c8d8e8;line-height:1.8">The following details <strong style="color:var(--white)">cannot be changed</strong> after your account is created. They form your unique company identity and license identifier:</div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;background:#0d1f35;border-radius:8px;padding:9px 12px">
+            <span style="font-size:16px">🏢</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--white);letter-spacing:.04em">COMPANY NAME</div>
+              <div style="font-size:11px;color:var(--muted)">Your depot or business name (e.g. GRAND PALM)</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#0d1f35;border-radius:8px;padding:9px 12px">
+            <span style="font-size:16px">📍</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--white);letter-spacing:.04em">DISTRICT</div>
+              <div style="font-size:11px;color:var(--muted)">Your district location (e.g. MANSA DISTRICT)</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#0d1f35;border-radius:8px;padding:9px 12px">
+            <span style="font-size:16px">🌍</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--white);letter-spacing:.04em">COUNTRY</div>
+              <div style="font-size:11px;color:var(--muted)">Your country (e.g. ZAMBIA)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;line-height:1.7;margin-bottom:20px">
+        Make sure all details are correct and spelled exactly as you want them — they <strong style="color:#f59e0b">cannot be edited later</strong>.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button id="swо-confirm-btn" style="background:var(--green);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.02em">
+          ✅ I Understand — Continue
+        </button>
+        <button id="swо-back-btn" style="background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer">
+          ← Go Back
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('swо-back-btn').onclick = function() { overlay.remove(); };
+  document.getElementById('swо-confirm-btn').onclick = function() {
+    overlay.remove();
+    _signupData = {};
+    _signupStep = 1;
+    document.getElementById('landing-screen').style.display = 'none';
+    document.getElementById('signup-screen').style.display = 'flex';
+    renderSignupStep();
+  };
 }
 
 function renderSignupStep() {
