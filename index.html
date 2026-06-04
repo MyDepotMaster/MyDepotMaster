@@ -30,9 +30,10 @@
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden;}
 #app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;}
 
-/* Landscape: shrink nav */
+/* Landscape: full-width + shrink nav */
 @media (orientation:landscape) and (max-height:500px){
-  #app{height:100dvh;}
+  #app{height:100dvh;max-width:100%;width:100%;}
+  #login-screen,.modal,#license-banner,#trial-banner,#book-editor-screen{max-width:100%;}
   .nav{padding-bottom:0;min-height:44px;}
   .nb{padding:4px 1px;gap:1px;}
   .content{padding:10px 14px;}
@@ -159,22 +160,41 @@ select.fi option{text-transform:uppercase;}
 .sl-avatar.st{background:#0d2a4a;color:var(--blue);}
 
 /* Landing / Marketing screen */
-#landing-screen{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(160deg,#0a1628,#0c2040);z-index:998;overflow-y:auto;}
-.land-hero{padding:36px 24px 24px;text-align:center;}
-.land-logo{width:76px;height:76px;background:var(--green);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-family:var(--fh);font-size:28px;font-weight:800;color:#0a1628;box-shadow:0 0 36px rgba(0,224,150,.3);}
-.land-title{font-family:var(--fh);font-size:34px;font-weight:800;color:var(--white);line-height:1.1;margin-bottom:8px;}
-.land-tag{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
-.land-features{display:flex;flex-direction:column;gap:10px;padding:0 24px 20px;}
-.land-feat{display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px;}
-.land-feat-icon{font-size:22px;flex-shrink:0;margin-top:1px;}
+@keyframes landGrad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 32px rgba(0,224,150,.25)}50%{box-shadow:0 0 56px rgba(0,224,150,.55)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+#landing-screen{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(-45deg,#050d1a,#0a1628,#061e30,#0c2a18);background-size:400% 400%;animation:landGrad 12s ease infinite;z-index:998;overflow-y:auto;}
+.land-hero{padding:48px 24px 28px;text-align:center;position:relative;}
+.land-hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:320px;height:320px;background:radial-gradient(ellipse,rgba(0,224,150,.12) 0%,transparent 70%);pointer-events:none;}
+.land-logo{width:88px;height:88px;background:linear-gradient(135deg,#00e096,#00b87a);border-radius:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-family:var(--fh);font-size:32px;font-weight:900;color:#050d1a;animation:pulse-glow 3s ease-in-out infinite,float 5s ease-in-out infinite;letter-spacing:-1px;}
+.land-title{font-family:var(--fh);font-size:36px;font-weight:900;color:var(--white);line-height:1.05;margin-bottom:6px;letter-spacing:-0.5px;}
+.land-title span{background:linear-gradient(90deg,#00e096,#5eead4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.land-tag{font-size:14px;color:#8ba8c4;line-height:1.8;margin-bottom:20px;}
+.land-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,224,150,.1);border:1px solid rgba(0,224,150,.3);border-radius:20px;padding:5px 14px;font-family:var(--fh);font-size:11px;font-weight:800;color:var(--green);letter-spacing:.6px;margin-bottom:4px;}
+.land-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 20px 24px;}
+.land-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 8px;text-align:center;backdrop-filter:blur(4px);}
+.land-stat-num{font-family:var(--fh);font-size:22px;font-weight:900;color:var(--green);line-height:1;}
+.land-stat-lbl{font-size:10px;color:#6a88a8;margin-top:4px;line-height:1.3;text-transform:uppercase;letter-spacing:.5px;}
+.land-section-title{font-family:var(--fh);font-size:12px;font-weight:800;color:#4a7090;letter-spacing:1.2px;text-transform:uppercase;padding:0 20px;margin-bottom:10px;}
+.land-features{display:flex;flex-direction:column;gap:8px;padding:0 20px 20px;}
+.land-feat{display:flex;align-items:flex-start;gap:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 16px;transition:border-color .2s;backdrop-filter:blur(4px);}
+.land-feat:active{border-color:rgba(0,224,150,.4);}
+.land-feat-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .land-feat-body{flex:1;}
-.land-feat-title{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white);margin-bottom:2px;}
-.land-feat-desc{font-size:12px;color:var(--muted);line-height:1.6;}
-.land-cta{padding:0 24px 40px;display:flex;flex-direction:column;gap:10px;}
-.land-pricing{background:linear-gradient(135deg,#002b1f,#0d2a4a);border:1.5px solid var(--green);border-radius:14px;padding:16px 18px;margin-bottom:4px;text-align:center;}
-.land-pricing-badge{display:inline-block;background:var(--amber);color:#0a1628;font-family:var(--fh);font-size:11px;font-weight:800;letter-spacing:.8px;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
-.land-pricing-price{font-family:var(--fh);font-size:30px;font-weight:800;color:var(--green);margin-bottom:2px;}
-.land-pricing-sub{font-size:12px;color:var(--muted);}
+.land-feat-title{font-family:var(--fh);font-size:14px;font-weight:700;color:var(--white);margin-bottom:3px;}
+.land-feat-desc{font-size:12px;color:#6a88a8;line-height:1.6;}
+.land-cta{padding:0 20px 48px;display:flex;flex-direction:column;gap:10px;}
+.land-pricing{background:linear-gradient(135deg,rgba(0,43,31,.9),rgba(13,42,74,.9));border:1.5px solid rgba(0,224,150,.5);border-radius:18px;padding:20px;margin-bottom:4px;text-align:center;position:relative;overflow:hidden;}
+.land-pricing::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(0,224,150,.15),transparent 70%);pointer-events:none;}
+.land-pricing-badge{display:inline-block;background:linear-gradient(90deg,var(--amber),#f59e0b);color:#0a1628;font-family:var(--fh);font-size:10px;font-weight:900;letter-spacing:1px;padding:4px 12px;border-radius:20px;margin-bottom:10px;}
+.land-pricing-price{font-family:var(--fh);font-size:38px;font-weight:900;color:var(--green);margin-bottom:2px;line-height:1;}
+.land-pricing-sub{font-size:12px;color:#6a88a8;line-height:1.7;}
+.land-btn-primary{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#00e096,#00b87a);color:#050d1a;border:none;border-radius:16px;padding:17px;font-family:var(--fh);font-size:17px;font-weight:900;cursor:pointer;touch-action:manipulation;box-shadow:0 4px 24px rgba(0,224,150,.35);letter-spacing:.2px;width:100%;}
+.land-btn-secondary{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.05);color:var(--white);border:1.5px solid rgba(255,255,255,.12);border-radius:16px;padding:15px;font-family:var(--fh);font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;width:100%;}
+.land-divider{display:flex;align-items:center;gap:12px;margin:2px 0;}
+.land-divider::before,.land-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07);}
+.land-divider span{font-size:11px;color:#4a6070;}
 /* Recovery screen */
 #recovery-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:28px 24px 40px;padding-top:max(28px,env(safe-area-inset-top,28px));background:linear-gradient(160deg,#0a1628,#0c2040);z-index:999;overflow-y:auto;}
 .rec-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;width:100%;max-width:360px;}
@@ -225,6 +245,19 @@ body.trial-mode .content{padding-top:44px;}
 .fs-btn:disabled{opacity:.3;cursor:not-allowed;}
 .fs-divider{width:1px;background:var(--border);height:28px;flex-shrink:0;}
 .fs-label{flex:1;text-align:center;font-family:var(--fh);font-size:16px;font-weight:700;color:var(--green);}
+/* Biometric login button */
+.bio-btn{width:100%;background:transparent;border:1.5px solid var(--border);border-radius:11px;padding:12px 20px;font-family:var(--fh);font-size:15px;font-weight:700;color:var(--text);cursor:pointer;display:none;align-items:center;justify-content:center;gap:9px;margin-top:8px;touch-action:manipulation;transition:.15s;-webkit-tap-highlight-color:transparent;}
+.bio-btn:active{border-color:var(--green);color:var(--green);background:rgba(0,224,150,.06);}
+.bio-btn:disabled{opacity:.5;cursor:not-allowed;}
+.bio-divider{display:none;align-items:center;gap:10px;margin-top:8px;font-size:11px;color:var(--muted);}
+.bio-divider::before,.bio-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+/* Compact zoom pill — header & landing */
+.fs-mini{display:flex;align-items:center;background:rgba(10,22,40,.7);border:1.5px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0;}
+.fs-mini-btn{width:28px;height:26px;border:none;background:transparent;color:var(--muted);font-family:var(--fh);font-size:13px;font-weight:800;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;transition:.12s;-webkit-tap-highlight-color:transparent;}
+.fs-mini-btn:active{background:var(--surface2);color:var(--green);}
+.fs-mini-btn:disabled{opacity:.25;cursor:not-allowed;}
+.fs-mini-sep{width:1px;background:var(--border);height:18px;flex-shrink:0;}
+.fs-mini-lbl{font-family:var(--fh);font-size:10px;font-weight:700;color:var(--green);padding:0 5px;min-width:32px;text-align:center;}
 
 /* ── BOOKS TAB ─────────────────────────────────────────────── */
 .book-card{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px;cursor:pointer;transition:.15s;touch-action:manipulation;}
@@ -284,76 +317,84 @@ body.trial-mode .content{padding-top:44px;}
   <!-- LANDING / MARKETING SCREEN -->
   <div id="landing-screen" style="display:none">
 
+    <!-- Zoom control -->
+    <div style="display:flex;justify-content:flex-end;padding:12px 16px 0;position:relative;z-index:2">
+      <div class="fs-mini">
+        <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
+        <div class="fs-mini-sep"></div>
+        <div class="fs-mini-lbl fs-lbl-all">100%</div>
+        <div class="fs-mini-sep"></div>
+        <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
+      </div>
+    </div>
+
     <!-- Hero -->
     <div class="land-hero">
       <div class="land-logo">MDM</div>
-      <div class="land-title">My Depot Master</div>
-      <div class="land-tag">The smarter way to run your depot.<br>Built for Zambian depot operators.</div>
-      <div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,#002b1f,#0d2a4a);border:1.5px solid var(--green);border-radius:20px;padding:5px 14px;font-family:var(--fh);font-size:12px;font-weight:800;color:var(--green);letter-spacing:.5px;margin-top:4px">
-        ✨ v2.0 — Now with Books &amp; Spreadsheets
+      <div class="land-title">My <span>Depot</span> Master</div>
+      <div class="land-tag">The smarter way to run your company.<br>Built for modern business operators.</div>
+      <div class="land-badge">✨ v2.0 — Now with Books &amp; Spreadsheets</div>
+    </div>
+
+    <!-- Live Stats Strip -->
+    <div class="land-stats">
+      <div class="land-stat">
+        <div class="land-stat-num">100%</div>
+        <div class="land-stat-lbl">Offline<br>Ready</div>
+      </div>
+      <div class="land-stat">
+        <div class="land-stat-num">Free</div>
+        <div class="land-stat-lbl">14-Day<br>Trial</div>
+      </div>
+      <div class="land-stat">
+        <div class="land-stat-num">K150</div>
+        <div class="land-stat-lbl">Per 2<br>Months</div>
       </div>
     </div>
 
-    <!-- What's New -->
-    <div style="padding:0 20px 4px">
-      <div style="background:linear-gradient(135deg,#002b1f,#081428);border:1.5px solid var(--green);border-radius:14px;padding:14px 16px">
-        <div style="font-family:var(--fh);font-size:16px;font-weight:800;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px">🆕 What's New in v2.0</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="display:flex;align-items:flex-start;gap:9px">
-            <div style="width:26px;height:26px;border-radius:8px;background:#003d2e;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📊</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6"><strong style="color:var(--white)">Excel-style Spreadsheets</strong> — SUM, AVERAGE, MIN, MAX, COUNT formulas with cell references (=SUM(A1:A10))</div>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:9px">
-            <div style="width:26px;height:26px;border-radius:8px;background:#0d2a4a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📄</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6"><strong style="color:var(--white)">Word Documents with Tables</strong> — Rich text editor: bold, headings, bullet lists, and insertable tables</div>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:9px">
-            <div style="width:26px;height:26px;border-radius:8px;background:#3d2a00;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">⚡</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6"><strong style="color:var(--white)">Redesigned Dashboard</strong> — Quick-action buttons, today's snapshot, progress bars, welcome header</div>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:9px">
-            <div style="width:26px;height:26px;border-radius:8px;background:#1a0d30;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">🔧</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6"><strong style="color:var(--white)">Reliability Fixes</strong> — Login screen collapse bug fixed. Pages load correctly on all Android devices</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Core Features -->
+    <!-- Features -->
+    <div class="land-section-title">Everything You Need</div>
     <div class="land-features">
       <div class="land-feat">
-        <div class="land-feat-icon">🌽</div>
+        <div class="land-feat-icon" style="background:rgba(0,224,150,.12);">🌽</div>
         <div class="land-feat-body">
-          <div class="land-feat-title">Maize Bag Tracking</div>
-          <div class="land-feat-desc">Record received and issued bags per batch. Instant balance with visual progress bar and full audit trail.</div>
+          <div class="land-feat-title">Commodity Tracking</div>
+          <div class="land-feat-desc">Track maize, wheat, or any commodity — received, issued, and balanced per batch with full variance reports.</div>
         </div>
       </div>
       <div class="land-feat">
-        <div class="land-feat-icon">👷</div>
+        <div class="land-feat-icon" style="background:rgba(96,165,250,.12);">👷</div>
         <div class="land-feat-body">
-          <div class="land-feat-title">Staff &amp; Payroll Logs</div>
-          <div class="land-feat-desc">Log daily work, auto-calculate wages by bag, day, or hour. Track deductions and payments.</div>
+          <div class="land-feat-title">Staff &amp; Payroll</div>
+          <div class="land-feat-desc">Log daily work, auto-calculate wages by bag, hour, or day. Track deductions and payments per worker.</div>
         </div>
       </div>
       <div class="land-feat">
-        <div class="land-feat-icon">📦</div>
+        <div class="land-feat-icon" style="background:rgba(245,166,35,.12);">📦</div>
         <div class="land-feat-body">
           <div class="land-feat-title">General Inventory</div>
-          <div class="land-feat-desc">Manage fertiliser, equipment, and supplies. Track received, issued, and running balances.</div>
+          <div class="land-feat-desc">Manage fertiliser, equipment, and supplies. Running balances with stock count and variance tracking.</div>
         </div>
       </div>
-      <div class="land-feat" style="border-color:var(--green);background:linear-gradient(135deg,#002b1f,var(--surface))">
-        <div class="land-feat-icon">📚</div>
+      <div class="land-feat" style="border-color:rgba(0,224,150,.3);background:rgba(0,224,150,.05);">
+        <div class="land-feat-icon" style="background:rgba(0,224,150,.15);">📚</div>
         <div class="land-feat-body">
-          <div class="land-feat-title">Books &amp; Documents <span style="background:var(--amber);color:#0a1628;font-size:9px;font-weight:800;padding:1px 6px;border-radius:10px;vertical-align:middle;margin-left:3px;letter-spacing:.4px">NEW</span></div>
-          <div class="land-feat-desc">Spreadsheets with formulas and Word documents with tables. Create, edit, and download — all inside the app.</div>
+          <div class="land-feat-title">Books &amp; Documents <span style="background:linear-gradient(90deg,var(--amber),#f59e0b);color:#0a1628;font-size:9px;font-weight:900;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:4px;letter-spacing:.5px">NEW</span></div>
+          <div class="land-feat-desc">Excel-style spreadsheets with formulas and Word documents with tables — create and download inside the app.</div>
         </div>
       </div>
       <div class="land-feat">
-        <div class="land-feat-icon">☁️</div>
+        <div class="land-feat-icon" style="background:rgba(167,139,250,.12);">☁️</div>
         <div class="land-feat-body">
           <div class="land-feat-title">Cloud Sync &amp; Offline</div>
-          <div class="land-feat-desc">Works without internet. Auto-syncs to Firebase when online. Your data is always safe.</div>
+          <div class="land-feat-desc">Works without internet. Auto-syncs to the cloud when online. Your data is always safe and recoverable.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon" style="background:rgba(251,113,133,.12);">🔐</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Multi-User &amp; Roles</div>
+          <div class="land-feat-desc">Admin and staff logins. Read-only mode for staff. Full audit trail with 24-hour edit window.</div>
         </div>
       </div>
     </div>
@@ -361,15 +402,31 @@ body.trial-mode .content{padding-top:44px;}
     <!-- Pricing & CTA -->
     <div class="land-cta">
       <div class="land-pricing">
-        <div class="land-pricing-badge">14-DAY FREE TRIAL</div>
-        <div class="land-pricing-price">K150 <span style="font-size:14px;color:var(--muted);font-weight:400">/ 2 months</span></div>
-        <div class="land-pricing-sub">Try free for 14 days — no payment needed to start.<br>Pay via Airtel Money or MTN MoMo to keep access.</div>
+        <div class="land-pricing-badge">⚡ 14-DAY FREE TRIAL</div>
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin-bottom:4px">
+          <div class="land-pricing-price">K150</div>
+          <div style="font-size:15px;color:#6a88a8;font-weight:500">/ 2 months</div>
+        </div>
+        <div class="land-pricing-sub">No payment needed to start your free trial.<br>Pay via <strong style="color:var(--white)">Airtel Money</strong> or <strong style="color:var(--white)">MTN MoMo</strong> to continue.</div>
       </div>
-      <button class="btn bg" onclick="startSignUp()" style="font-size:17px;padding:15px">🚀 Get Started — It's Free</button>
-      <button class="btn bo" onclick="showLandingLogin()" style="font-size:15px">🔒 I already have an account</button>
-      <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px;line-height:2">
-        Questions? <a href="https://wa.me/260960271128" target="_blank" style="color:var(--green);text-decoration:none;font-weight:600">💬 WhatsApp us</a>&nbsp;&nbsp;or&nbsp;&nbsp;<a href="tel:+260960271128" style="color:var(--blue);text-decoration:none">📞 call us</a><br>
-        <a href="mailto:mydepotmaster@gmail.com" style="color:var(--muted);text-decoration:none;font-weight:600">mydepotmaster@gmail.com</a>
+
+      <button class="land-btn-primary" onclick="startSignUp()">
+        🚀 Get Started — It's Free
+      </button>
+
+      <div class="land-divider"><span>already have an account?</span></div>
+
+      <button class="land-btn-secondary" onclick="showLandingLogin()">
+        🔒 Sign In
+      </button>
+
+      <div style="text-align:center;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px">
+        <div style="font-size:12px;color:#4a6070;margin-bottom:10px">Need help? We're here for you.</div>
+        <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+          <a href="https://wa.me/260960271128" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,224,150,.1);border:1px solid rgba(0,224,150,.25);border-radius:10px;padding:8px 14px;color:var(--green);text-decoration:none;font-size:12px;font-weight:700">💬 WhatsApp</a>
+          <a href="tel:+260960271128" style="display:inline-flex;align-items:center;gap:5px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.2);border-radius:10px;padding:8px 14px;color:var(--blue);text-decoration:none;font-size:12px;font-weight:700">📞 Call Us</a>
+          <a href="mailto:mydepotmaster@gmail.com" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 14px;color:#6a88a8;text-decoration:none;font-size:12px;font-weight:600">✉️ Email</a>
+        </div>
       </div>
     </div>
   </div>
@@ -451,6 +508,11 @@ body.trial-mode .content{padding-top:44px;}
         </div>
       </div>
       <button class="btn bg" id="login-btn">🔒 Sign In</button>
+      <div class="bio-divider" id="bio-divider">or</div>
+      <button class="bio-btn" id="bio-login-btn" onclick="startBioLogin()">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 11c0-1.1.9-2 2-2s2 .9 2 2v2"/><path d="M10 10.3A6 6 0 0118 16"/><path d="M8 13a8 8 0 008 8"/><path d="M12 3C7 3 3 7 3 12"/><path d="M12 3c5 0 9 4 9 9"/><path d="M8 20.7A14 14 0 013.2 9"/></svg>
+        Use Fingerprint
+      </button>
       <button onclick="showRecovery()" style="width:100%;background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:10px 0 2px;touch-action:manipulation">Forgot password? Recover account →</button>
     </div>
   </div>
@@ -478,6 +540,13 @@ body.trial-mode .content{padding-top:44px;}
       <div class="hsub" id="hdr-sub">Loading…</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
+      <div class="fs-mini">
+        <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
+        <div class="fs-mini-sep"></div>
+        <div class="fs-mini-lbl fs-lbl-all">100%</div>
+        <div class="fs-mini-sep"></div>
+        <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
+      </div>
       <button class="spill sp-on" id="sync-pill" style="cursor:pointer">✅ Synced</button>
       <button class="btn bo bsm" id="logout-btn" style="width:auto;padding:6px 12px">⏏ Out</button>
     </div>
@@ -493,7 +562,7 @@ body.trial-mode .content{padding-top:44px;}
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>General</span>
     </button>
     <button class="nb" id="nb-maize" data-tab="maize">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg><span>Maize</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg><span>Commodities</span>
     </button>
     <button class="nb" id="nb-staff" data-tab="staff">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Staff</span>
@@ -982,7 +1051,7 @@ function applyLicenseMode() {
   if (eff === 'pending_approval') {
     if (bsIcon)  bsIcon.textContent  = '⏳';
     if (bsTitle) bsTitle.textContent = 'Awaiting Approval';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your depot is <strong style="color:var(--amber)">pending admin approval</strong>.<br><br>You will be activated shortly. Please message or call the developer to follow up.';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your company is <strong style="color:var(--amber)">pending admin approval</strong>.<br><br>You will be activated shortly. Please message or call the developer to follow up.';
     if (bsKey)   bsKey.textContent   = depotKey();
     if (blocked) blocked.style.display = 'flex';
 
@@ -994,7 +1063,7 @@ function applyLicenseMode() {
   } else if (eff === 'trial_expired') {
     if (bsIcon)  bsIcon.textContent  = '⏳';
     if (bsTitle) bsTitle.textContent = 'Trial Period Ended';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>14-day free trial</strong> has ended. Make a payment and contact the developer to activate your depot.';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>14-day free trial</strong> has ended. Make a payment and contact the developer to activate your company.';
     if (bsKey)   bsKey.textContent   = depotKey();
     if (blocked) blocked.style.display = 'flex';
 
@@ -1093,7 +1162,11 @@ const DEFAULT={
   generalInventory:[],  // {id,date,itemName,received,good,damaged,condition,notes}
   generalIssued:[],     // {id,date,itemName,issued,notes}
   inventoryItems:[],    // admin-defined list of inventory names
-  maizeReceived:[],     // {id,batchName,date,received,good,damaged}
+  commodities:[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}],
+  commodityReceived:{},
+  commodityIssued:{},
+  commodityStockCounts:{},
+  maizeReceived:[],     // {id,batchName,date,received,good,damaged} (legacy)
   maizeIssued:[],       // {id,batchName,date,transporter,issued}
   maizeStockCounts:[],   // {id,batchName,date,physicalCount,notes}
   generalStockCounts:[], // {id,itemName,date,time,physicalCount,notes}
@@ -1183,7 +1256,8 @@ let TAB='dashboard';
 let ONLINE=navigator.onLine;
 let PERIOD={dashboard:'monthly',general:'monthly',maize:'monthly',staff:'monthly'};
 let STAB='logs'; // staff subtab
-let MTAB='received'; // maize subtab
+let MTAB='received'; // commodity subtab
+let CCOM='maize'; // currently selected commodity id
 let GTAB='inventory'; // general subtab
 
 function uid(){return Date.now()+Math.random();}
@@ -1334,7 +1408,7 @@ function _recAutoLoad() {
     s2.innerHTML = `
       <div class="rec-option rec-opt-amber">
         <div class="rec-opt-label" style="color:var(--amber)">⚠️ No Admin Account Found</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.7">No admin account exists in this depot. Please contact your system administrator.</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">No admin account exists in this company. Please contact your system administrator.</div>
       </div>
       <button class="btn bo" style="margin-top:8px" onclick="hideRecovery()">← Back to Sign In</button>`;
     return;
@@ -1345,7 +1419,7 @@ function _recAutoLoad() {
       <div class="rec-option rec-opt-amber" style="margin-bottom:14px">
         <div class="rec-opt-label" style="color:var(--amber)">⚠️ No Recovery Method Set Up</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.7">
-          No Recovery PIN or email has been configured for this depot.<br><br>
+          No Recovery PIN or email has been configured for this company.<br><br>
           To enable self-service recovery in future, log in and go to:<br>
           <strong style="color:var(--text)">Settings → Recovery PIN</strong><br>
           or update your profile to add a recovery email.
@@ -1580,7 +1654,7 @@ function startSignUp() {
             <span style="font-size:16px">🏢</span>
             <div>
               <div style="font-size:12px;font-weight:700;color:var(--white);letter-spacing:.04em">COMPANY NAME</div>
-              <div style="font-size:11px;color:var(--muted)">Your depot or business name (e.g. GRAND PALM)</div>
+              <div style="font-size:11px;color:var(--muted)">Your company or business name (e.g. LUSAKA COMPANY)</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#0d1f35;border-radius:8px;padding:9px 12px">
@@ -1636,10 +1710,10 @@ function renderSignupStep() {
       <button class="signup-back" onclick="showLanding()">← Back</button>
       ${prog}
       <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px">🏢 Company Details</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Tell us about your depot. These details are permanent and become your unique identifier.</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Tell us about your company. These details are permanent and become your unique identifier.</div>
       <div id="su-err1" class="err-box" style="display:none"></div>
-      <div class="fw"><div class="fl">Company / Depot Name <span style="color:var(--red)">*</span></div>
-        <input class="fi" id="su-name" placeholder="E.G. MANSA DEPOT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.name||'')}"/></div>
+      <div class="fw"><div class="fl">Company Name <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-name" placeholder="E.G. MANSA COMPANY" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.name||'')}"/></div>
       <div class="fw"><div class="fl">District <span style="color:var(--red)">*</span></div>
         <input class="fi" id="su-district" placeholder="E.G. MANSA DISTRICT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.district||'')}"/></div>
       <div class="fw"><div class="fl">Country <span style="color:var(--red)">*</span></div>
@@ -1651,7 +1725,7 @@ function renderSignupStep() {
       <button class="signup-back" onclick="signupGoBack()">← Back</button>
       ${prog}
       <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px">👤 Create Account</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Set up the admin username and password for your depot. You can add more users later in Settings.</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Set up the admin username and password for your company. You can add more users later in Settings.</div>
       <div id="su-err3" class="err-box" style="display:none"></div>
       <div class="fw"><div class="fl">Admin Username <span style="color:var(--red)">*</span></div>
         <input class="fi" id="su-user" placeholder="E.G. manager" autocapitalize="none" autocomplete="off" style="text-transform:none" value="${esc(_signupData.username||'')}"/></div>
@@ -1670,7 +1744,7 @@ function renderSignupStep() {
           <label for="su-tos" style="cursor:pointer">I agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span>
         </div>
       </div>
-      <button class="btn bg" style="font-size:16px;padding:14px" onclick="signupFinish()">✅ Create Depot & Sign In</button>`;
+      <button class="btn bg" style="font-size:16px;padding:14px" onclick="signupFinish()">✅ Create Company & Sign In</button>`;
   }
 }
 
@@ -1750,7 +1824,7 @@ async function signupFinish() {
     scheduleFbSync();
     showToast('⏳ 14-day trial started! Welcome, ' + username);
   } catch(e) {
-    if (btn) { btn.disabled=false; btn.textContent='✅ Create Depot & Sign In'; }
+    if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
     err.style.display='block';
     err.textContent='Error: ' + (e.message||'Please try again.');
   }
@@ -1858,6 +1932,7 @@ async function doLogin(){
     _bfOk();
     err.style.display='none';
     USER=userObj;
+    localStorage.setItem(_TOS_PFX+userObj.username,'y'); // remember TOS acceptance for biometric logins
     showMainUI();
     updPill();
     applyDepotInfo();
@@ -2057,8 +2132,11 @@ function fmtAgo(ms){
 // DASHBOARD
 // ══════════════════════════════════════════════════════════
 function renderDash(){
-  const maizeRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
-  const maizeIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  // Dashboard uses all commodities aggregated
+  const _allCRec=(DATA.commodityReceived||{});
+  const _allCIss=(DATA.commodityIssued||{});
+  const maizeRec=(_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).reduce((a,b)=>a+Number(b.received||0),0);
+  const maizeIss=(_allCIss['maize']||[]).concat(DATA.maizeIssued||[]).reduce((a,b)=>a+Number(b.issued||0),0);
   const maizeBal=maizeRec-maizeIss;
   const maizePct=maizeRec>0?Math.min(100,Math.round((maizeIss/maizeRec)*100)):0;
   const maizeBarColor=maizePct>=90?'var(--red)':maizePct>=60?'var(--amber)':'var(--blue)';
@@ -2069,8 +2147,8 @@ function renderDash(){
   const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   const todayStr=today();
 
-  const todayMaizeIn=DATA.maizeReceived.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
-  const todayMaizeOut=DATA.maizeIssued.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
+  const todayMaizeIn=(_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
+  const todayMaizeOut=(_allCIss['maize']||[]).concat(DATA.maizeIssued||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
   const todayGenIn=DATA.generalInventory.filter(x=>x.date===todayStr).length;
   const todayStaffLogs=DATA.staffLogs.filter(x=>x.date===todayStr).length;
 
@@ -2088,7 +2166,7 @@ function renderDash(){
         warnings.push({icon:'📦',title:taskName.toUpperCase()+' MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags logged (${taskName}): <strong>${taskBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${Math.abs(diff).toLocaleString()}</strong>`});
     });
   })();
-  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
+  const batches=[...new Set((_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).map(x=>x.batchName))];
   batches.forEach(bn=>{
     const avail=batchAvail(bn);
     const latest=batchPhysical(bn);
@@ -2162,8 +2240,8 @@ function renderDash(){
   const allActivity=[
     ...DATA.generalInventory.map(x=>({date:x.date,time:x.time||'',desc:`${esc(x.itemName)}`,qty:`+${Number(x.received||0).toLocaleString()} units`,type:'rec'})),
     ...DATA.generalIssued.map(x=>({date:x.date,time:x.time||'',desc:`${esc(x.itemName)}`,qty:`-${Number(x.issued||0).toLocaleString()} units`,type:'iss'})),
-    ...DATA.maizeReceived.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE — ${esc(x.batchName)}`,qty:`+${Number(x.received||0).toLocaleString()} bags`,type:'rec'})),
-    ...DATA.maizeIssued.map(x=>({date:x.date,time:x.time||'',desc:`MAIZE — ${esc(x.batchName)}`,qty:`-${Number(x.issued||0).toLocaleString()} bags`,type:'iss'})),
+    ...(_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).map(x=>({date:x.date,time:x.time||'',desc:`MAIZE — ${esc(x.batchName)}`,qty:`+${Number(x.received||0).toLocaleString()} bags`,type:'rec'})),
+    ...(_allCIss['maize']||[]).concat(DATA.maizeIssued||[]).map(x=>({date:x.date,time:x.time||'',desc:`MAIZE — ${esc(x.batchName)}`,qty:`-${Number(x.issued||0).toLocaleString()} bags`,type:'iss'})),
   ].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,8);
 
   return `
@@ -2174,7 +2252,7 @@ function renderDash(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div style="font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase">${dateStr}</div>
-          <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white);line-height:1.2;margin:3px 0">${esc(di.name||'My Depot')}</div>
+          <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white);line-height:1.2;margin:3px 0">${esc(di.name||'My Company')}</div>
           ${di.district?`<div style="font-size:11px;color:var(--muted)">${esc(di.district)}${di.country?' · '+esc(di.country):''}</div>`:''}
         </div>
         <div style="text-align:right">
@@ -2190,7 +2268,7 @@ function renderDash(){
     <!-- Quick Actions -->
     <div class="sh" style="margin-top:0">Quick Actions</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" style="background:linear-gradient(135deg,#002b1f,#001a0e);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">🌽</span>Maize In</button>
+      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" style="background:linear-gradient(135deg,#002b1f,#001a0e);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">🌽</span>Commodity In</button>
       <button onclick="showTab('general');setTimeout(()=>openGenRecForm(),80)" style="background:linear-gradient(135deg,#0d2a00,#082000);border:1.5px solid var(--amber);border-radius:12px;padding:12px 6px;color:var(--amber);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">📦</span>Receive</button>
       <button onclick="showTab('staff');setTimeout(()=>openLogForm(),80)" style="background:linear-gradient(135deg,#0d1a40,#060f28);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Log Work</button>
     </div>
@@ -2199,7 +2277,7 @@ function renderDash(){
     <div class="sh">Today — ${todayStr}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:12px;padding:12px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Maize In Today</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Commodity In Today</div>
         <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--green)">${todayMaizeIn.toLocaleString()}</div>
         <div style="font-size:10px;color:var(--muted)">bags received</div>
       </div>
@@ -2346,9 +2424,10 @@ function renderGeneral(){
       <button class="stab${GTAB==='issued'?' act':''}" id="gtab-issued">Issued</button>
       <button class="stab${GTAB==='stockcount'?' act':''}" id="gtab-stockcount">Stock Count</button>
       <button class="stab${GTAB==='summary'?' act':''}" id="gtab-summary">Summary</button>
+      <button class="stab${GTAB==='itemnames'?' act':''}" id="gtab-itemnames">📋 Item Names</button>
     </div>
     <div class="prow">${pBtns('general')}</div>
-    ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():GTAB==='stockcount'?renderGenStockCount():renderGenSummary()}`;
+    ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():GTAB==='stockcount'?renderGenStockCount():GTAB==='itemnames'?renderGenItemNamesTab():renderGenSummary()}`;
 }
 
 function renderGenReceived(){
@@ -2713,6 +2792,29 @@ function renderGenStockCount(){
     </table></div></div>`;
 }
 
+// ── ITEM NAMES SUBTAB (General tab) ──────────────────────────────────────────
+function renderGenItemNamesTab(){
+  if(!isAdmin())return`<div class="card"><div class="empty">⛔ Admin access required to manage inventory item names.</div></div>`;
+  const items=DATA.inventoryItems||[];
+  const listHtml=items.length>0
+    ?`<div style="margin-bottom:12px">${items.map((item,i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-weight:700">${esc(item)}</span>
+        <button class="delbtn" onclick="removeInvItem(${i})">🗑</button>
+      </div>`).join('')}</div>`
+    :`<div style="color:var(--muted);font-size:13px;margin-bottom:12px">No items defined yet. Add items below.</div>`;
+  return `
+    <div class="card">
+      <div class="ctitle">📋 Inventory Item Names</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define item names that appear in the General Inventory dropdown. Ensures consistent naming across all entries and reports.</div>
+      ${listHtml}
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <input class="fi" id="new-inv-item" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItem()">+ ADD</button>
+      </div>
+    </div>`;
+}
+
 // ── EDIT HELPERS ─────────────────────────────────────────────────────────────
 function isWithin24h(record){
   // Uses the record's id (timestamp from uid()) as the creation time, with date+time as fallback
@@ -2783,35 +2885,87 @@ function saveEditGenIss(id){
 }
 
 // ══════════════════════════════════════════════════════════
-// MAIZE
+// COMMODITIES
 // Logic:
 //   Available (system) = Total Received − Total Issued  (per batch, all-time)
 //   Variance           = Available − Physical Count  (negative = shortage, positive = surplus)
 // ══════════════════════════════════════════════════════════
 
+// ── Migration: move legacy maizeReceived/Issued/StockCounts into commodityReceived/Issued/StockCounts
+function migrateLegacyMaize(){
+  let changed=false;
+  if((DATA.maizeReceived||[]).length>0 && !(DATA.commodityReceived||{})['maize']?.length){
+    DATA.commodityReceived=DATA.commodityReceived||{};
+    DATA.commodityReceived['maize']=[...(DATA.commodityReceived['maize']||[]),...DATA.maizeReceived];
+    DATA.maizeReceived=[];
+    changed=true;
+  }
+  if((DATA.maizeIssued||[]).length>0 && !(DATA.commodityIssued||{})['maize']?.length){
+    DATA.commodityIssued=DATA.commodityIssued||{};
+    DATA.commodityIssued['maize']=[...(DATA.commodityIssued['maize']||[]),...DATA.maizeIssued];
+    DATA.maizeIssued=[];
+    changed=true;
+  }
+  if((DATA.maizeStockCounts||[]).length>0 && !(DATA.commodityStockCounts||{})['maize']?.length){
+    DATA.commodityStockCounts=DATA.commodityStockCounts||{};
+    DATA.commodityStockCounts['maize']=[...(DATA.commodityStockCounts['maize']||[]),...DATA.maizeStockCounts];
+    DATA.maizeStockCounts=[];
+    changed=true;
+  }
+  // Ensure commodity lists and maps exist
+  if(!DATA.commodities||DATA.commodities.length===0) DATA.commodities=[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}];
+  if(!DATA.commodityReceived) DATA.commodityReceived={};
+  if(!DATA.commodityIssued) DATA.commodityIssued={};
+  if(!DATA.commodityStockCounts) DATA.commodityStockCounts={};
+  if(changed) sv(DATA);
+}
+
+// ── Commodity data accessors
+function cRec(cid){ return (DATA.commodityReceived||{})[cid]||[]; }
+function cIss(cid){ return (DATA.commodityIssued||{})[cid]||[]; }
+function cSC(cid){  return (DATA.commodityStockCounts||{})[cid]||[]; }
+function getCom(cid){ return (DATA.commodities||[]).find(c=>c.id===cid)||{id:cid,name:cid,icon:'📦',unit:'units'}; }
+
 // Helper: compute system-Available for a batch (all-time, not period-filtered)
-function batchAvail(batchName){
-  const rec=DATA.maizeReceived.filter(r=>r.batchName===batchName).reduce((a,b)=>a+Number(b.received||0),0);
-  const iss=DATA.maizeIssued.filter(i=>i.batchName===batchName).reduce((a,b)=>a+Number(b.issued||0),0);
+function batchAvail(batchName, cid){
+  cid=cid||CCOM;
+  const rec=cRec(cid).filter(r=>r.batchName===batchName).reduce((a,b)=>a+Number(b.received||0),0);
+  const iss=cIss(cid).filter(i=>i.batchName===batchName).reduce((a,b)=>a+Number(b.issued||0),0);
   return rec-iss;
 }
 
 // Helper: latest physical stock count for a batch
-function batchPhysical(batchName){
-  const counts=(DATA.maizeStockCounts||[]).filter(c=>c.batchName===batchName);
+function batchPhysical(batchName, cid){
+  cid=cid||CCOM;
+  const counts=cSC(cid).filter(c=>c.batchName===batchName);
   if(counts.length===0)return null;
   counts.sort((a,b)=>b.date.localeCompare(a.date));
   return counts[0];
 }
 
+// ── Main render for Commodities tab
 function renderMaize(){
+  migrateLegacyMaize();
+  const coms=DATA.commodities||[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}];
+  // Ensure CCOM is valid
+  if(!coms.find(c=>c.id===CCOM)) CCOM=coms[0]?.id||'maize';
+  const com=getCom(CCOM);
+
+  const comSelector=coms.length>1?`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Commodity:</span>
+      ${coms.map(c=>`<button class="stab${CCOM===c.id?' act':''}" onclick="CCOM='${c.id}';MTAB='received';render()" style="font-size:12px">${c.icon} ${c.name}</button>`).join('')}
+    </div>`:'';
+
   return `
+    ${comSelector}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="sh" style="margin:0">Maize Handling</div>
+      <div class="sh" style="margin:0">${com.icon} ${com.name} Handling</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn bg bsm" id="btn-add-maize-rec">+ Receive</button>
         <button class="btn ba bsm" id="btn-add-maize-iss">+ Issue</button>
         <button class="btn bo bsm" id="btn-add-stock-count">📦 Stock Count</button>
+        ${USER.role==='admin'?`<button class="btn bo bsm" id="btn-manage-commodities" onclick="openManageCommodities()">⚙️ Manage</button>`:''}
       </div>
     </div>
     <div class="stabs">
@@ -2825,8 +2979,10 @@ function renderMaize(){
 }
 
 function renderMaizeRec(){
-  const items=filterPeriod(DATA.maizeReceived,PERIOD.maize);
-  const sortedAll=DATA.maizeReceived.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const com=getCom(CCOM);
+  const all=cRec(CCOM);
+  const items=filterPeriod(all,PERIOD.maize);
+  const sortedAll=all.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   let runTotal=0; const cumMap={};
   sortedAll.forEach(r=>{runTotal+=Number(r.received||0);cumMap[r.id]=runTotal;});
   const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
@@ -2839,12 +2995,12 @@ function renderMaizeRec(){
     </td>
     <td style="font-weight:600">${esc(item.batchName)}</td>
     <td style="color:var(--green);text-align:right;font-weight:700">${Number(item.received||0).toLocaleString()}</td>
-    <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName).toLocaleString()}</td>
+    <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--green);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
-    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
-  const allTimeRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
-  const allTimeIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const allTimeRec=all.reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeIss=cIss(CCOM).reduce((a,b)=>a+Number(b.issued||0),0);
   const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
   return `
     <div class="card" style="background:linear-gradient(135deg,#002b1f,#0a1e36);border-color:var(--green)">
@@ -2863,13 +3019,16 @@ function renderMaizeRec(){
     </div>
     <div class="card" style="padding:0"><div class="tw"><table>
       <thead><tr><th>Date & Time</th><th>Batch</th><th style="text-align:right">Received</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--green);border-left:2px solid var(--border)">Cum. Received</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="6" class="empty">No maize received for this period</td></tr>`:rows}</tbody>
+      <tbody>${items.length===0?`<tr><td colspan="6" class="empty">No ${com.name} received for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
 function renderMaizeIss(){
-  const items=filterPeriod(DATA.maizeIssued,PERIOD.maize);
-  const sortedAll=DATA.maizeIssued.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const com=getCom(CCOM);
+  const all=cIss(CCOM);
+  const allRec=cRec(CCOM);
+  const items=filterPeriod(all,PERIOD.maize);
+  const sortedAll=all.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   let runTotal=0; const cumMap={};
   sortedAll.forEach(r=>{runTotal+=Number(r.issued||0);cumMap[r.id]=runTotal;});
   const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
@@ -2883,12 +3042,12 @@ function renderMaizeIss(){
     <td style="font-weight:600">${esc(item.batchName)}</td>
     <td style="color:var(--blue);font-size:12px">${esc(item.transporter)||'—'}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
-    <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName).toLocaleString()}</td>
+    <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
-    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
-  const allTimeIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
-  const allTimeRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeIss=all.reduce((a,b)=>a+Number(b.issued||0),0);
+  const allTimeRec=allRec.reduce((a,b)=>a+Number(b.received||0),0);
   const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
   return `
     <div class="card" style="background:linear-gradient(135deg,#2a1500,#0a1e36);border-color:var(--amber)">
@@ -2903,17 +3062,18 @@ function renderMaizeIss(){
     </div>
     <div class="card" style="padding:0"><div class="tw"><table>
       <thead><tr><th>Date & Time</th><th>Batch</th><th>Transporter</th><th style="text-align:right">Issued</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--amber);border-left:2px solid var(--border)">Cum. Issued</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="7" class="empty">No maize issued for this period</td></tr>`:rows}</tbody>
+      <tbody>${items.length===0?`<tr><td colspan="7" class="empty">No ${com.name} issued for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
 function renderMaizeVariance(){
-  // Show one row per batch: Available (system) vs Physical Count vs Variance
-  const batches=[...new Set([...DATA.maizeReceived.map(x=>x.batchName),...DATA.maizeIssued.map(x=>x.batchName)])];
-  const counts=filterPeriod(DATA.maizeStockCounts||[],PERIOD.maize);
+  const com=getCom(CCOM);
+  const allRec=cRec(CCOM); const allIss=cIss(CCOM);
+  const batches=[...new Set([...allRec.map(x=>x.batchName),...allIss.map(x=>x.batchName)])];
+  const counts=filterPeriod(cSC(CCOM),PERIOD.maize);
   const rows=batches.map(bn=>{
-    const avail=batchAvail(bn);
-    const latest=batchPhysical(bn);
+    const avail=batchAvail(bn,CCOM);
+    const latest=batchPhysical(bn,CCOM);
     const physCount=latest?Number(latest.physicalCount):null;
     const variance=physCount!==null?physCount-avail:null;
     const varColor=variance===null?'var(--muted)':variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
@@ -2927,9 +3087,8 @@ function renderMaizeVariance(){
       <td style="font-size:11px;color:var(--muted)">${latest&&latest.notes?latest.notes:'—'}</td>
     </tr>`;}).join('');
 
-  // Also show stock count history for this period
   const countRows=counts.slice().reverse().map(c=>{
-    const avail=batchAvail(c.batchName);
+    const avail=batchAvail(c.batchName,CCOM);
     const variance=Number(c.physicalCount)-avail;
     const varColor=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
     const varTxt=variance<0?`${variance.toLocaleString()}`:(variance===0?'0':'+'+variance.toLocaleString());
@@ -2946,7 +3105,7 @@ function renderMaizeVariance(){
   return `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:12px;color:var(--muted)">
       <strong style="color:var(--text)">VARIANCE = PHYSICAL COUNT − SYSTEM AVAILABLE</strong><br>
-      🔴 NEGATIVE = BAGS MISSING &nbsp;|&nbsp; 🟡 POSITIVE = EXTRA BAGS FOUND &nbsp;|&nbsp; 🟢 ZERO = EXACT MATCH
+      🔴 NEGATIVE = UNITS MISSING &nbsp;|&nbsp; 🟡 POSITIVE = EXTRA UNITS FOUND &nbsp;|&nbsp; 🟢 ZERO = EXACT MATCH
     </div>
     <div class="sh">Current Variance per Batch</div>
     <div class="card" style="padding:0"><div class="tw"><table>
@@ -2961,13 +3120,15 @@ function renderMaizeVariance(){
 }
 
 function renderMaizeSummary(){
-  const totRec=DATA.maizeReceived.reduce((a,b)=>a+Number(b.received||0),0);
-  const totIss=DATA.maizeIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+  const com=getCom(CCOM);
+  const allRec=cRec(CCOM); const allIss=cIss(CCOM);
+  const totRec=allRec.reduce((a,b)=>a+Number(b.received||0),0);
+  const totIss=allIss.reduce((a,b)=>a+Number(b.issued||0),0);
   const totAvail=totRec-totIss;
-  const batches=[...new Set([...DATA.maizeReceived.map(x=>x.batchName),...DATA.maizeIssued.map(x=>x.batchName)])];
+  const batches=[...new Set([...allRec.map(x=>x.batchName),...allIss.map(x=>x.batchName)])];
   return `
     <div class="card">
-      <div class="ctitle">🌽 Cumulative Maize Summary</div>
+      <div class="ctitle">${com.icon} Cumulative ${com.name} Summary</div>
       <div class="srow">
         <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
         <div class="sbox am"><div class="sv">${totIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
@@ -2983,13 +3144,14 @@ function renderMaizeSummary(){
 }
 
 function renderMaizeBatchSummaryRows(){
-  const batches=[...new Set([...DATA.maizeReceived.map(x=>x.batchName),...DATA.maizeIssued.map(x=>x.batchName)])];
+  const allRec=cRec(CCOM); const allIss=cIss(CCOM);
+  const batches=[...new Set([...allRec.map(x=>x.batchName),...allIss.map(x=>x.batchName)])];
   if(batches.length===0)return`<tr><td colspan="6" class="empty">No batches yet</td></tr>`;
   return batches.map(bn=>{
-    const rec=DATA.maizeReceived.filter(r=>r.batchName===bn).reduce((a,b)=>a+Number(b.received||0),0);
-    const iss=DATA.maizeIssued.filter(i=>i.batchName===bn).reduce((a,b)=>a+Number(b.issued||0),0);
+    const rec=allRec.filter(r=>r.batchName===bn).reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=allIss.filter(i=>i.batchName===bn).reduce((a,b)=>a+Number(b.issued||0),0);
     const avail=rec-iss;
-    const latest=batchPhysical(bn);
+    const latest=batchPhysical(bn,CCOM);
     const phys=latest?Number(latest.physicalCount):null;
     const variance=phys!==null?avail-phys:null;
     const varColor=variance===null?'var(--muted)':variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
@@ -3005,11 +3167,13 @@ function renderMaizeBatchSummaryRows(){
   }).join('');
 }
 
+// ── Receive form
 function openMaizeRecForm(){
+  const com=getCom(CCOM);
   openModal(`
-    <div class="mtitle">🌽 Receive Maize</div>
+    <div class="mtitle">${com.icon} Receive ${com.name}</div>
     <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="mr-batch" placeholder="e.g. Batch 1, Batch A…"/></div>
-    <div class="fw"><div class="fl">Bags Received</div><input class="fi" type="number" id="mr-rec" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Received</div><input class="fi" type="number" id="mr-rec" placeholder="0" inputmode="numeric"/></div>
     <div class="fw"><div class="fl">Date Received</div><input class="fi" type="date" id="mr-date" value="${today()}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveMaizeRec()">✓ Save</button></div>`);
 }
@@ -3018,18 +3182,21 @@ function saveMaizeRec(){if(isReadOnly()){alert("🔒 This account is in read-onl
   const rec=Number(document.getElementById('mr-rec').value||0);
   if(!batch||!rec){alert('Enter batch name and quantity.');return;}
   const payload={id:uid(),batchName:batch,date:document.getElementById('mr-date').value,time:nowTime(),received:rec};
-  updateData(d=>({...d,maizeReceived:[...d.maizeReceived,payload]}));
+  const cid=CCOM;
+  updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=[...(cr[cid]||[]),payload];return{...d,commodityReceived:cr};});
   closeModal();
 }
 
+// ── Issue form
 function openMaizeIssForm(){
-  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
+  const com=getCom(CCOM);
+  const batches=[...new Set(cRec(CCOM).map(x=>x.batchName))];
   const opts=batches.length>0?batches.map(b=>`<option>${b}</option>`).join(''):`<option>No batches received yet</option>`;
   openModal(`
-    <div class="mtitle">📤 Issue Maize</div>
+    <div class="mtitle">📤 Issue ${com.name}</div>
     <div class="fw"><div class="fl">Batch Name</div><select class="fi" id="mi-batch">${opts}</select></div>
     <div class="fw"><div class="fl">Transporter Name</div><input class="fi" id="mi-trans" placeholder="e.g. Truck A, John's Truck…"/></div>
-    <div class="fw"><div class="fl">Bags Issued</div><input class="fi" type="number" id="mi-qty" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Issued</div><input class="fi" type="number" id="mi-qty" placeholder="0" inputmode="numeric"/></div>
     <div class="fw"><div class="fl">Date Issued</div><input class="fi" type="date" id="mi-date" value="${today()}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveMaizeIss()">✓ Issue</button></div>`);
 }
@@ -3040,25 +3207,28 @@ function saveMaizeIss(){if(isReadOnly()){alert("🔒 This account is in read-onl
   if(!qty){alert('Enter quantity to issue.');return;}
   if(!trans){alert('Enter transporter name.');return;}
   const payload={id:uid(),batchName:batch,date:document.getElementById('mi-date').value,time:nowTime(),transporter:trans,issued:qty};
-  updateData(d=>({...d,maizeIssued:[...d.maizeIssued,payload]}));
+  const cid=CCOM;
+  updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=[...(ci[cid]||[]),payload];return{...d,commodityIssued:ci};});
   closeModal();
 }
 
+// ── Stock count form
 function openStockCountForm(){
-  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
-  if(batches.length===0){alert('No maize batches received yet.');return;}
+  const com=getCom(CCOM);
+  const batches=[...new Set(cRec(CCOM).map(x=>x.batchName))];
+  if(batches.length===0){alert(`No ${com.name} batches received yet.`);return;}
   const opts=batches.map(b=>{
-    const avail=batchAvail(b);
-    return `<option value="${b}">${b} (Available: ${avail.toLocaleString()} bags)</option>`;
+    const avail=batchAvail(b,CCOM);
+    return `<option value="${b}">${b} (Available: ${avail.toLocaleString()} ${com.unit})</option>`;
   }).join('');
   openModal(`
     <div class="mtitle">📦 Physical Stock Count</div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:16px;font-size:13px;color:var(--muted)">
-      Count the actual bags physically present in the depot and enter the number below. The app will calculate the variance automatically.
+      Count the actual ${com.unit} physically present and enter the number below. The app will calculate the variance automatically.
     </div>
     <div class="fw"><div class="fl">Batch</div><select class="fi" id="sc-batch" onchange="updateAvailHint()">${opts}</select></div>
     <div id="sc-avail-hint"></div>
-    <div class="fw"><div class="fl">Physical Bags Counted</div><input class="fi" type="number" id="sc-phys" placeholder="Enter actual count" inputmode="numeric" oninput="updateVarianceHint()"/></div>
+    <div class="fw"><div class="fl">Physical ${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Counted</div><input class="fi" type="number" id="sc-phys" placeholder="Enter actual count" inputmode="numeric" oninput="updateVarianceHint()"/></div>
     <div id="sc-var-hint"></div>
     <div class="fw"><div class="fl">Date of Count</div><input class="fi" type="date" id="sc-date" value="${today()}"/></div>
     <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="sc-notes" placeholder="e.g. counted by supervisor…"/></div>
@@ -3069,8 +3239,9 @@ function updateAvailHint(){
   const batch=document.getElementById('sc-batch')?.value;
   const hint=document.getElementById('sc-avail-hint');
   if(!batch||!hint)return;
-  const avail=batchAvail(batch);
-  hint.innerHTML=`<div class="hint" style="margin-bottom:12px">System Available for <strong>${batch}</strong>: <strong>${avail.toLocaleString()} bags</strong></div>`;
+  const avail=batchAvail(batch,CCOM);
+  const com=getCom(CCOM);
+  hint.innerHTML=`<div class="hint" style="margin-bottom:12px">System Available for <strong>${batch}</strong>: <strong>${avail.toLocaleString()} ${com.unit}</strong></div>`;
   updateVarianceHint();
 }
 function updateVarianceHint(){
@@ -3078,35 +3249,48 @@ function updateVarianceHint(){
   const phys=Number(document.getElementById('sc-phys')?.value||0);
   const hint=document.getElementById('sc-var-hint');
   if(!hint||!phys)return;
-  const avail=batchAvail(batch);
+  const avail=batchAvail(batch,CCOM);
   const variance=phys-avail;
   const color=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
-  const label=variance<0?`SHORTAGE OF ${Math.abs(variance).toLocaleString()} BAGS`:variance===0?'EXACT MATCH — NO VARIANCE':`SURPLUS OF ${variance.toLocaleString()} BAGS`;
+  const label=variance<0?`SHORTAGE OF ${Math.abs(variance).toLocaleString()}`:variance===0?'EXACT MATCH — NO VARIANCE':`SURPLUS OF ${variance.toLocaleString()}`;
   hint.innerHTML=`<div style="background:var(--surface2);border:1px solid ${color};border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:13px;color:${color};font-weight:700">VARIANCE: ${variance} &nbsp;·&nbsp; ${label}</div>`;
 }
 function saveStockCount(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const batch=document.getElementById('sc-batch').value;
   const phys=Number(document.getElementById('sc-phys').value||0);
-  if(!phys&&phys!==0){alert('Enter the physical bag count.');return;}
+  if(!phys&&phys!==0){alert('Enter the physical count.');return;}
   const payload={id:uid(),batchName:batch,date:document.getElementById('sc-date').value,time:nowTime(),physicalCount:phys,notes:document.getElementById('sc-notes').value};
-  updateData(d=>({...d,maizeStockCounts:[...(d.maizeStockCounts||[]),payload]}));
+  const cid=CCOM;
+  updateData(d=>{const cs={...(d.commodityStockCounts||{})};cs[cid]=[...(cs[cid]||[]),payload];return{...d,commodityStockCounts:cs};});
   MTAB='variance';
   closeModal();
 }
-function delMaizeRec(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this maize receive record?'))return;updateData(d=>({...d,maizeReceived:d.maizeReceived.filter(x=>x.id!==id)}));}
-function delMaizeIss(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this maize issue record?'))return;updateData(d=>({...d,maizeIssued:d.maizeIssued.filter(x=>x.id!==id)}));}
-function delStockCount(id){if(!requireAdmin('delete stock counts'))return;if(!confirm('Delete this stock count?'))return;updateData(d=>({...d,maizeStockCounts:(d.maizeStockCounts||[]).filter(x=>x.id!==id)}));}
 
-// ── EDIT: Maize Received ─────────────────────────────────────────────────────
+// ── Delete
+function delMaizeRec(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this receive record?'))return;
+  const cid=CCOM;
+  updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=(cr[cid]||[]).filter(x=>x.id!==id);return{...d,commodityReceived:cr};});
+}
+function delMaizeIss(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this issue record?'))return;
+  const cid=CCOM;
+  updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=(ci[cid]||[]).filter(x=>x.id!==id);return{...d,commodityIssued:ci};});
+}
+function delStockCount(id){if(!requireAdmin('delete stock counts'))return;if(!confirm('Delete this stock count?'))return;
+  const cid=CCOM;
+  updateData(d=>{const cs={...(d.commodityStockCounts||{})};cs[cid]=(cs[cid]||[]).filter(x=>x.id!==id);return{...d,commodityStockCounts:cs};});
+}
+
+// ── Edit Receive
 function openEditMaizeRec(id){
-  const rec=DATA.maizeReceived.find(x=>String(x.id)===String(id));
+  const com=getCom(CCOM);
+  const rec=cRec(CCOM).find(x=>String(x.id)===String(id));
   if(!rec){alert('Record not found.');return;}
   if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
   openModal(`
-    <div class="mtitle">✏️ Edit Maize Received</div>
+    <div class="mtitle">✏️ Edit ${com.name} Received</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
     <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="emr-batch" value="${esc(rec.batchName)}" oninput="this.value=this.value.toUpperCase()"/></div>
-    <div class="fw"><div class="fl">Bags Received</div><input class="fi" type="number" id="emr-rec" value="${rec.received}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Received</div><input class="fi" type="number" id="emr-rec" value="${rec.received}" inputmode="numeric"/></div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="emr-date" value="${rec.date}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveEditMaizeRec('${id}')">✓ Save Changes</button></div>`);
 }
@@ -3116,23 +3300,25 @@ function saveEditMaizeRec(id){
   const batch=uc(document.getElementById('emr-batch').value);
   const qty=Number(document.getElementById('emr-rec').value||0);
   if(!batch||!qty){alert('Enter batch name and quantity.');return;}
-  updateData(d=>({...d,maizeReceived:d.maizeReceived.map(x=>String(x.id)===String(id)?{...x,batchName:batch,received:qty,date:document.getElementById('emr-date').value}:x)}));
+  const cid=CCOM;
+  updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=(cr[cid]||[]).map(x=>String(x.id)===String(id)?{...x,batchName:batch,received:qty,date:document.getElementById('emr-date').value}:x);return{...d,commodityReceived:cr};});
   closeModal();
 }
 
-// ── EDIT: Maize Issued ───────────────────────────────────────────────────────
+// ── Edit Issue
 function openEditMaizeIss(id){
-  const iss=DATA.maizeIssued.find(x=>String(x.id)===String(id));
+  const com=getCom(CCOM);
+  const iss=cIss(CCOM).find(x=>String(x.id)===String(id));
   if(!iss){alert('Record not found.');return;}
   if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
-  const batches=[...new Set(DATA.maizeReceived.map(x=>x.batchName))];
+  const batches=[...new Set(cRec(CCOM).map(x=>x.batchName))];
   const opts=batches.map(b=>`<option value="${b}"${b===iss.batchName?' selected':''}>${b}</option>`).join('');
   openModal(`
-    <div class="mtitle">✏️ Edit Maize Issued</div>
+    <div class="mtitle">✏️ Edit ${com.name} Issued</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
     <div class="fw"><div class="fl">Batch</div><select class="fi" id="emi-batch">${opts}</select></div>
     <div class="fw"><div class="fl">Transporter</div><input class="fi" id="emi-trans" value="${iss.transporter||''}" oninput="this.value=this.value.toUpperCase()"/></div>
-    <div class="fw"><div class="fl">Bags Issued</div><input class="fi" type="number" id="emi-qty" value="${iss.issued}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Issued</div><input class="fi" type="number" id="emi-qty" value="${iss.issued}" inputmode="numeric"/></div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="emi-date" value="${iss.date}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveEditMaizeIss('${id}')">✓ Save Changes</button></div>`);
 }
@@ -3144,9 +3330,59 @@ function saveEditMaizeIss(id){
   const qty=Number(document.getElementById('emi-qty').value||0);
   if(!qty){alert('Enter quantity.');return;}
   if(!trans){alert('Enter transporter name.');return;}
-  updateData(d=>({...d,maizeIssued:d.maizeIssued.map(x=>String(x.id)===String(id)?{...x,batchName:batch,transporter:trans,issued:qty,date:document.getElementById('emi-date').value}:x)}));
+  const cid=CCOM;
+  updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=(ci[cid]||[]).map(x=>String(x.id)===String(id)?{...x,batchName:batch,transporter:trans,issued:qty,date:document.getElementById('emi-date').value}:x);return{...d,commodityIssued:ci};});
   closeModal();
 }
+
+// ── Manage Commodities (admin)
+function openManageCommodities(){
+  if(!requireAdmin('manage commodities'))return;
+  renderManageCommoditiesModal();
+}
+function renderManageCommoditiesModal(){
+  const coms=(DATA.commodities||[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}]);
+  const rows=coms.map(c=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">${c.icon}</span>
+        <div><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11px;color:var(--muted)">Unit: ${esc(c.unit)} · ID: ${esc(c.id)}</div></div>
+      </div>
+      ${c.id==='maize'?`<span style="font-size:11px;color:var(--muted);font-style:italic">default</span>`:`<button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>`}
+    </div>`).join('');
+  openModal(`
+    <div class="mtitle">⚙️ Manage Commodities</div>
+    <div style="margin-bottom:12px">${rows||'<div class="empty">No commodities yet.</div>'}</div>
+    <div class="sh" style="margin-top:16px;margin-bottom:8px">Add New Commodity</div>
+    <div class="fw"><div class="fl">Name</div><input class="fi" id="nc-name" placeholder="e.g. Wheat, Soya, Rice…"/></div>
+    <div class="fw"><div class="fl">Icon (emoji)</div><input class="fi" id="nc-icon" placeholder="🌾" maxlength="4" style="font-size:22px;text-align:center"/></div>
+    <div class="fw"><div class="fl">Unit (singular)</div><input class="fi" id="nc-unit" placeholder="bags, tonnes, litres…"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Close</button><button class="btn bg" onclick="addCommodity()">+ Add</button></div>`);
+}
+function addCommodity(){
+  if(!requireAdmin('add commodities'))return;
+  const name=document.getElementById('nc-name').value.trim();
+  const icon=document.getElementById('nc-icon').value.trim()||'📦';
+  const unit=document.getElementById('nc-unit').value.trim()||'units';
+  if(!name){alert('Enter a commodity name.');return;}
+  const id=name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now();
+  const newCom={id,name,icon,unit};
+  updateData(d=>({...d,commodities:[...(d.commodities||[]),newCom]}));
+  CCOM=id; MTAB='received';
+  closeModal();
+  render();
+}
+function deleteCommodity(cid){
+  if(!requireAdmin('delete commodities'))return;
+  const com=getCom(cid);
+  const hasData=(cRec(cid).length+cIss(cid).length+cSC(cid).length)>0;
+  if(hasData){alert(`Cannot delete "${com.name}" — it has existing records. Delete all its records first.`);return;}
+  if(!confirm(`Delete commodity "${com.name}"? This cannot be undone.`))return;
+  if(CCOM===cid) CCOM='maize';
+  updateData(d=>({...d,commodities:(d.commodities||[]).filter(c=>c.id!==cid)}));
+  renderManageCommoditiesModal();
+}
+
 
 // ══════════════════════════════════════════════════════════
 // STAFF
@@ -3216,25 +3452,29 @@ function renderStaff(){
       <button class="stab${STAB==='earnings'?' act':''}" id="stab-earnings">Earnings</button>
       <button class="stab${STAB==='payments'?' act':''}" id="stab-payments">💳 Payments</button>
       <button class="stab${STAB==='stafflist'?' act':''}" id="stab-stafflist">👥 Staff List</button>
+      <button class="stab${STAB==='rolesrates'?' act':''}" id="stab-rolesrates">⚙️ Roles & Rates</button>
     </div>
-    ${STAB==='logs'?renderStaffLogs():STAB==='roster'?renderRoster():STAB==='earnings'?renderEarnings():STAB==='payments'?renderPayments():renderStaffList()}`;
+    ${STAB==='logs'?renderStaffLogs():STAB==='roster'?renderRoster():STAB==='earnings'?renderEarnings():STAB==='payments'?renderPayments():STAB==='rolesrates'?renderRolesRatesTab():renderStaffList()}`;
 }
 
 function renderStaffLogs(){
   const logs=filterPeriod(DATA.staffLogs,PERIOD.staff);
   const staffById=Object.fromEntries(DATA.staff.map(s=>[s.id,s]));
-  const totBags=logs.reduce((a,b)=>a+Number(b.bags||0),0);
+  const totQty=logs.reduce((a,b)=>a+Number(b.qty!=null?b.qty:b.bags||0),0);
   const totNet=logs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
 
   // Build cumulative totals per staff across ALL logs (career running total up to each entry)
   const allSorted=DATA.staffLogs.slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
   const cumMap={};
-  const runBags={}, runNet={};
+  const runQty={}, runNet={};
   allSorted.forEach(log=>{
     const sid=log.staffId;
-    runBags[sid]=(runBags[sid]||0)+Number(log.bags||0);
+    const logQty=log.qty!=null?Number(log.qty):Number(log.bags||0);
+    runQty[sid]=(runQty[sid]||0)+logQty;
     runNet[sid]=(runNet[sid]||0)+(Number(log.earnings||0)-Number(log.deduction||0));
-    cumMap[log.id]={cumBags:runBags[sid], cumNet:runNet[sid]};
+    // Resolve unit label for this log
+    const logUnit=(()=>{const u=log.rateUnit||'bag';if(u==='custom'){const ro=(DATA.staffRoles||[]).find(r=>r.name===log.role);const to=(ro?.tasks||[]).find(t=>t.name===log.task);return to?.customUnit||'unit';}return u;})();
+    cumMap[log.id]={cumQty:runQty[sid], cumNet:runNet[sid], cumUnit:logUnit};
   });
 
   const rows=logs.slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id))).map(log=>{
@@ -3247,12 +3487,12 @@ function renderStaffLogs(){
       <td style="font-weight:700">${s?.name||'—'}</td>
       <td><span class="tag">${esc(log.role)}</span></td>
       <td style="font-size:12px;color:var(--muted)">${log.task||'—'}</td>
-      <td style="text-align:right">${(()=>{const q=log.qty!=null?log.qty:log.bags;const ul=log.rateUnit&&log.rateUnit!=='bag'?log.rateUnit:'bag';return Number(q||0).toLocaleString()+'<br><span style="font-size:9px;color:var(--muted)">'+ul+'</span>';})()}</td>
+      <td style="text-align:right">${(()=>{const q=log.qty!=null?log.qty:log.bags;const ul=taskRateUnitLabel(log.role||'',log.task||'')||'bag';return Number(q||0).toLocaleString()+'<br><span style="font-size:9px;color:var(--muted)">'+ul+'</span>';})()}</td>
       <td style="color:var(--green);font-weight:600;text-align:right">${zm(log.earnings)}</td>
       <td style="color:${Number(log.deduction||0)>0?'var(--red)':'var(--muted)'};text-align:right">-${zm(log.deduction||0)}</td>
       <td style="color:var(--green);font-weight:700;text-align:right">${zm(net)}</td>
       <td style="font-size:11px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${log.timeOut||'—'}</td>
-      <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${cum.cumBags.toLocaleString()}</td>
+      <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${cum.cumQty.toLocaleString()}<br><span style="font-size:9px;color:var(--muted);font-weight:400">${cum.cumUnit}</span></td>
       <td style="color:var(--purple);font-weight:700;text-align:right">${zm(cum.cumNet)}</td>
       ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
     </tr>`;}).join('');
@@ -3260,11 +3500,11 @@ function renderStaffLogs(){
   return `
     <div class="prow">${pBtns('staff')}</div>
     <div class="srow">
-      <div class="sbox"><div class="sv">${totBags.toLocaleString()}</div><div class="sl">Bag-task Qty (Period)</div></div>
+      <div class="sbox"><div class="sv">${totQty.toLocaleString()}</div><div class="sl">Total Qty (Period)</div></div>
       <div class="sbox bl"><div class="sv">K${totNet.toFixed(0)}</div><div class="sl">Net (Period)</div></div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
-      🔵 <span style="color:var(--blue);font-weight:700">Cum. Bags</span> &amp; 🟣 <span style="color:var(--purple);font-weight:700">Cum. Net</span> = running career total per staff up to that day
+      🔵 <span style="color:var(--blue);font-weight:700">Cum. Qty</span> &amp; 🟣 <span style="color:var(--purple);font-weight:700">Cum. Net</span> = running career total per staff up to that day (qty in task's own unit)
     </div>
     <div class="card" style="padding:0"><div class="tw"><table>
       <thead><tr>
@@ -3274,7 +3514,7 @@ function renderStaffLogs(){
         <th style="text-align:right">Deduct</th>
         <th style="text-align:right">Net</th>
         <th>Time</th>
-        <th style="text-align:right;border-left:2px solid var(--border);color:var(--blue)">Cum.Bags</th>
+        <th style="text-align:right;border-left:2px solid var(--border);color:var(--blue)">Cum.Qty</th>
         <th style="text-align:right;color:var(--purple)">Cum.Net</th>
         ${USER.role==='admin'?'<th></th>':''}
       </tr></thead>
@@ -3375,7 +3615,7 @@ function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only m
 
 function openLogForm(){
   if(DATA.staff.length===0){alert('Register staff members first.');return;}
-  if((DATA.staffRoles||[]).length===0){alert('No roles defined. Go to Settings > Staff Roles & Rates to add roles first.');return;}
+  if((DATA.staffRoles||[]).length===0){alert('No roles defined. Go to Staff > Roles & Rates to add roles first.');return;}
   const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
   if(activeStaff.length===0){alert('No active staff. Check roster for suspended/expelled staff.');return;}
   const opts=activeStaff.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} (${esc(s.role)})</option>`).join('');
@@ -3791,6 +4031,24 @@ function setStaffStatus(id,status){
 }
 function delStaff(id){if(!requireAdmin('delete staff members'))return;if(!confirm('Delete this staff member? All their logs will remain.'))return;updateData(d=>({...d,staff:d.staff.filter(s=>String(s.id)!==String(id))}));}
 
+// ── ROLES & RATES SUBTAB (Staff tab) ─────────────────────────────────────────
+function renderRolesRatesTab(){
+  if(!isAdmin())return`<div class="card"><div class="empty">⛔ Admin access required to manage roles and rates.</div></div>`;
+  return `
+    <div class="card">
+      <div class="ctitle">⚙️ Staff Roles &amp; Rates</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define job roles and their tasks with pay rates. These appear as dropdowns when registering staff and logging work.</div>
+      <div id="roles-list">${renderRolesEditor()}</div>
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <div class="sh" style="margin-top:0">Add New Role</div>
+        <div style="display:flex;gap:8px">
+          <input class="fi" id="new-role-name" placeholder="E.G. FORKLIFT OPERATOR" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
+          <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addRole()">+ ADD</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 
 
 // ── LICENSE STATUS CARD ───────────────────────────────────────────────────────
@@ -3850,7 +4108,7 @@ function renderLicenseCard(){
     statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your subscription has expired. Renew to continue.</div>`;
   } else if (eff === 'suspended') {
     statusColor = 'var(--red)'; statusLabel = '🔒 SUSPENDED';
-    statusDetail = `<div class="warn" style="margin-top:10px">🔒 ${LICENSE.suspendedMsg||'Depot suspended.'}</div>`;
+    statusDetail = `<div class="warn" style="margin-top:10px">🔒 ${LICENSE.suspendedMsg||'Company suspended.'}</div>`;
   } else {
     statusColor = 'var(--amber)'; statusLabel = '⏳ CHECKING…';
   }
@@ -3908,19 +4166,6 @@ function renderSettings(){
       <div class="fw"><div class="fl">District</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).district||'—'}</div></div>
       <div class="fw"><div class="fl">Country</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).country||'—'}</div></div>
     </div>
-    <div class="sh">Staff Roles &amp; Rates</div>
-    <div class="card">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define job roles and their tasks with pay rates per bag. These appear as dropdowns when registering staff and logging work.</div>
-      <div id="roles-list">${renderRolesEditor()}</div>
-      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-        <div class="sh" style="margin-top:0">Add New Role</div>
-        <div style="display:flex;gap:8px">
-          <input class="fi" id="new-role-name" placeholder="E.G. FORKLIFT OPERATOR" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
-          <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addRole()">+ ADD</button>
-        </div>
-      </div>
-    </div>
-
     <div class="sh">Display Preferences</div>
     <div class="card">
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Adjust the text size to suit your screen. Changes apply instantly and are remembered across sessions.</div>
@@ -3929,13 +4174,15 @@ function renderSettings(){
         <div class="fs-ctrl">
           <button class="fs-btn" id="fs-btn-minus" onclick="changeFontSize(-${FS_STEP})" title="Decrease font size">A−</button>
           <div class="fs-divider"></div>
-          <div class="fs-label" id="fs-value-label">${getFontSize()}%</div>
+          <div class="fs-label fs-lbl-all" id="fs-value-label">${getFontSize()}%</div>
           <div class="fs-divider"></div>
           <button class="fs-btn" id="fs-btn-plus" onclick="changeFontSize(${FS_STEP})" title="Increase font size">A+</button>
         </div>
       </div>
       <button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="resetFontSize()">↺ Reset to Default (100%)</button>
     </div>
+
+    ${_renderBioSection()}
 
     <div class="sh">Change Password</div>
     <div class="card">
@@ -3999,16 +4246,6 @@ function renderSettings(){
         <tr><td>Change own password</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
       </tbody>
     </table></div></div>
-
-    <div class="sh">Inventory Item Names</div>
-    <div class="card">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define the names of items that appear in the General Inventory dropdown. This ensures consistent naming across all entries, totals and reports.</div>
-      ${(DATA.inventoryItems||[]).length>0?`<div style="margin-bottom:12px">${(DATA.inventoryItems||[]).map((item,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-weight:700">${item}</span><button class="delbtn" onclick="removeInvItem(${i})">🗑</button></div>`).join('')}</div>`:'<div style="color:var(--muted);font-size:13px;margin-bottom:12px">No items defined yet. Add items below.</div>'}
-      <div style="display:flex;gap:8px">
-        <input class="fi" id="new-inv-item" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
-        <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItem()">+ ADD</button>
-      </div>
-    </div>
 
     <div class="sh">Data Management</div>
     <div class="card">
@@ -4161,10 +4398,10 @@ function renderRolesEditor(){
           </div>
           <select style="flex:1;min-width:120px;background:#0a1628;border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236a90b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;"
             onchange="saveTaskRateUnit(${ri},${ti},this.value)">${unitOpts}</select>
-          ${isCustom?`<input type="text" placeholder="unit label" value="${esc(task.customUnit||'')}"
-            style="width:80px;background:var(--surface);border:1.5px solid var(--green);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;text-transform:uppercase;"
-            oninput="this.value=this.value.toUpperCase()"
-            onblur="saveTaskCustomUnit(${ri},${ti},this.value)"/>`:''}
+          ${isCustom?`<input type="text" placeholder="e.g. hours, trips…" value="${esc(task.customUnit||'')}"
+            style="width:90px;background:var(--surface);border:1.5px solid var(--green);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;"
+            onblur="saveTaskCustomUnit(${ri},${ti},this.value.trim())"
+            title="Enter the unit name (e.g. hours, trips, crates)"/>`:''}
         </div>
       </div>`;
     }).join('');
@@ -4298,6 +4535,7 @@ function removeUser(username){
   if(!requireAdmin('remove users'))return;
   if(username==='admin'){alert('Cannot remove admin.');return;}
   if(!confirm(`Remove user "${username}"?`))return;
+  bioRemove(username); // clean up any fingerprint credential for this user
   updateData(d=>({...d,users:d.users.filter(u=>u.username!==username)}));
 }
 function addInvItem(){
@@ -4357,24 +4595,212 @@ function handleImportFile(input){
 function clearAll(){
   if(!requireAdmin('clear all data'))return;
   if(!confirm('⚠️ Delete ALL data? This cannot be undone.'))return;
-  if(!confirm('LAST WARNING — all inventory, maize, and staff records will be permanently deleted.'))return;
+  if(!confirm('LAST WARNING — all inventory, commodities, and staff records will be permanently deleted.'))return;
   DATA=JSON.parse(JSON.stringify(DEFAULT));sv(DATA);render();
 }
 
-// ── FONT SIZE ────────────────────────────────────────────────────────────────
+// ── BIOMETRICS (WebAuthn — platform fingerprint only) ────────────────────────
+// Credentials stored ONLY in localStorage. Never sent to Firebase or any server.
+// Works on HTTPS (Firebase Hosting, GitHub Pages). Silently disabled on file://.
+const _BIO_PFX  = 'mdm_bio_';   // mdm_bio_{username} → credentialId (base64url)
+const _BIO_MAP  = 'mdm_bio_map'; // {credId: username} reverse lookup
+const _TOS_PFX  = 'mdm_tos_';   // mdm_tos_{username} → 'y'  (TOS previously accepted)
+
+function _b64ToU8(b64){
+  const s=atob(b64.replace(/-/g,'+').replace(/_/g,'/'));
+  const b=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);
+  return b;
+}
+function _u8ToB64(buf){
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+function _bioGetMap(){try{return JSON.parse(localStorage.getItem(_BIO_MAP)||'{}');}catch(e){return {};}}
+function _bioSaveMap(m){localStorage.setItem(_BIO_MAP,JSON.stringify(m));}
+
+function bioIsRegistered(username){
+  return !!localStorage.getItem(_BIO_PFX+(username||'').toLowerCase());
+}
+function _bioSupported(){
+  return !!(window.PublicKeyCredential && window.isSecureContext);
+}
+async function _bioHwAvailable(){
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch(e){ return false; }
+}
+
+// Show/hide fingerprint button on login screen based on hw + stored creds
+async function bioCheckAndShowBtn(){
+  const btn  = document.getElementById('bio-login-btn');
+  const div  = document.getElementById('bio-divider');
+  if(!btn) return;
+  const supported = _bioSupported();
+  const hasHw     = supported ? await _bioHwAvailable() : false;
+  const hasCreds  = Object.keys(_bioGetMap()).length > 0;
+  const show = supported && hasHw && hasCreds;
+  btn.style.display = show ? 'flex' : 'none';
+  if(div) div.style.display = show ? 'flex' : 'none';
+}
+
+// Register fingerprint for the currently-logged-in user
+async function bioRegister(username){
+  const uname = (username||'').toLowerCase();
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const rpId = window.location.hostname || undefined;
+  const cred = await navigator.credentials.create({publicKey:{
+    challenge,
+    rp: rpId ? {name:'My Depot Master',id:rpId} : {name:'My Depot Master'},
+    user:{id:new TextEncoder().encode(uname),name:uname,displayName:uname},
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{
+      authenticatorAttachment:'platform',
+      userVerification:'required',
+      residentKey:'preferred'
+    },
+    timeout:60000,
+    attestation:'none'
+  }});
+  const credId = _u8ToB64(cred.rawId);
+  localStorage.setItem(_BIO_PFX+uname, credId);
+  const m=_bioGetMap(); m[credId]=uname; _bioSaveMap(m);
+}
+
+// Remove fingerprint for a user
+function bioRemove(username){
+  const uname=(username||'').toLowerCase();
+  const credId=localStorage.getItem(_BIO_PFX+uname);
+  if(credId){const m=_bioGetMap();delete m[credId];_bioSaveMap(m);}
+  localStorage.removeItem(_BIO_PFX+uname);
+}
+
+// Called from Settings — set up fingerprint for current user
+async function bioSetupAndRefresh(){
+  const btn=document.getElementById('bio-setup-btn');
+  const msg=document.getElementById('bio-setup-msg');
+  if(!_bioSupported()){
+    if(msg)msg.innerHTML='<div class="err-box">⚠️ Biometrics require a secure (HTTPS) connection.</div>';
+    return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='⏳ Setting up…';}
+  try{
+    await bioRegister(USER.username);
+    showToast('✅ Fingerprint registered!');
+    render(); // re-render settings to show new state
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='👆 Set Up Fingerprint';}
+    const txt=e.name==='NotAllowedError'?'Fingerprint scan was cancelled.'
+             :e.name==='InvalidStateError'?'Fingerprint already registered on this device.'
+             :(e.message||'Setup failed. Please try again.');
+    if(msg)msg.innerHTML=`<div class="err-box">❌ ${txt}</div>`;
+  }
+}
+
+// Called from Settings — remove fingerprint for current user
+function bioRemoveAndRefresh(){
+  if(!confirm(`Remove fingerprint login for "${USER.username}" on this device?`))return;
+  bioRemove(USER.username);
+  showToast('Fingerprint removed.');
+  render();
+}
+
+// Perform fingerprint login from the login screen
+async function startBioLogin(){
+  const btn=document.getElementById('bio-login-btn');
+  const err=document.getElementById('login-err');
+  const resetBtn=()=>{
+    if(btn){btn.disabled=false;btn.innerHTML='<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 11c0-1.1.9-2 2-2s2 .9 2 2v2"/><path d="M10 10.3A6 6 0 0118 16"/><path d="M8 13a8 8 0 008 8"/><path d="M12 3C7 3 3 7 3 12"/><path d="M12 3c5 0 9 4 9 9"/><path d="M8 20.7A14 14 0 013.2 9"/></svg> Use Fingerprint';}
+  };
+  err.style.display='none';
+  if(btn){btn.disabled=true;btn.innerHTML='⏳ Verifying fingerprint…';}
+  try{
+    const map=_bioGetMap();
+    const credIds=Object.keys(map);
+    if(!credIds.length){resetBtn();showToast('⚠️ No fingerprint registered.');return;}
+    const challenge=crypto.getRandomValues(new Uint8Array(32));
+    const assertion=await navigator.credentials.get({publicKey:{
+      challenge,
+      allowCredentials:credIds.map(id=>({type:'public-key',id:_b64ToU8(id),transports:['internal']})),
+      userVerification:'required',
+      timeout:60000
+    }});
+    const usedId=_u8ToB64(assertion.rawId);
+    const username=map[usedId];
+    if(!username)throw new Error('Credential not linked to any user on this device.');
+
+    await initData();
+    DATA.users=DATA.users.map(u=>({...u,username:(u.username||'').toLowerCase()}));
+    // Migrate plain-text passwords
+    let needsSave=false;
+    for(let i=0;i<DATA.users.length;i++){
+      if(!isHashed(DATA.users[i].password)){DATA.users[i].password=hashPassword(DATA.users[i].password);needsSave=true;}
+    }
+    if(needsSave){DATA._v=(DATA._v||0)+1;sv(DATA);}
+
+    const userObj=DATA.users.find(x=>x.username===username);
+    if(!userObj)throw new Error('Account no longer exists. Please sign in with password.');
+
+    _bfOk();
+    USER=userObj;
+    showMainUI();
+    updPill();
+    applyDepotInfo();
+    initFirebase();
+    fbRestoreData().then(r=>{if(r){render();showToast('☁ Data restored from cloud');}}).catch(()=>{});
+    checkLicense(async ()=>{
+      if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
+        if(USER.role==='admin') showDepotSetupModal();
+        else { showTab('dashboard'); openModal(`<div class="mtitle">⚠️ Setup Incomplete</div><div style="font-size:14px;color:var(--muted);line-height:1.8;text-align:center;padding:10px 0">Setup has not been completed yet.<br>Ask your <strong style="color:var(--text)">Admin</strong> to log in and complete setup first.</div>`); }
+      } else { showTab('dashboard'); }
+      scheduleFbSync();
+    });
+  }catch(e){
+    resetBtn();
+    if(e.name!=='NotAllowedError'){ // NotAllowedError = user cancelled, no message needed
+      err.style.display='block';
+      err.textContent='⚠️ Fingerprint failed: '+(e.message||'Please try again.');
+    }
+  }
+}
+
+// Settings helper — renders biometric card HTML (sync, used inside renderSettings template)
+function _renderBioSection(){
+  const supported=_bioSupported();
+  if(!supported) return `
+    <div class="sh">Fingerprint Login</div>
+    <div class="card">
+      <div class="warn">Fingerprint login requires a secure (HTTPS) connection. Not available on this connection type.</div>
+    </div>`;
+  const reg=bioIsRegistered(USER.username);
+  return `
+    <div class="sh">Fingerprint Login</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+        Sign in with your fingerprint — no password needed. Stored only on this device and never sent to Firebase or any server.
+      </div>
+      ${reg
+        ? `<div class="ok-msg" style="margin-bottom:12px">✅ Fingerprint is active for <strong style="color:var(--white)">${esc(USER.username)}</strong> on this device.</div>
+           <button class="btn br bsm" style="width:100%" onclick="bioRemoveAndRefresh()">🗑 Remove Fingerprint</button>`
+        : `<div class="warn" style="margin-bottom:12px">No fingerprint registered for <strong>${esc(USER.username)}</strong> on this device.</div>
+           <button class="btn bg" onclick="bioSetupAndRefresh()" id="bio-setup-btn">👆 Set Up Fingerprint</button>`
+      }
+      <div id="bio-setup-msg" style="margin-top:8px"></div>
+    </div>`;
+}
+
+// ── FONT SIZE ─────────────────────────────────────────────────────────────────
 const FS_KEY='mdm_font_size';
 const FS_MIN=80, FS_MAX=130, FS_STEP=5, FS_DEFAULT=100;
 function getFontSize(){return parseInt(localStorage.getItem(FS_KEY)||FS_DEFAULT,10);}
 function applyFontSize(pct){
-  document.documentElement.style.fontSize=pct+'%';
-  localStorage.setItem(FS_KEY,pct);
-  // update label if visible
-  const lbl=document.getElementById('fs-value-label');
-  if(lbl)lbl.textContent=pct+'%';
-  const btnM=document.getElementById('fs-btn-minus');
-  const btnP=document.getElementById('fs-btn-plus');
-  if(btnM)btnM.disabled=(pct<=FS_MIN);
-  if(btnP)btnP.disabled=(pct>=FS_MAX);
+  // Use CSS zoom — scales all px values, fonts, spacing uniformly
+  document.body.style.zoom = pct / 100;
+  localStorage.setItem(FS_KEY, pct);
+  // Update every label (settings full-size + mini pills in header/landing)
+  document.querySelectorAll('.fs-lbl-all, #fs-value-label').forEach(el => el.textContent = pct + '%');
+  // Disable buttons at limits
+  document.querySelectorAll('.fs-dec, #fs-btn-minus').forEach(btn => { btn.disabled = (pct <= FS_MIN); });
+  document.querySelectorAll('.fs-inc, #fs-btn-plus').forEach(btn => { btn.disabled = (pct >= FS_MAX); });
 }
 function changeFontSize(delta){
   let cur=getFontSize();
@@ -4392,7 +4818,7 @@ function attachTabListeners(){
   if(addGenRec)addGenRec.addEventListener('click',openGenRecForm);
   if(addGenIss)addGenIss.addEventListener('click',openGenIssForm);
   if(addGenSc)addGenSc.addEventListener('click',openGenStockCountForm);
-  ['inventory','issued','stockcount','summary'].forEach(t=>{
+  ['inventory','issued','stockcount','summary','itemnames'].forEach(t=>{
     const el=document.getElementById('gtab-'+t);
     if(el)el.addEventListener('click',()=>{GTAB=t;render();});
   });
@@ -4414,7 +4840,7 @@ function attachTabListeners(){
   if(addStaff)addStaff.addEventListener('click',openStaffForm);
   if(logWork)logWork.addEventListener('click',openLogForm);
   if(payStaff)payStaff.addEventListener('click',openPayForm);
-  ['logs','roster','earnings','payments','stafflist'].forEach(t=>{
+  ['logs','roster','earnings','payments','stafflist','rolesrates'].forEach(t=>{
     const el=document.getElementById('stab-'+t);
     if(el)el.addEventListener('click',()=>{STAB=t;render();});
   });
@@ -4426,6 +4852,7 @@ setTimeout(()=>{
   try{
     applyFontSize(getFontSize());
     updateConnStatus();
+    bioCheckAndShowBtn(); // show fingerprint button if hw + creds available
     initData().then(()=>{
       const di=DATA.depotInfo||{};
       const parts=[di.name,di.district,di.country].filter(Boolean);
