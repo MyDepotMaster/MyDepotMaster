@@ -28,7 +28,7 @@
   --fh:'Barlow Condensed',sans-serif;--fb:'Barlow',sans-serif;
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden;}
-#app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;}
+#app{max-width:480px;margin:0 auto;height:calc(100vh / var(--app-zoom,1));height:calc(100dvh / var(--app-zoom,1));display:flex;flex-direction:column;position:relative;}
 
 /* Landscape: full-width + shrink nav */
 @media (orientation:landscape) and (max-height:500px){
@@ -4795,6 +4795,8 @@ function getFontSize(){return parseInt(localStorage.getItem(FS_KEY)||FS_DEFAULT,
 function applyFontSize(pct){
   // Use CSS zoom — scales all px values, fonts, spacing uniformly
   document.body.style.zoom = pct / 100;
+  // Counteract zoom on #app height so nav is never pushed off-screen
+  document.documentElement.style.setProperty('--app-zoom', pct / 100);
   localStorage.setItem(FS_KEY, pct);
   // Update every label (settings full-size + mini pills in header/landing)
   document.querySelectorAll('.fs-lbl-all, #fs-value-label').forEach(el => el.textContent = pct + '%');
