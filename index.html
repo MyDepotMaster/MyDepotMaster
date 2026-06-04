@@ -567,7 +567,7 @@ function _strHash(s) {
 function _genSalt() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const arr = new Uint8Array(16);
-  (crypto.getRandomValues || function(a){ for(let i=0;i<a.length;i++) a[i]=Math.floor(Math.random()*256); })(arr);
+  if (crypto && crypto.getRandomValues) { crypto.getRandomValues(arr); } else { for(let i=0;i<arr.length;i++) arr[i]=Math.floor(Math.random()*256); }
   let s = '';
   for (let i = 0; i < 16; i++) s += chars[arr[i] % chars.length];
   return s;
