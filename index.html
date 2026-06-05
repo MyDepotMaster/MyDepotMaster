@@ -778,7 +778,17 @@ async function fbSet(path, data) {
 // don't flood the network.
 let _fbSyncTimer = null;
 function scheduleFbSync() {
-  if (!isFbConfigured() || !navigator.onLine) return;
+  if (!isFbConfigured()) return;
+  if (!navigator.onLine) {
+    // Offline: queue the write so it flushes on reconnect
+    const key = DATA.installId;
+    if (key && key !== 'MDM-????-????-????') {
+      const payload = JSON.parse(JSON.stringify(DATA));
+      delete payload.gdrive;
+      enqueueOfflineWrite('depots/' + key + '/data', payload);
+    }
+    return;
+  }
   clearTimeout(_fbSyncTimer);
   _fbSyncTimer = setTimeout(()=>{ doFbSync(); }, 2500); // 2.5s debounce
 }
@@ -1132,26 +1142,166 @@ function copyNum(num) {
   });
 }
 
-// ── SERVICE WORKER ──────────────────────────────────────────────────────────
-const SW_CODE=`const CACHE='mdm-v2';
-self.addEventListener('install',e=>{self.skipWaiting();});
-self.addEventListener('activate',e=>{e.waitUntil(clients.claim());});
-self.addEventListener('fetch',e=>{
-  if(e.request.mode==='navigate'){
-    e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));return r;}).catch(()=>caches.match(e.request)));
-    return;
-  }
-  if(e.request.url.includes('fonts.gstatic')||e.request.url.includes('fonts.googleapis')){
-    e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const c=res.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));return res;})));
-    return;
-  }
-});`;
-if('serviceWorker' in navigator && location.protocol === 'https:'){
-  window.addEventListener('load',()=>{
-    const b=new Blob([SW_CODE],{type:'text/javascript'});
-    navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'/'}).catch(()=>{});
+// ── SERVICE WORKER — offline-first ──────────────────────────────────────────
+// Strategy:
+//   navigate requests  → cache-first (serve shell instantly offline)
+//   fonts/static       → cache-first (stale-while-revalidate)
+//   Firebase REST      → network-first with offline queue flush on reconnect
+//   everything else    → network-only (pass-through)
+//
+// The SW is injected as a same-origin blob so scope resolution works.
+// On browsers that block blob-scope SWs the app still works via the
+// direct Cache API pre-cache below (manual cache fallback).
+const SW_VERSION = 'mdm-v3';
+const SW_CODE = `
+const CACHE = '${SW_VERSION}';
+const SHELL_URL = self.location.href; // blob url → we store by referrer
+
+// On install: skip waiting immediately so the new SW takes over fast
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+
+// On activate: claim all clients and purge old caches
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => clients.claim())
+  );
+});
+
+// Helper: cache-first with network fallback
+function cacheFirst(req) {
+  return caches.match(req).then(cached => {
+    if (cached) {
+      // Refresh cache in background
+      fetch(req).then(r => { if (r && r.ok) caches.open(CACHE).then(c => c.put(req, r)); }).catch(()=>{});
+      return cached;
+    }
+    return fetch(req).then(r => {
+      if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
+      return r;
+    });
   });
 }
+
+// Helper: network-first with cache fallback
+function networkFirst(req) {
+  return fetch(req).then(r => {
+    if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
+    return r;
+  }).catch(() => caches.match(req));
+}
+
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+
+  // Navigation requests (the app shell) — cache-first so app loads offline
+  if (e.request.mode === 'navigate') {
+    e.respondWith(networkFirst(e.request));
+    return;
+  }
+
+  // Google Fonts — cache-first (rarely change)
+  if (url.includes('fonts.gstatic.com') || url.includes('fonts.googleapis.com')) {
+    e.respondWith(cacheFirst(e.request));
+    return;
+  }
+
+  // Firebase REST calls — network-first; fall back to cache when offline
+  if (url.includes('firebaseio.com') || url.includes('firebase')) {
+    e.respondWith(networkFirst(e.request));
+    return;
+  }
+
+  // Everything else — pass through (don't intercept)
+});
+`;
+
+// Register the SW. Blob-URL SWs can't claim scope '/' in all browsers,
+// so we omit the scope override and let the browser default to blob-origin scope.
+// The manual cache pre-warm below ensures the shell is cached regardless.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    try {
+      const b = new Blob([SW_CODE], { type: 'text/javascript' });
+      const swUrl = URL.createObjectURL(b);
+      navigator.serviceWorker.register(swUrl)
+        .then(reg => {
+          // Listen for SW updates and show a toast
+          reg.addEventListener('updatefound', () => {
+            const nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', () => {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                const t = document.getElementById('update-toast');
+                if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
+              }
+            });
+          });
+        })
+        .catch(() => {});
+    } catch(e) {}
+
+    // Manual shell pre-cache: regardless of SW scope, store the page in
+    // Cache Storage directly from the main thread so a cache-match works
+    // even if the SW's blob scope doesn't cover this origin.
+    if ('caches' in window) {
+      caches.open(SW_VERSION).then(cache => {
+        // Cache the current page URL (the app shell)
+        cache.add(location.href).catch(() => {});
+        // Cache Google Fonts if already loaded
+        ['https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap']
+          .forEach(u => cache.add(u).catch(() => {}));
+      }).catch(() => {});
+    }
+  });
+}
+
+// ── OFFLINE WRITE QUEUE ──────────────────────────────────────────────────────
+// When offline, Firebase writes are queued and flushed automatically on reconnect.
+let _offlineQueue = [];
+try {
+  const _oq = localStorage.getItem('mdm_offline_queue');
+  if (_oq) _offlineQueue = JSON.parse(_oq) || [];
+} catch {}
+
+function _saveOfflineQueue() {
+  try { localStorage.setItem('mdm_offline_queue', JSON.stringify(_offlineQueue)); } catch {}
+}
+
+function enqueueOfflineWrite(path, data) {
+  _offlineQueue.push({ path, data, ts: Date.now() });
+  // Keep queue bounded — max 50 pending writes (older ones are superseded anyway)
+  if (_offlineQueue.length > 50) _offlineQueue = _offlineQueue.slice(-50);
+  _saveOfflineQueue();
+}
+
+async function flushOfflineQueue() {
+  if (!navigator.onLine || !isFbConfigured() || _offlineQueue.length === 0) return;
+  const toFlush = [..._offlineQueue];
+  _offlineQueue = [];
+  _saveOfflineQueue();
+  for (const item of toFlush) {
+    try { await fbSet(item.path, item.data); }
+    catch(e) {
+      // Re-queue on failure
+      _offlineQueue.unshift(item);
+      _saveOfflineQueue();
+      console.warn('[MDM] Offline queue flush failed, re-queued:', e.message);
+      break; // stop flushing — still offline or error
+    }
+  }
+}
+
+// Hook into the existing online event to flush queued writes
+window.addEventListener('online', () => {
+  ONLINE = true;
+  updPill();
+  updateConnStatus();
+  flushOfflineQueue().then(() => scheduleFbSync());
+});
 
 // ── DATA DEFAULTS ───────────────────────────────────────────────────────────
 const LK='mdm_depot_v2';
@@ -1290,7 +1440,7 @@ function setPeriod(tab,p){PERIOD[tab]=p;render();}
 function updateData(fn){DATA=fn(DATA);DATA._v=(DATA._v||0)+1;sv(DATA);render();scheduleFbSync();}
 
 // ── ONLINE ──────────────────────────────────────────────────────────────────
-window.addEventListener('online',()=>{ONLINE=true;updPill();updateConnStatus();scheduleFbSync();});
+// 'online' handled in SW block above (flushes queue then syncs)
 window.addEventListener('offline',()=>{ONLINE=false;updPill();updateConnStatus();});
 
 // Simple toast notification
@@ -1314,7 +1464,7 @@ function updateConnStatus(){
 function updPill(){
   const p=document.getElementById('sync-pill');
   if(!p)return;
-  if(!ONLINE){p.className='spill sp-of';p.textContent='📵 Offline';return;}
+  if(!ONLINE){p.className='spill sp-of';p.textContent=_offlineQueue&&_offlineQueue.length?'📵 Offline ('+_offlineQueue.length+' queued)':'📵 Offline';return;}
   const lastSync=DATA._lastFbSync||0;
   const ageMs=lastSync?Date.now()-lastSync:Infinity;
   if(ageMs<10*60*1000){p.className='spill sp-on';p.textContent='✅ Synced';}
