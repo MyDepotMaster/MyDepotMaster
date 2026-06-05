@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=3.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -4813,18 +4813,24 @@ function resetFontSize(){applyFontSize(FS_DEFAULT);}
 
 // ── PINCH-TO-ZOOM ─────────────────────────────────────────────────────────────
 (function(){
-  let _startDist=0, _startPct=0;
+  let _startDist=0, _startPct=0, _pinching=false;
   function dist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
   document.addEventListener('touchstart', e=>{
-    if(e.touches.length===2){ _startDist=dist(e.touches); _startPct=getFontSize(); }
+    if(e.touches.length===2){
+      _pinching=true;
+      _startDist=dist(e.touches);
+      _startPct=getFontSize();
+    }
   }, {passive:true});
   document.addEventListener('touchmove', e=>{
-    if(e.touches.length!==2) return;
+    if(e.touches.length!==2){ _pinching=false; return; }
+    e.preventDefault(); // block native browser zoom
     const ratio = dist(e.touches) / _startDist;
     const target = Math.round(_startPct * ratio / FS_STEP) * FS_STEP;
     const clamped = Math.min(FS_MAX, Math.max(FS_MIN, target));
     if(clamped !== getFontSize()) applyFontSize(clamped);
-  }, {passive:true});
+  }, {passive:false}); // must be non-passive to call preventDefault
+  document.addEventListener('touchend', ()=>{ _pinching=false; }, {passive:true});
 })();
 
 // ── TAB LISTENERS ─────────────────────────────────────────────────────────────
