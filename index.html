@@ -22,24 +22,32 @@
 <title>My Depot Master</title>
 <script>
 (function(){
+  const base = location.href.substring(0, location.href.lastIndexOf('/') + 1);
   const m={
     name:"My Depot Master",
     short_name:"MDM",
     id:"mydepotmaster",
+    lang:"en",
+    dir:"ltr",
     start_url:"./index.html",
     scope:"./",
     display:"standalone",
+    display_override:["standalone","minimal-ui"],
     orientation:"portrait",
     background_color:"#0a1628",
     theme_color:"#0a1628",
     description:"Smart depot & business management — track stock, staff, earnings and inventory. Works offline on any phone.",
     categories:["business","productivity","finance"],
     icons:[
-      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='80' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},
-      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='210' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
+      {src: base + "icon-192.png", sizes:"192x192", type:"image/png"},
+      {src: base + "icon-512.png", sizes:"512x512", type:"image/png", purpose:"any maskable"}
     ],
-    screenshots:[],
-    shortcuts:[]
+    shortcuts:[
+      {name:"Dashboard",short_name:"Dashboard",url:"./index.html",description:"Open Dashboard"},
+      {name:"Stock",short_name:"Stock",url:"./index.html",description:"View stock levels"},
+      {name:"Transactions",short_name:"Transactions",url:"./index.html",description:"View recent transactions"}
+    ],
+    screenshots:[]
   };
   const b=new Blob([JSON.stringify(m)],{type:'application/json'});
   const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(b);document.head.appendChild(l);
@@ -1171,14 +1179,18 @@ function copyNum(num) {
   });
 }
 
-// ── SERVICE WORKER — registers ./sw.js (same-origin, proper scope) ──────────
-// sw.js must exist alongside index.html in the GitHub repo.
-// Blob-URL SWs cannot claim the page origin so are not used here.
+// ── SERVICE WORKER — offline-first ──────────────────────────────────────────
+// Strategy:
+//   navigate requests  → cache-first (serve shell instantly offline)
+//   fonts/static       → cache-first (stale-while-revalidate)
+//   Firebase REST      → network-first with offline queue flush on reconnect
+// ── SERVICE WORKER ────────────────────────────────────────────────────────────
+// Registers ./sw.js (same-origin, proper scope).
+// sw.js must sit alongside index.html in the GitHub repo.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => {
-        // Notify user when a new version is available
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
           if (!nw) return;
@@ -1190,7 +1202,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
           });
         });
       })
-      .catch(() => {}); // fail silently — app still works without SW
+      .catch(() => {});
   });
 }
 
@@ -1236,7 +1248,22 @@ window.addEventListener('online', () => {
   updPill();
   updateConnStatus();
   flushOfflineQueue().then(() => scheduleFbSync());
+  // Also register a Background Sync tag so SW can flush queue if app re-opens offline→online
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    navigator.serviceWorker.ready
+      .then(reg => reg.sync.register('mdm-offline-sync'))
+      .catch(() => {});
+  }
 });
+
+// Listen for SW Background Sync signal (fires even when app was closed)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.type === 'MDM_FLUSH_QUEUE') {
+      flushOfflineQueue().then(() => scheduleFbSync()).catch(() => {});
+    }
+  });
+}
 
 // ── DATA DEFAULTS ───────────────────────────────────────────────────────────
 const LK='mdm_depot_v2';
