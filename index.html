@@ -22,7 +22,25 @@
 <title>My Depot Master</title>
 <script>
 (function(){
-  const m={name:"MyDepotMaster",short_name:"MyDepotMaster",start_url:".",display:"standalone",background_color:"#0a1628",theme_color:"#0a1628",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='80' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='210' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]};
+  const m={
+    name:"My Depot Master",
+    short_name:"MDM",
+    id:"mydepotmaster",
+    start_url:"./index.html",
+    scope:"./",
+    display:"standalone",
+    orientation:"portrait",
+    background_color:"#0a1628",
+    theme_color:"#0a1628",
+    description:"Smart depot & business management — track stock, staff, earnings and inventory. Works offline on any phone.",
+    categories:["business","productivity","finance"],
+    icons:[
+      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='80' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},
+      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='210' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
+    ],
+    screenshots:[],
+    shortcuts:[]
+  };
   const b=new Blob([JSON.stringify(m)],{type:'application/json'});
   const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(b);document.head.appendChild(l);
 })();
@@ -1153,120 +1171,26 @@ function copyNum(num) {
   });
 }
 
-// ── SERVICE WORKER — offline-first ──────────────────────────────────────────
-// Strategy:
-//   navigate requests  → cache-first (serve shell instantly offline)
-//   fonts/static       → cache-first (stale-while-revalidate)
-//   Firebase REST      → network-first with offline queue flush on reconnect
-//   everything else    → network-only (pass-through)
-//
-// The SW is injected as a same-origin blob so scope resolution works.
-// On browsers that block blob-scope SWs the app still works via the
-// direct Cache API pre-cache below (manual cache fallback).
-const SW_VERSION = 'mdm-v3';
-const SW_CODE = `
-const CACHE = '${SW_VERSION}';
-const SHELL_URL = self.location.href; // blob url → we store by referrer
-
-// On install: skip waiting immediately so the new SW takes over fast
-self.addEventListener('install', e => {
-  self.skipWaiting();
-});
-
-// On activate: claim all clients and purge old caches
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => clients.claim())
-  );
-});
-
-// Helper: cache-first with network fallback
-function cacheFirst(req) {
-  return caches.match(req).then(cached => {
-    if (cached) {
-      // Refresh cache in background
-      fetch(req).then(r => { if (r && r.ok) caches.open(CACHE).then(c => c.put(req, r)); }).catch(()=>{});
-      return cached;
-    }
-    return fetch(req).then(r => {
-      if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
-      return r;
-    });
-  });
-}
-
-// Helper: network-first with cache fallback
-function networkFirst(req) {
-  return fetch(req).then(r => {
-    if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
-    return r;
-  }).catch(() => caches.match(req));
-}
-
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-
-  // Navigation requests (the app shell) — cache-first so app loads offline
-  if (e.request.mode === 'navigate') {
-    e.respondWith(networkFirst(e.request));
-    return;
-  }
-
-  // Google Fonts — cache-first (rarely change)
-  if (url.includes('fonts.gstatic.com') || url.includes('fonts.googleapis.com')) {
-    e.respondWith(cacheFirst(e.request));
-    return;
-  }
-
-  // Firebase REST calls — network-first; fall back to cache when offline
-  if (url.includes('firebaseio.com') || url.includes('firebase')) {
-    e.respondWith(networkFirst(e.request));
-    return;
-  }
-
-  // Everything else — pass through (don't intercept)
-});
-`;
-
-// Register the SW. Blob-URL SWs can't claim scope '/' in all browsers,
-// so we omit the scope override and let the browser default to blob-origin scope.
-// The manual cache pre-warm below ensures the shell is cached regardless.
-if ('serviceWorker' in navigator) {
+// ── SERVICE WORKER — registers ./sw.js (same-origin, proper scope) ──────────
+// sw.js must exist alongside index.html in the GitHub repo.
+// Blob-URL SWs cannot claim the page origin so are not used here.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
-    try {
-      const b = new Blob([SW_CODE], { type: 'text/javascript' });
-      const swUrl = URL.createObjectURL(b);
-      navigator.serviceWorker.register(swUrl)
-        .then(reg => {
-          // Listen for SW updates and show a toast
-          reg.addEventListener('updatefound', () => {
-            const nw = reg.installing;
-            if (!nw) return;
-            nw.addEventListener('statechange', () => {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                const t = document.getElementById('update-toast');
-                if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
-              }
-            });
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        // Notify user when a new version is available
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              const t = document.getElementById('update-toast');
+              if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
+            }
           });
-        })
-        .catch(() => {});
-    } catch(e) {}
-
-    // Manual shell pre-cache: regardless of SW scope, store the page in
-    // Cache Storage directly from the main thread so a cache-match works
-    // even if the SW's blob scope doesn't cover this origin.
-    if ('caches' in window) {
-      caches.open(SW_VERSION).then(cache => {
-        // Cache the current page URL (the app shell)
-        cache.add(location.href).catch(() => {});
-        // Cache Google Fonts if already loaded
-        ['https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap']
-          .forEach(u => cache.add(u).catch(() => {}));
-      }).catch(() => {});
-    }
+        });
+      })
+      .catch(() => {}); // fail silently — app still works without SW
   });
 }
 
