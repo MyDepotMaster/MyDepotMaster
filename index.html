@@ -8,6 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="My Depot Master"/>
 <meta name="theme-color" content="#0a1628"/>
+<!-- ── SECURITY HEADERS ────────────────────────────────────────────────────── -->
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; connect-src https://*.firebaseio.com https://firebaseinstallations.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; worker-src blob:; manifest-src 'self' blob:;">
+<!-- ──────────────────────────────────────────────────────────────────────── -->
 <!-- OpenGraph / Social sharing -->
 <meta property="og:title" content="My Depot Master"/>
 <meta property="og:description" content="Smart depot management app — track stock, staff, earnings and inventory with ease. No spreadsheets, no paperwork. Works on any phone or PC."/>
@@ -22,33 +27,7 @@
 <title>My Depot Master</title>
 <script>
 (function(){
-  const base = location.href.substring(0, location.href.lastIndexOf('/') + 1);
-  const m={
-    name:"My Depot Master",
-    short_name:"MDM",
-    id:"mydepotmaster",
-    lang:"en",
-    dir:"ltr",
-    start_url:"./index.html",
-    scope:"./",
-    display:"standalone",
-    display_override:["standalone","minimal-ui"],
-    orientation:"portrait",
-    background_color:"#0a1628",
-    theme_color:"#0a1628",
-    description:"Smart depot & business management — track stock, staff, earnings and inventory. Works offline on any phone.",
-    categories:["business","productivity","finance"],
-    icons:[
-      {src: base + "icon-192.png", sizes:"192x192", type:"image/png"},
-      {src: base + "icon-512.png", sizes:"512x512", type:"image/png", purpose:"any maskable"}
-    ],
-    shortcuts:[
-      {name:"Dashboard",short_name:"Dashboard",url:"./index.html",description:"Open Dashboard"},
-      {name:"Stock",short_name:"Stock",url:"./index.html",description:"View stock levels"},
-      {name:"Transactions",short_name:"Transactions",url:"./index.html",description:"View recent transactions"}
-    ],
-    screenshots:[]
-  };
+  const m={name:"MyDepotMaster",short_name:"MyDepotMaster",start_url:".",display:"standalone",background_color:"#0a1628",theme_color:"#0a1628",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='80' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='210' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]};
   const b=new Blob([JSON.stringify(m)],{type:'application/json'});
   const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(b);document.head.appendChild(l);
 })();
@@ -1184,25 +1163,115 @@ function copyNum(num) {
 //   navigate requests  → cache-first (serve shell instantly offline)
 //   fonts/static       → cache-first (stale-while-revalidate)
 //   Firebase REST      → network-first with offline queue flush on reconnect
-// ── SERVICE WORKER ────────────────────────────────────────────────────────────
-// Registers ./sw.js (same-origin, proper scope).
-// sw.js must sit alongside index.html in the GitHub repo.
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+//   everything else    → network-only (pass-through)
+//
+// The SW is injected as a same-origin blob so scope resolution works.
+// On browsers that block blob-scope SWs the app still works via the
+// direct Cache API pre-cache below (manual cache fallback).
+const SW_VERSION = 'mdm-v3';
+const SW_CODE = `
+const CACHE = '${SW_VERSION}';
+const SHELL_URL = self.location.href; // blob url → we store by referrer
+
+// On install: skip waiting immediately so the new SW takes over fast
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+
+// On activate: claim all clients and purge old caches
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => clients.claim())
+  );
+});
+
+// Helper: cache-first with network fallback
+function cacheFirst(req) {
+  return caches.match(req).then(cached => {
+    if (cached) {
+      // Refresh cache in background
+      fetch(req).then(r => { if (r && r.ok) caches.open(CACHE).then(c => c.put(req, r)); }).catch(()=>{});
+      return cached;
+    }
+    return fetch(req).then(r => {
+      if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
+      return r;
+    });
+  });
+}
+
+// Helper: network-first with cache fallback
+function networkFirst(req) {
+  return fetch(req).then(r => {
+    if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
+    return r;
+  }).catch(() => caches.match(req));
+}
+
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+
+  // Navigation requests (the app shell) — cache-first so app loads offline
+  if (e.request.mode === 'navigate') {
+    e.respondWith(networkFirst(e.request));
+    return;
+  }
+
+  // Google Fonts — cache-first (rarely change)
+  if (url.includes('fonts.gstatic.com') || url.includes('fonts.googleapis.com')) {
+    e.respondWith(cacheFirst(e.request));
+    return;
+  }
+
+  // Firebase REST calls — network-first; fall back to cache when offline
+  if (url.includes('firebaseio.com') || url.includes('firebase')) {
+    e.respondWith(networkFirst(e.request));
+    return;
+  }
+
+  // Everything else — pass through (don't intercept)
+});
+`;
+
+// Register the SW. Blob-URL SWs can't claim scope '/' in all browsers,
+// so we omit the scope override and let the browser default to blob-origin scope.
+// The manual cache pre-warm below ensures the shell is cached regardless.
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => {
-        reg.addEventListener('updatefound', () => {
-          const nw = reg.installing;
-          if (!nw) return;
-          nw.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              const t = document.getElementById('update-toast');
-              if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
-            }
+    try {
+      const b = new Blob([SW_CODE], { type: 'text/javascript' });
+      const swUrl = URL.createObjectURL(b);
+      navigator.serviceWorker.register(swUrl)
+        .then(reg => {
+          // Listen for SW updates and show a toast
+          reg.addEventListener('updatefound', () => {
+            const nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', () => {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                const t = document.getElementById('update-toast');
+                if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
+              }
+            });
           });
-        });
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
+    } catch(e) {}
+
+    // Manual shell pre-cache: regardless of SW scope, store the page in
+    // Cache Storage directly from the main thread so a cache-match works
+    // even if the SW's blob scope doesn't cover this origin.
+    if ('caches' in window) {
+      caches.open(SW_VERSION).then(cache => {
+        // Cache the current page URL (the app shell)
+        cache.add(location.href).catch(() => {});
+        // Cache Google Fonts if already loaded
+        ['https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap']
+          .forEach(u => cache.add(u).catch(() => {}));
+      }).catch(() => {});
+    }
   });
 }
 
@@ -1248,22 +1317,7 @@ window.addEventListener('online', () => {
   updPill();
   updateConnStatus();
   flushOfflineQueue().then(() => scheduleFbSync());
-  // Also register a Background Sync tag so SW can flush queue if app re-opens offline→online
-  if ('serviceWorker' in navigator && 'SyncManager' in window) {
-    navigator.serviceWorker.ready
-      .then(reg => reg.sync.register('mdm-offline-sync'))
-      .catch(() => {});
-  }
 });
-
-// Listen for SW Background Sync signal (fires even when app was closed)
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data && e.data.type === 'MDM_FLUSH_QUEUE') {
-      flushOfflineQueue().then(() => scheduleFbSync()).catch(() => {});
-    }
-  });
-}
 
 // ── DATA DEFAULTS ───────────────────────────────────────────────────────────
 const LK='mdm_depot_v2';
@@ -1949,19 +2003,33 @@ document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Ent
 
 // ── BRUTE-FORCE LOCKOUT ───────────────────────────────────────────────────────
 // 5 failed attempts → 60-second lockout. Resets on success.
-const _BF = { attempts: 0, lockedUntil: 0, MAX: 5, LOCK_MS: 60000 };
-function _bfFail() {
-  _BF.attempts++;
-  if (_BF.attempts >= _BF.MAX) {
-    _BF.lockedUntil = Date.now() + _BF.LOCK_MS;
-    _BF.attempts = 0;
-  }
+// ── BRUTE-FORCE LOCKOUT ──────────────────────────────────────────────────────
+// Persisted to localStorage so a page refresh or app restart cannot bypass it.
+const _BF_KEY = 'mdm_bf_state';
+function _bfLoad() {
+  try { return JSON.parse(localStorage.getItem(_BF_KEY) || '{}'); } catch { return {}; }
 }
-function _bfOk()  { _BF.attempts = 0; _BF.lockedUntil = 0; }
+function _bfSave(state) {
+  try { localStorage.setItem(_BF_KEY, JSON.stringify(state)); } catch {}
+}
+const _BF_MAX = 5;
+const _BF_LOCK_MS = 15 * 60 * 1000; // 15-minute lockout (was 1 min, easily bypassed)
+
+function _bfFail() {
+  const s = _bfLoad();
+  s.attempts = (s.attempts || 0) + 1;
+  if (s.attempts >= _BF_MAX) {
+    s.lockedUntil = Date.now() + _BF_LOCK_MS;
+    s.attempts = 0;
+  }
+  _bfSave(s);
+}
+function _bfOk() { _bfSave({ attempts: 0, lockedUntil: 0 }); }
 function _bfLocked() {
-  if (_BF.lockedUntil && Date.now() < _BF.lockedUntil) {
-    const secs = Math.ceil((_BF.lockedUntil - Date.now()) / 1000);
-    return `⛔ Too many failed attempts. Try again in ${secs}s.`;
+  const s = _bfLoad();
+  if (s.lockedUntil && Date.now() < s.lockedUntil) {
+    const mins = Math.ceil((s.lockedUntil - Date.now()) / 60000);
+    return `⛔ Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`;
   }
   return null;
 }
@@ -2037,14 +2105,19 @@ async function doLogin(){
 
     if(!valid){
       _bfFail();
+      const _s = _bfLoad();
+      const _rem = _BF_MAX - (_s.attempts || 0);
       err.style.display='block';
-      err.innerHTML='❌ Invalid username or password.';
+      err.innerHTML = _rem > 0
+        ? `❌ Invalid username or password. ${_rem} attempt${_rem!==1?'s':''} left before 15-min lockout.`
+        : '⛔ Too many failed attempts. Try again in 15 minutes.';
       return;
     }
     _bfOk();
     err.style.display='none';
     USER=userObj;
-    localStorage.setItem(_TOS_PFX+userObj.username,'y'); // remember TOS acceptance for biometric logins
+    localStorage.setItem(_TOS_PFX+userObj.username,'y');
+    _idleReset(); // start inactivity watchdog
     showMainUI();
     updPill();
     applyDepotInfo();
@@ -2082,6 +2155,7 @@ async function doLogin(){
 
 function doLogout(){
   USER=null; TAB='dashboard';
+  _idleClear(); // stop idle timers on explicit logout
   _hideMainUI();
   document.getElementById('login-err').style.display='none';
   document.getElementById('l-user').value='';
@@ -2092,6 +2166,39 @@ function doLogout(){
   if(tosBox){tosBox.style.borderColor='';tosBox.style.background='';}
   showLanding();
 }
+
+// ── AUTO-LOGOUT ON INACTIVITY ────────────────────────────────────────────────
+// Protects against physical access to a logged-in phone left unattended.
+const _IDLE_WARN_MS  = 9  * 60 * 1000; // warn at 9 min
+const _IDLE_LIMIT_MS = 10 * 60 * 1000; // logout at 10 min
+let _idleWarnTimer = null;
+let _idleLogoutTimer = null;
+
+function _idleClear() {
+  clearTimeout(_idleWarnTimer);
+  clearTimeout(_idleLogoutTimer);
+  _idleWarnTimer = null;
+  _idleLogoutTimer = null;
+}
+
+function _idleReset() {
+  if (!USER) return; // only active when logged in
+  _idleClear();
+  _idleWarnTimer = setTimeout(() => {
+    if (!USER) return;
+    showToast('⚠️ You will be logged out in 1 minute due to inactivity.', 8000);
+  }, _IDLE_WARN_MS);
+  _idleLogoutTimer = setTimeout(() => {
+    if (!USER) return;
+    doLogout();
+    showToast('🔒 Logged out automatically due to inactivity.');
+  }, _IDLE_LIMIT_MS);
+}
+
+// Listen for any user activity
+['pointerdown','pointermove','keydown','touchstart','scroll','click'].forEach(ev =>
+  document.addEventListener(ev, _idleReset, { passive: true, capture: true })
+);
 
 // ── DEPOT INFO ───────────────────────────────────────────────────────────────
 function applyDepotInfo(){
@@ -4854,6 +4961,7 @@ async function startBioLogin(){
 
     _bfOk();
     USER=userObj;
+    _idleReset(); // start inactivity watchdog
     showMainUI();
     updPill();
     applyDepotInfo();
