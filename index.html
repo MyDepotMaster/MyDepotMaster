@@ -1168,14 +1168,23 @@ function copyNum(num) {
 // The SW is injected as a same-origin blob so scope resolution works.
 // On browsers that block blob-scope SWs the app still works via the
 // direct Cache API pre-cache below (manual cache fallback).
-const SW_VERSION = 'mdm-v3';
+const SW_VERSION = 'mdm-v4';
+// Capture the shell URL at registration time so the SW can cache it
+const SW_SHELL_URL = location.href;
 const SW_CODE = `
 const CACHE = '${SW_VERSION}';
-const SHELL_URL = self.location.href; // blob url → we store by referrer
 
-// On install: skip waiting immediately so the new SW takes over fast
+// On install: pre-cache the app shell so it's available offline immediately
 self.addEventListener('install', e => {
-  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE).then(cache => {
+      // Cache the shell page that registered this SW (passed via SW_SHELL_URL)
+      return cache.addAll([
+        '${SW_SHELL_URL}',
+        'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap'
+      ]).catch(() => {});
+    }).then(() => self.skipWaiting())
+  );
 });
 
 // On activate: claim all clients and purge old caches
@@ -1187,11 +1196,10 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Helper: cache-first with network fallback
+// Helper: cache-first with background network refresh
 function cacheFirst(req) {
   return caches.match(req).then(cached => {
     if (cached) {
-      // Refresh cache in background
       fetch(req).then(r => { if (r && r.ok) caches.open(CACHE).then(c => c.put(req, r)); }).catch(()=>{});
       return cached;
     }
@@ -1213,9 +1221,25 @@ function networkFirst(req) {
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Navigation requests (the app shell) — cache-first so app loads offline
+  // Navigation requests — cache-first so the app shell loads instantly offline
+  // Falls back to network if not in cache yet (first visit)
   if (e.request.mode === 'navigate') {
-    e.respondWith(networkFirst(e.request));
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) {
+          // Serve from cache immediately; refresh in background
+          fetch(e.request).then(r => {
+            if (r && r.ok) caches.open(CACHE).then(c => c.put(e.request, r));
+          }).catch(() => {});
+          return cached;
+        }
+        // Not cached yet — try network, then cache for next time
+        return fetch(e.request).then(r => {
+          if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
+          return r;
+        }).catch(() => caches.match('${SW_SHELL_URL}'));
+      })
+    );
     return;
   }
 
@@ -1235,11 +1259,30 @@ self.addEventListener('fetch', e => {
 });
 `;
 
-// Register the SW. Blob-URL SWs can't claim scope '/' in all browsers,
-// so we omit the scope override and let the browser default to blob-origin scope.
-// The manual cache pre-warm below ensures the shell is cached regardless.
+// Register the SW and aggressively pre-cache the app shell from the main thread.
+// Blob-URL SWs may have limited scope on Android WebViews, so we ALSO cache
+// the shell directly from the main thread — this is the primary offline mechanism.
 if ('serviceWorker' in navigator) {
+  // Pre-cache the shell NOW (before load event) so it's available offline ASAP
+  if ('caches' in window) {
+    caches.open(SW_VERSION).then(cache => {
+      cache.add(location.href).catch(() => {});
+      cache.add('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap').catch(() => {});
+    }).catch(() => {});
+  }
+
   window.addEventListener('load', () => {
+    // Re-cache after full load to capture any late-loaded resources
+    if ('caches' in window) {
+      caches.open(SW_VERSION).then(cache => {
+        cache.put(location.href, new Response(document.documentElement.outerHTML, {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        })).catch(() => {
+          cache.add(location.href).catch(() => {});
+        });
+      }).catch(() => {});
+    }
+
     try {
       const b = new Blob([SW_CODE], { type: 'text/javascript' });
       const swUrl = URL.createObjectURL(b);
@@ -1259,21 +1302,25 @@ if ('serviceWorker' in navigator) {
         })
         .catch(() => {});
     } catch(e) {}
-
-    // Manual shell pre-cache: regardless of SW scope, store the page in
-    // Cache Storage directly from the main thread so a cache-match works
-    // even if the SW's blob scope doesn't cover this origin.
-    if ('caches' in window) {
-      caches.open(SW_VERSION).then(cache => {
-        // Cache the current page URL (the app shell)
-        cache.add(location.href).catch(() => {});
-        // Cache Google Fonts if already loaded
-        ['https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap']
-          .forEach(u => cache.add(u).catch(() => {}));
-      }).catch(() => {});
-    }
   });
 }
+
+// ── OFFLINE SHELL FALLBACK (no SW required) ──────────────────────────────────
+// When the page is loaded, check if we have the shell cached. On next offline
+// visit the browser may not trigger SW (blob-scope limitation), so we store
+// the current page HTML into Cache API directly every time we're online.
+// This makes the app work offline even on browsers that block blob SW scope.
+window.addEventListener('online', () => {
+  if ('caches' in window) {
+    caches.open(SW_VERSION).then(cache => {
+      cache.put(location.href, new Response(document.documentElement.outerHTML, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      })).catch(() => {
+        cache.add(location.href).catch(() => {});
+      });
+    }).catch(() => {});
+  }
+});
 
 // ── OFFLINE WRITE QUEUE ──────────────────────────────────────────────────────
 // When offline, Firebase writes are queued and flushed automatically on reconnect.
