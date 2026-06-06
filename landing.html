@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <style>html,body{max-width:100%;overflow-x:hidden;}</style>
 <title>My Depot Master — Smart Business Management</title>
 <meta name="description" content="Track stock, manage staff, monitor earnings and run your business smarter. Works offline. No monthly fees."/>
@@ -155,7 +155,7 @@ nav{
 
 .features-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  grid-template-columns:repeat(3,1fr);
   gap:20px;max-width:1100px;margin:0 auto;
 }
 .feat-card{
@@ -207,7 +207,7 @@ nav{
 .pricing-header{margin-bottom:56px;}
 .pricing-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  grid-template-columns:repeat(3,1fr);
   gap:24px;max-width:900px;margin:0 auto;
 }
 .price-card{
@@ -312,10 +312,15 @@ footer{
   .hero-badge{font-size:11px;padding:5px 12px;text-align:center;}
   .download-methods{flex-direction:column;align-items:center;}
   .dl-method{width:100%;max-width:320px;}
-  .pricing-grid,.features-grid{grid-template-columns:1fr;}
+  .features-grid{grid-template-columns:1fr;}
+  .pricing-grid{grid-template-columns:1fr;}
   .price-card{padding:28px 20px;}
   .feat-card{padding:24px 20px;}
   *{word-break:break-word;}
+}
+@media(min-width:681px) and (max-width:900px){
+  .features-grid{grid-template-columns:repeat(2,1fr);}
+  .pricing-grid{grid-template-columns:repeat(2,1fr);}
 }
 </style>
 </head>
@@ -524,11 +529,11 @@ footer{
         <div class="dl-method-sub">Chrome on Android or any browser</div>
       </div>
     </a>
-    <a href="https://drive.google.com/file/d/1qdtcoWKIhsBUMwDAGBO864dXyzQQ2aaR/view?usp=drivesdk" class="dl-method">
+    <a href="https://median.co/share/mbdjqqw" class="dl-method">
       <div class="dl-method-icon">📲</div>
       <div>
-        <div class="dl-method-title">Download APK</div>
-        <div class="dl-method-sub">Install directly on Android · 5.8 MB</div>
+        <div class="dl-method-title">Download App</div>
+        <div class="dl-method-sub">Install directly on Android</div>
       </div>
     </a>
   </div>
