@@ -1386,9 +1386,12 @@ const DEFAULT={
   staff:[],             // {id,name,role,phone}
   staffLogs:[],         // {id,staffId,date,task,bags,earnings,deduction,deductionReason,timeIn,timeOut}
   staffPayments:[],     // {id,staffId,date,amount,notes}
+  leaveLog:[],          // {id,staffId,type,date,days,note}
   staffRoles:[],
   deductionReasons:['Damaged bags','Late arrival','Misconduct','Short count'],
   depotInfo:{name:'',district:'',country:'',setupDone:false},
+  currency:'ZMW',    // depot-wide currency symbol/code (e.g. ZMW, USD, KES)
+  inventoryPrices:{}, // {itemName: {purchasePrice, sellingPrice}} — per-item price memory
   books:[],          // {id,name,type,size,createdAt,updatedAt,data,mimeType}
   installId:'',
   trialStart:0,
@@ -1478,7 +1481,8 @@ function nowTime(){return new Date().toTimeString().slice(0,5);} // HH:MM
 function uc(v){return(v||'').trim().toUpperCase();}
 function today(){return new Date().toISOString().split('T')[0];}
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
-function zm(n){return'K'+Number(n||0).toFixed(2);}
+function cur(){return(DATA&&DATA.currency)||'ZMW';}
+function zm(n){return cur()+' '+Number(n||0).toFixed(2);}
 
 function filterPeriod(items,period,f='date'){
   if(period==='all')return items;
@@ -2608,7 +2612,7 @@ function renderDash(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="sbox"><div class="sv">${DATA.staff.filter(s=>s.status!=='expelled').length}</div><div class="sl">Active Staff</div></div>
-        <div class="sbox bl"><div class="sv">K${netEarn.toFixed(0)}</div><div class="sl">Period Net Earn</div></div>
+      <div class="sbox bl"><div class="sv">${cur()} ${netEarn.toFixed(0)}</div><div class="sl">Period Net Earn</div></div>
         <div class="sbox"><div class="sv">${logs.reduce((a,b)=>a+Number(b.bags||0),0).toLocaleString()}</div><div class="sl">Bags (Period)</div></div>
         <div class="sbox"><div class="sv">${logs.length}</div><div class="sl">Log Entries</div></div>
       </div>
@@ -2663,13 +2667,30 @@ function renderDash(){
 function renderGeneral(){
   const totalRec=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0),0);
   const totalIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
+
+  // ── All-time financial summary ────────────────────────────
+  const cumPurchases=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
+  const cumSales=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const cumProfit=cumSales-cumPurchases;
+  // Stock value: for each item, current balance × latest purchase price
+  const allItemNames=[...new Set([...(DATA.inventoryItems||[]),...DATA.generalInventory.map(x=>x.itemName),...DATA.generalIssued.map(x=>x.itemName)])];
+  const totalStockValue=allItemNames.reduce((sum,name)=>{
+    const rec=DATA.generalInventory.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=DATA.generalIssued.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
+    const bal=Math.max(0,rec-iss);
+    const latestPP=DATA.generalInventory.filter(r=>r.itemName===name&&Number(r.purchasePrice||0)>0).slice(-1)[0];
+    const pp=latestPP?Number(latestPP.purchasePrice):((DATA.inventoryPrices||{})[name]?.purchasePrice||0);
+    return sum+bal*pp;
+  },0);
+  const hasPrices=DATA.generalInventory.some(r=>Number(r.purchasePrice||0)>0)||DATA.generalIssued.some(r=>Number(r.sellingPrice||0)>0);
+
   return `
     <!-- Page Header -->
     <div style="background:linear-gradient(135deg,#002b1f,#0a1628);border:1px solid var(--green);border-radius:14px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">📦 General Inventory</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Track receipts, issues, and stock balances</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Track receipts, issues, stock balances &amp; financials</div>
         </div>
         <div style="text-align:right">
           <div style="font-family:var(--fh);font-size:22px;font-weight:800;color:var(--green)">${(totalRec-totalIss).toLocaleString()}</div>
@@ -2677,6 +2698,21 @@ function renderGeneral(){
         </div>
       </div>
     </div>
+
+    ${hasPrices?`
+    <!-- Financial Overview -->
+    <div class="card" style="background:linear-gradient(135deg,#001a2e,#081428);border-color:var(--blue);margin-bottom:12px">
+      <div class="ctitle" style="margin-bottom:10px">💰 Financial Overview (All Time)</div>
+      <div class="srow">
+        <div class="sbox"><div class="sv" style="font-size:16px">${zm(cumPurchases)}</div><div class="sl">Cumulative Purchases</div></div>
+        <div class="sbox am"><div class="sv" style="font-size:16px">${zm(cumSales)}</div><div class="sl">Cumulative Sales</div></div>
+      </div>
+      <div class="srow">
+        <div class="sbox ${cumProfit>=0?'':'rd'}"><div class="sv" style="font-size:16px;color:${cumProfit>=0?'var(--green)':'var(--red)'}">${zm(cumProfit)}</div><div class="sl">Cumulative Profit</div></div>
+        <div class="sbox bl"><div class="sv" style="font-size:16px">${zm(totalStockValue)}</div><div class="sl">Cumulative Stock Value</div></div>
+      </div>
+    </div>`:''}
+
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="sh" style="margin:0">Actions</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2701,14 +2737,20 @@ function renderGenReceived(){
   // Build all-time cumulative per-item (sorted by date+time asc)
   const sortedAll=DATA.generalInventory.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   const runByItem={};const cumMap={};
+  // Also track cumulative purchases per item
+  const cumPurchByItem={};const cumPurchMap={};
   sortedAll.forEach(r=>{
     runByItem[r.itemName]=(runByItem[r.itemName]||0)+Number(r.received||0);
     cumMap[r.id]=runByItem[r.itemName];
+    cumPurchByItem[r.itemName]=(cumPurchByItem[r.itemName]||0)+Number(r.received||0)*Number(r.purchasePrice||0);
+    cumPurchMap[r.id]=cumPurchByItem[r.itemName];
   });
   // Sort period items newest first (date+time)
   const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
   const rows=sorted.map(item=>{
     const editable=isWithin24h(item);
+    const pp=Number(item.purchasePrice||0);
+    const sv=pp>0?pp*Number(item.received||0):null;
     return`<tr>
     <td style="white-space:nowrap">
       <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
@@ -2716,6 +2758,8 @@ function renderGenReceived(){
     </td>
     <td style="font-weight:600">${esc(item.itemName)}</td>
     <td style="color:var(--green);text-align:right;font-weight:700">${Number(item.received||0).toLocaleString()}</td>
+    <td style="color:var(--muted);text-align:right;font-size:12px">${pp>0?zm(pp):'—'}</td>
+    <td style="color:var(--blue);text-align:right;font-size:12px">${sv!==null?zm(sv):'—'}</td>
     <td style="color:var(--green);text-align:right;font-size:12px">${Number(item.good||0).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-size:12px">${Number(item.damaged||0).toLocaleString()}</td>
     <td><span class="bdg ${item.condition==='good'?'bg2':'ba2'}" style="font-size:10px">${item.condition||'GOOD'}</span></td>
@@ -2725,9 +2769,12 @@ function renderGenReceived(){
   const allTimeRec=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0),0);
   const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
   const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
+  const periodPurchases=items.reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
+  const cumPurchases=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
+  const hasPrices=items.some(r=>Number(r.purchasePrice||0)>0);
   return `
     <div class="card" style="background:linear-gradient(135deg,#002b1f,#0a1e36);border-color:var(--green)">
-      <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
+      <div class="ctitle" style="margin-bottom:8px">📊 Received Stock Overview</div>
       <div class="srow">
         <div class="sbox"><div class="sv">${allTimeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
         <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
@@ -2735,14 +2782,18 @@ function renderGenReceived(){
       <div class="sbox bl" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
         <div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div>
       </div>
+      ${cumPurchases>0?`<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="sbox"><div class="sv" style="font-size:15px">${zm(cumPurchases)}</div><div class="sl">Cumulative Purchases</div></div>
+        <div class="sbox am"><div class="sv" style="font-size:15px">${zm(periodPurchases)}</div><div class="sl">Period Purchases</div></div>
+      </div>`:''}
     </div>
     <div class="srow">
       <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Period Received</div></div>
       <div class="sbox bl"><div class="sv">${items.length}</div><div class="sl">Entries (Period)</div></div>
     </div>
     <div class="card" style="padding:0"><div class="tw"><table>
-      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Received</th><th style="text-align:right">Good</th><th style="text-align:right">Damaged</th><th>Cond.</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="8" class="empty">No received items for this period</td></tr>`:rows}</tbody>
+      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Purchase Price</th><th style="text-align:right">Stock Value</th><th style="text-align:right">Good</th><th style="text-align:right">Damaged</th><th>Cond.</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="10" class="empty">No received items for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
@@ -2750,13 +2801,18 @@ function renderGenIssued(){
   const items=filterPeriod(DATA.generalIssued,PERIOD.general);
   const sortedAll=DATA.generalIssued.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   const runByItem={};const cumMap={};
+  const cumSalesByItem={};const cumSalesMap={};
   sortedAll.forEach(r=>{
     runByItem[r.itemName]=(runByItem[r.itemName]||0)+Number(r.issued||0);
     cumMap[r.id]=runByItem[r.itemName];
+    cumSalesByItem[r.itemName]=(cumSalesByItem[r.itemName]||0)+Number(r.issued||0)*Number(r.sellingPrice||0);
+    cumSalesMap[r.id]=cumSalesByItem[r.itemName];
   });
   const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
   const rows=sorted.map(item=>{
     const editable=isWithin24h(item);
+    const sp=Number(item.sellingPrice||0);
+    const saleVal=sp>0?sp*Number(item.issued||0):null;
     return`<tr>
     <td style="white-space:nowrap">
       <div style="font-weight:700;font-size:12px">${fmtDate(item.date)}</div>
@@ -2764,20 +2820,28 @@ function renderGenIssued(){
     </td>
     <td style="font-weight:600">${esc(item.itemName)}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
+    <td style="color:var(--muted);text-align:right;font-size:12px">${sp>0?zm(sp):'—'}</td>
+    <td style="color:var(--green);text-align:right;font-size:12px">${saleVal!==null?zm(saleVal):'—'}</td>
     <td style="font-size:12px;color:var(--muted)">${esc(item.notes)||'—'}</td>
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
   const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
+  const periodSales=items.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const cumSales=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
   return `
     <div class="srow">
       <div class="sbox am"><div class="sv">${periodIss.toLocaleString()}</div><div class="sl">Period Issued</div></div>
       <div class="sbox bl"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">All-Time Issued</div></div>
     </div>
+    ${cumSales>0?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="sbox"><div class="sv" style="font-size:15px">${zm(cumSales)}</div><div class="sl">Cumulative Sales</div></div>
+      <div class="sbox am"><div class="sv" style="font-size:15px">${zm(periodSales)}</div><div class="sl">Period Sales</div></div>
+    </div>`:''}
     <div class="card" style="padding:0"><div class="tw"><table>
-      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Issued</th><th>Notes</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="6" class="empty">No issued items for this period</td></tr>`:rows}</tbody>
+      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Selling Price</th><th style="text-align:right">Sale Value</th><th>Notes</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="8" class="empty">No issued items for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
@@ -2791,35 +2855,78 @@ function renderGenSummary(){
     const totalIss=issEntries.reduce((a,b)=>a+Number(b.issued||0),0);
     const bal=totalRec-totalIss;
     const balColor=bal<=0?'var(--red)':bal<5?'var(--amber)':'var(--blue)';
+
+    // Financial calculations
+    // Use per-entry prices where available, else fall back to stored price memory
+    const storedPrices=(DATA.inventoryPrices||{})[name]||{};
+    // Purchase price: latest entry with a price, else stored default
+    const latestPPEntry=recEntries.slice().reverse().find(r=>Number(r.purchasePrice||0)>0);
+    const purchasePrice=latestPPEntry?Number(latestPPEntry.purchasePrice):(storedPrices.purchasePrice||0);
+    // Selling price: latest entry with a price, else stored default
+    const latestSPEntry=issEntries.slice().reverse().find(r=>Number(r.sellingPrice||0)>0);
+    const sellingPrice=latestSPEntry?Number(latestSPEntry.sellingPrice):(storedPrices.sellingPrice||0);
+
+    const margin=sellingPrice&&purchasePrice?sellingPrice-purchasePrice:null;
+    const stockValue=bal>0&&purchasePrice>0?bal*purchasePrice:null;
+    // Total purchases: sum(received × purchasePrice per entry), falling back to last known price
+    const totalPurchases=recEntries.reduce((a,r)=>a+Number(r.received||0)*Number(r.purchasePrice||purchasePrice),0);
+    const totalSales=issEntries.reduce((a,r)=>a+Number(r.issued||0)*Number(r.sellingPrice||sellingPrice),0);
+    const itemProfit=totalSales-totalPurchases;
+    const hasPrices=purchasePrice>0||sellingPrice>0;
+
     // Build chronological running balance table
     const allEvents=[
-      ...recEntries.map(r=>({date:r.date,time:r.time||'',type:'rec',qty:Number(r.received||0)})),
-      ...issEntries.map(r=>({date:r.date,time:r.time||'',type:'iss',qty:Number(r.issued||0)}))
+      ...recEntries.map(r=>({date:r.date,time:r.time||'',type:'rec',qty:Number(r.received||0),price:Number(r.purchasePrice||purchasePrice)})),
+      ...issEntries.map(r=>({date:r.date,time:r.time||'',type:'iss',qty:Number(r.issued||0),price:Number(r.sellingPrice||sellingPrice)}))
     ].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
     let running=0;
+    let cumPurch=0, cumSales=0;
     const eRows=allEvents.map(ev=>{
-      if(ev.type==='rec')running+=ev.qty; else running-=ev.qty;
+      if(ev.type==='rec'){running+=ev.qty;cumPurch+=ev.qty*ev.price;}
+      else{running-=ev.qty;cumSales+=ev.qty*ev.price;}
       const rc=running<=0?'var(--red)':running<5?'var(--amber)':'var(--blue)';
+      const cumProfit=cumSales-cumPurch;
       return `<tr>
         <td style="white-space:nowrap;font-size:11px">${fmtDate(ev.date)}<br><span style="color:var(--muted)">${ev.time||'—'}</span></td>
         <td><span class="bdg ${ev.type==='rec'?'bg2':'ba2'}" style="font-size:10px">${ev.type==='rec'?'IN':'OUT'}</span></td>
         <td style="color:${ev.type==='rec'?'var(--green)':'var(--amber)'};text-align:right;font-weight:700">${ev.type==='rec'?'+':'-'}${ev.qty.toLocaleString()}</td>
+        ${hasPrices?`<td style="color:var(--muted);text-align:right;font-size:10px">${ev.price>0?zm(ev.price):'—'}</td><td style="color:${ev.type==='rec'?'var(--amber)':'var(--green)'};text-align:right;font-size:10px">${ev.price>0?zm(ev.qty*ev.price):'—'}</td>`:''}
         <td style="color:${rc};font-weight:800;text-align:right;border-left:2px solid var(--border)">${running.toLocaleString()}</td>
+        ${hasPrices?`<td style="color:${cumProfit>=0?'var(--green)':'var(--red)'};text-align:right;font-size:10px;border-left:1px solid var(--border)">${zm(cumProfit)}</td>`:''}
       </tr>`;
     }).join('');
+    const finalCumPurch=allEvents.reduce((a,ev)=>ev.type==='rec'?a+ev.qty*ev.price:a,0);
+    const finalCumSales=allEvents.reduce((a,ev)=>ev.type==='iss'?a+ev.qty*ev.price:a,0);
+    const finalCumProfit=finalCumSales-finalCumPurch;
+
     return `<div class="card" style="margin-bottom:12px">
-      <div class="ctitle" style="margin-bottom:6px">${name}</div>
+      <div class="ctitle" style="margin-bottom:6px">${esc(name)}</div>
       <div style="display:flex;gap:6px;font-size:11px;color:var(--muted);flex-wrap:wrap;margin-bottom:10px">
-        <span>OPENING: <strong style="color:var(--text)">0</strong></span>
-        <span>+</span>
         <span>RECEIVED: <strong style="color:var(--green)">${totalRec.toLocaleString()}</strong></span>
         <span>−</span>
         <span>USED: <strong style="color:var(--amber)">${totalIss.toLocaleString()}</strong></span>
         <span>=</span>
         <span>BALANCE: <strong style="color:${balColor}">${bal.toLocaleString()}</strong></span>
       </div>
+      ${hasPrices?`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        ${purchasePrice>0?`<div class="sbox"><div style="font-family:var(--fh);font-size:16px;font-weight:800;color:var(--amber)">${zm(purchasePrice)}</div><div class="sl">Purchase Price</div></div>`:''}
+        ${sellingPrice>0?`<div class="sbox"><div style="font-family:var(--fh);font-size:16px;font-weight:800;color:var(--green)">${zm(sellingPrice)}</div><div class="sl">Selling Price</div></div>`:''}
+        ${margin!==null?`<div class="sbox ${margin>=0?'':'rd'}"><div style="font-family:var(--fh);font-size:16px;font-weight:800;color:${margin>=0?'var(--green)':'var(--red)'}">${zm(margin)}</div><div class="sl">Margin / Unit</div></div>`:''}
+        ${stockValue!==null?`<div class="sbox bl"><div style="font-family:var(--fh);font-size:16px;font-weight:800;color:var(--blue)">${zm(stockValue)}</div><div class="sl">Stock Value</div></div>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        ${totalPurchases>0?`<div class="sbox am"><div style="font-family:var(--fh);font-size:14px;font-weight:800;color:var(--amber)">${zm(totalPurchases)}</div><div class="sl">Total Purchases</div></div>`:''}
+        ${totalSales>0?`<div class="sbox"><div style="font-family:var(--fh);font-size:14px;font-weight:800;color:var(--green)">${zm(totalSales)}</div><div class="sl">Total Sales</div></div>`:''}
+        <div class="sbox ${itemProfit>=0?'':'rd'}"><div style="font-family:var(--fh);font-size:14px;font-weight:800;color:${itemProfit>=0?'var(--green)':'var(--red)'}">${zm(itemProfit)}</div><div class="sl">Item Profit</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        ${finalCumPurch>0?`<div class="sbox am"><div style="font-family:var(--fh);font-size:13px;font-weight:800;color:var(--amber)">${zm(finalCumPurch)}</div><div class="sl">Cum. Purchases</div></div>`:''}
+        ${finalCumSales>0?`<div class="sbox"><div style="font-family:var(--fh);font-size:13px;font-weight:800;color:var(--green)">${zm(finalCumSales)}</div><div class="sl">Cum. Sales</div></div>`:''}
+        <div class="sbox ${finalCumProfit>=0?'':'rd'}"><div style="font-family:var(--fh);font-size:13px;font-weight:800;color:${finalCumProfit>=0?'var(--green)':'var(--red)'}">${zm(finalCumProfit)}</div><div class="sl">Cum. Profit</div></div>
+      </div>`:''}
       ${allEvents.length===0?'<div class="empty" style="padding:8px">No entries yet</div>':`<div class="tw"><table>
-        <thead><tr><th>Date & Time</th><th>Type</th><th style="text-align:right">Qty</th><th style="text-align:right;border-left:2px solid var(--border)">Balance</th></tr></thead>
+        <thead><tr><th>Date & Time</th><th>Type</th><th style="text-align:right">Qty</th>${hasPrices?'<th style="text-align:right">Price</th><th style="text-align:right">Value</th>':''}<th style="text-align:right;border-left:2px solid var(--border)">Balance</th>${hasPrices?'<th style="text-align:right;border-left:1px solid var(--border)">Cum.Profit</th>':''}</tr></thead>
         <tbody>${eRows}</tbody>
       </table></div>`}
     </div>`;
@@ -2846,12 +2953,31 @@ function openGenRecForm(){
       <div class="fw"><div class="fl">Good Qty</div><input class="fi" type="number" id="gr-good" placeholder="0" inputmode="numeric" oninput="calcGenDmg()"/></div>
     </div>
     <div class="fw"><div class="fl">Damaged Qty</div><input class="fi" type="number" id="gr-dmg" placeholder="Auto-calculated" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Purchase Price (${cur()} per unit)</div><input class="fi" type="number" id="gr-pprice" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Condition</div><select class="fi" id="gr-cond"><option value="good">GOOD</option><option value="damaged">DAMAGED (SOME)</option><option value="all-damaged">ALL DAMAGED</option></select></div>
     <div class="fw"><div class="fl">Date Received</div><input class="fi" type="date" id="gr-date" value="${today()}"/></div>
     <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="gr-notes" placeholder="ANY NOTES…" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveGenRec()">✓ Save</button></div>`);
   const sel=document.getElementById('gr-name');
-  if(sel&&sel.tagName==='SELECT'){sel.addEventListener('change',()=>{const oth=document.getElementById('gr-name-other');if(oth)oth.style.display=sel.value==='__other__'?'block':'none';});}
+  if(sel&&sel.tagName==='SELECT'){
+    sel.addEventListener('change',()=>{
+      const oth=document.getElementById('gr-name-other');
+      if(oth)oth.style.display=sel.value==='__other__'?'block':'none';
+      // Pre-fill purchase price from memory
+      const pp=document.getElementById('gr-pprice');
+      if(pp&&sel.value&&sel.value!=='__other__'){
+        const stored=(DATA.inventoryPrices||{})[sel.value];
+        if(stored&&stored.purchasePrice)pp.value=stored.purchasePrice;
+        else pp.value='';
+      }
+    });
+    // Pre-fill on open if a value is already selected
+    const pp=document.getElementById('gr-pprice');
+    if(pp&&sel.value&&sel.value!=='__other__'){
+      const stored=(DATA.inventoryPrices||{})[sel.value];
+      if(stored&&stored.purchasePrice)pp.value=stored.purchasePrice;
+    }
+  }
 }
 
 function calcGenGoodDmg(){
@@ -2876,9 +3002,15 @@ function saveGenRec(){if(isReadOnly()){alert("🔒 This account is in read-only 
   const rec=Number(document.getElementById('gr-rec').value||0);
   const good=Number(document.getElementById('gr-good').value||0);
   const dmg=Number(document.getElementById('gr-dmg').value||0);
+  const pprice=Number(document.getElementById('gr-pprice')?.value||0);
   if(!name||!rec){alert('Enter item name and quantity.');return;}
-  const payload={id:uid(),date:document.getElementById('gr-date').value,time:nowTime(),itemName:name,received:rec,good,damaged:dmg,condition:document.getElementById('gr-cond').value,notes:uc(document.getElementById('gr-notes').value)};
-  updateData(d=>({...d,generalInventory:[...d.generalInventory,payload]}));
+  const payload={id:uid(),date:document.getElementById('gr-date').value,time:nowTime(),itemName:name,received:rec,good,damaged:dmg,condition:document.getElementById('gr-cond').value,notes:uc(document.getElementById('gr-notes').value),purchasePrice:pprice};
+  updateData(d=>{
+    // Remember price per item
+    const prices={...(d.inventoryPrices||{})};
+    if(pprice>0)prices[name]={...(prices[name]||{}),purchasePrice:pprice};
+    return{...d,generalInventory:[...d.generalInventory,payload],inventoryPrices:prices};
+  });
   closeModal();
 }
 
@@ -2891,17 +3023,37 @@ function openGenIssForm(){
     <div class="mtitle">📤 Issue Item</div>
     <div class="fw"><div class="fl">Item Name</div><select class="fi" id="gi-name">${opts}</select></div>
     <div class="fw"><div class="fl">Qty Issued</div><input class="fi" type="number" id="gi-qty" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Selling Price (${cur()} per unit)</div><input class="fi" type="number" id="gi-sprice" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Date Issued</div><input class="fi" type="date" id="gi-date" value="${today()}"/></div>
     <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="gi-notes" placeholder="E.G. DESTINATION, PURPOSE…" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveGenIss()">✓ Issue</button></div>`);
+  // Pre-fill selling price from memory
+  setTimeout(()=>{
+    const giName=document.getElementById('gi-name');
+    const giSprice=document.getElementById('gi-sprice');
+    function prefillSP(){
+      if(giSprice&&giName){
+        const stored=(DATA.inventoryPrices||{})[giName.value];
+        if(stored&&stored.sellingPrice)giSprice.value=stored.sellingPrice;
+        else giSprice.value='';
+      }
+    }
+    if(giName)giName.addEventListener('change',prefillSP);
+    prefillSP();
+  },50);
 }
 
 function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const name=document.getElementById('gi-name').value;
   const qty=Number(document.getElementById('gi-qty').value||0);
+  const sprice=Number(document.getElementById('gi-sprice')?.value||0);
   if(!name||!qty){alert('Select item and enter quantity.');return;}
-  const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value)};
-  updateData(d=>({...d,generalIssued:[...d.generalIssued,payload]}));
+  const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value),sellingPrice:sprice};
+  updateData(d=>{
+    const prices={...(d.inventoryPrices||{})};
+    if(sprice>0)prices[name]={...(prices[name]||{}),sellingPrice:sprice};
+    return{...d,generalIssued:[...d.generalIssued,payload],inventoryPrices:prices};
+  });
   closeModal();
 }
 
@@ -3107,6 +3259,7 @@ function openEditGenRec(id){
       <div class="fw"><div class="fl">Good Qty</div><input class="fi" type="number" id="eger-good" value="${rec.good||0}" inputmode="numeric"/></div>
     </div>
     <div class="fw"><div class="fl">Damaged Qty</div><input class="fi" type="number" id="eger-dmg" value="${rec.damaged||0}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Purchase Price (${cur()} per unit)</div><input class="fi" type="number" id="eger-pprice" value="${rec.purchasePrice||0}" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Condition</div><select class="fi" id="eger-cond"><option value="good"${rec.condition==='good'?' selected':''}>GOOD</option><option value="damaged"${rec.condition==='damaged'?' selected':''}>DAMAGED (SOME)</option><option value="all-damaged"${rec.condition==='all-damaged'?' selected':''}>ALL DAMAGED</option></select></div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="eger-date" value="${rec.date}"/></div>
     <div class="fw"><div class="fl">Notes</div><input class="fi" id="eger-notes" value="${rec.notes||''}" oninput="this.value=this.value.toUpperCase()"/></div>
@@ -3117,8 +3270,16 @@ function saveEditGenRec(id){
   if(isReadOnly()){alert('🔒 This account is in read-only mode.');return;}
   const name=document.getElementById('eger-name').value;
   const rec=Number(document.getElementById('eger-rec').value||0);
+  const pprice=Number(document.getElementById('eger-pprice')?.value||0);
   if(!name||!rec){alert('Enter item name and quantity.');return;}
-  updateData(d=>({...d,generalInventory:d.generalInventory.map(x=>String(x.id)===String(id)?{...x,itemName:name,received:rec,good:Number(document.getElementById('eger-good').value||0),damaged:Number(document.getElementById('eger-dmg').value||0),condition:document.getElementById('eger-cond').value,date:document.getElementById('eger-date').value,notes:uc(document.getElementById('eger-notes').value)}:x)}));
+  updateData(d=>{
+    const prices={...(d.inventoryPrices||{})};
+    if(pprice>0)prices[name]={...(prices[name]||{}),purchasePrice:pprice};
+    return{...d,
+      generalInventory:d.generalInventory.map(x=>String(x.id)===String(id)?{...x,itemName:name,received:rec,good:Number(document.getElementById('eger-good').value||0),damaged:Number(document.getElementById('eger-dmg').value||0),condition:document.getElementById('eger-cond').value,date:document.getElementById('eger-date').value,notes:uc(document.getElementById('eger-notes').value),purchasePrice:pprice}:x),
+      inventoryPrices:prices
+    };
+  });
   closeModal();
 }
 
@@ -3136,6 +3297,7 @@ function openEditGenIss(id){
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
     <div class="fw"><div class="fl">Item Name</div><select class="fi" id="egei-name">${opts}</select></div>
     <div class="fw"><div class="fl">Qty Issued</div><input class="fi" type="number" id="egei-qty" value="${iss.issued}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Selling Price (${cur()} per unit)</div><input class="fi" type="number" id="egei-sprice" value="${iss.sellingPrice||0}" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="egei-date" value="${iss.date}"/></div>
     <div class="fw"><div class="fl">Notes</div><input class="fi" id="egei-notes" value="${iss.notes||''}" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveEditGenIss('${id}')">✓ Save Changes</button></div>`);
@@ -3145,8 +3307,16 @@ function saveEditGenIss(id){
   if(isReadOnly()){alert('🔒 This account is in read-only mode.');return;}
   const name=document.getElementById('egei-name').value;
   const qty=Number(document.getElementById('egei-qty').value||0);
+  const sprice=Number(document.getElementById('egei-sprice')?.value||0);
   if(!name||!qty){alert('Select item and enter quantity.');return;}
-  updateData(d=>({...d,generalIssued:d.generalIssued.map(x=>String(x.id)===String(id)?{...x,itemName:name,issued:qty,date:document.getElementById('egei-date').value,notes:uc(document.getElementById('egei-notes').value)}:x)}));
+  updateData(d=>{
+    const prices={...(d.inventoryPrices||{})};
+    if(sprice>0)prices[name]={...(prices[name]||{}),sellingPrice:sprice};
+    return{...d,
+      generalIssued:d.generalIssued.map(x=>String(x.id)===String(id)?{...x,itemName:name,issued:qty,date:document.getElementById('egei-date').value,notes:uc(document.getElementById('egei-notes').value),sellingPrice:sprice}:x),
+      inventoryPrices:prices
+    };
+  });
   closeModal();
 }
 
@@ -3249,10 +3419,21 @@ function renderMaizeRec(){
   const all=cRec(CCOM);
   const items=filterPeriod(all,PERIOD.maize);
   const sortedAll=all.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
-  let runTotal=0; const cumMap={};
-  sortedAll.forEach(r=>{runTotal+=Number(r.received||0);cumMap[r.id]=runTotal;});
+  // Build cumulative received qty AND cumulative cost maps (all-time, ordered)
+  let runTotal=0, runCost=0;
+  const cumMap={}, cumCostMap={};
+  sortedAll.forEach(r=>{
+    runTotal+=Number(r.received||0);
+    runCost+=Number(r.received||0)*Number(r.unitPrice||0);
+    cumMap[r.id]=runTotal;
+    cumCostMap[r.id]=runCost;
+  });
   const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
   const rows=sorted.map(item=>{
+    const qty=Number(item.received||0);
+    const up=Number(item.unitPrice||0);
+    const stockVal=qty*up;
+    const cost=stockVal; // cost of this transaction = qty × unit price
     const editable=isWithin24h(item);
     return`<tr>
     <td style="white-space:nowrap">
@@ -3260,13 +3441,18 @@ function renderMaizeRec(){
       <div style="font-size:10px;color:var(--muted)">${item.time||'—'}</div>
     </td>
     <td style="font-weight:600">${esc(item.batchName)}</td>
-    <td style="color:var(--green);text-align:right;font-weight:700">${Number(item.received||0).toLocaleString()}</td>
+    <td style="color:var(--green);text-align:right;font-weight:700">${qty.toLocaleString()}</td>
+    <td style="color:var(--muted);text-align:right;font-size:12px">${up>0?zm(up):'—'}</td>
+    <td style="color:var(--amber);text-align:right;font-size:12px">${up>0?zm(stockVal):'—'}</td>
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--green);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
+    <td style="color:var(--amber);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumCostMap[item.id]>0?zm(cumCostMap[item.id]):'—'}</td>
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeRec=all.reduce((a,b)=>a+Number(b.received||0),0);
   const allTimeIss=cIss(CCOM).reduce((a,b)=>a+Number(b.issued||0),0);
+  const allTimeCost=all.reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
+  const allTimeSV=allTimeCost; // cumulative stock value = total cost of all received
   const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
   return `
     <div class="card" style="background:linear-gradient(135deg,#002b1f,#0a1e36);border-color:var(--green)">
@@ -3275,17 +3461,33 @@ function renderMaizeRec(){
         <div class="sbox"><div class="sv">${allTimeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
         <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
       </div>
-      <div class="sbox bl" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
-        <div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div>
+      <div class="srow">
+        <div class="sbox bl" style="grid-column:1/-1"><div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div></div>
       </div>
+      ${allTimeCost>0?`<div class="srow">
+        <div class="sbox am"><div class="sv" style="font-size:16px">${zm(allTimeCost)}</div><div class="sl">Cum. Cost (Total Spend)</div></div>
+        <div class="sbox" style="background:#0a1628"><div class="sv" style="font-size:16px">${zm(allTimeSV)}</div><div class="sl">Cum. Stock Value</div></div>
+      </div>`:''}
     </div>
     <div class="srow">
       <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Period Received</div></div>
       <div class="sbox bl"><div class="sv">${items.length}</div><div class="sl">Entries (Period)</div></div>
     </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--muted)">
+      💰 <strong style="color:var(--amber)">Stock Value</strong> = Qty × Unit Price &nbsp;|&nbsp; 🔵 <strong style="color:var(--green)">Cum. Received</strong> &amp; <strong style="color:var(--amber)">Cum. Cost</strong> = running all-time totals
+    </div>
     <div class="card" style="padding:0"><div class="tw"><table>
-      <thead><tr><th>Date & Time</th><th>Batch</th><th style="text-align:right">Received</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--green);border-left:2px solid var(--border)">Cum. Received</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="6" class="empty">No ${com.name} received for this period</td></tr>`:rows}</tbody>
+      <thead><tr>
+        <th>Date & Time</th><th>Batch</th>
+        <th style="text-align:right">Received</th>
+        <th style="text-align:right;color:var(--muted)">Unit Price</th>
+        <th style="text-align:right;color:var(--amber)">Stock Value</th>
+        <th style="text-align:right;color:var(--blue)">Available</th>
+        <th style="text-align:right;color:var(--green);border-left:2px solid var(--border)">Cum.Rec</th>
+        <th style="text-align:right;color:var(--amber);border-left:1px solid var(--border)">Cum.Cost</th>
+        ${USER.role==='admin'?'<th></th>':''}
+      </tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="9" class="empty">No ${com.name} received for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
@@ -3295,10 +3497,20 @@ function renderMaizeIss(){
   const allRec=cRec(CCOM);
   const items=filterPeriod(all,PERIOD.maize);
   const sortedAll=all.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
-  let runTotal=0; const cumMap={};
-  sortedAll.forEach(r=>{runTotal+=Number(r.issued||0);cumMap[r.id]=runTotal;});
+  // Build cumulative issued qty AND cumulative revenue maps (all-time, ordered)
+  let runTotal=0, runRev=0;
+  const cumMap={}, cumRevMap={};
+  sortedAll.forEach(r=>{
+    runTotal+=Number(r.issued||0);
+    runRev+=Number(r.issued||0)*Number(r.salePrice||0);
+    cumMap[r.id]=runTotal;
+    cumRevMap[r.id]=runRev;
+  });
   const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
   const rows=sorted.map(item=>{
+    const qty=Number(item.issued||0);
+    const sp=Number(item.salePrice||0);
+    const revenue=qty*sp;
     const editable=isWithin24h(item);
     return`<tr>
     <td style="white-space:nowrap">
@@ -3307,13 +3519,17 @@ function renderMaizeIss(){
     </td>
     <td style="font-weight:600">${esc(item.batchName)}</td>
     <td style="color:var(--blue);font-size:12px">${esc(item.transporter)||'—'}</td>
-    <td style="color:var(--amber);text-align:right;font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
+    <td style="color:var(--amber);text-align:right;font-weight:700">${qty.toLocaleString()}</td>
+    <td style="color:var(--muted);text-align:right;font-size:12px">${sp>0?zm(sp):'—'}</td>
+    <td style="color:var(--green);text-align:right;font-size:12px">${sp>0?zm(revenue):'—'}</td>
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
+    <td style="color:var(--green);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumRevMap[item.id]>0?zm(cumRevMap[item.id]):'—'}</td>
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeIss=all.reduce((a,b)=>a+Number(b.issued||0),0);
   const allTimeRec=allRec.reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeRev=all.reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
   const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
   return `
     <div class="card" style="background:linear-gradient(135deg,#2a1500,#0a1e36);border-color:var(--amber)">
@@ -3322,13 +3538,28 @@ function renderMaizeIss(){
         <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
         <div class="sbox bl"><div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div></div>
       </div>
-      <div class="sbox" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
+      ${allTimeRev>0?`<div class="srow">
+        <div class="sbox" style="background:#0a1628;grid-column:1/-1"><div class="sv" style="font-size:16px;color:var(--green)">${zm(allTimeRev)}</div><div class="sl">Cum. Revenue (Total Earned)</div></div>
+      </div>`:''}
+      <div class="sbox" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628;margin-top:8px">
         <div class="sv" style="font-size:18px;color:var(--muted)">${periodIss.toLocaleString()}</div><div class="sl">Period Issued</div>
       </div>
     </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--muted)">
+      💚 <strong style="color:var(--green)">Revenue</strong> = Qty × Sale Price &nbsp;|&nbsp; 🟠 <strong style="color:var(--amber)">Cum. Issued</strong> &amp; <strong style="color:var(--green)">Cum. Revenue</strong> = running all-time totals
+    </div>
     <div class="card" style="padding:0"><div class="tw"><table>
-      <thead><tr><th>Date & Time</th><th>Batch</th><th>Transporter</th><th style="text-align:right">Issued</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right;color:var(--amber);border-left:2px solid var(--border)">Cum. Issued</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="7" class="empty">No ${com.name} issued for this period</td></tr>`:rows}</tbody>
+      <thead><tr>
+        <th>Date & Time</th><th>Batch</th><th>Transporter</th>
+        <th style="text-align:right">Issued</th>
+        <th style="text-align:right;color:var(--muted)">Sale Price</th>
+        <th style="text-align:right;color:var(--green)">Revenue</th>
+        <th style="text-align:right;color:var(--blue)">Available</th>
+        <th style="text-align:right;color:var(--amber);border-left:2px solid var(--border)">Cum.Iss</th>
+        <th style="text-align:right;color:var(--green);border-left:1px solid var(--border)">Cum.Rev</th>
+        ${USER.role==='admin'?'<th></th>':''}
+      </tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="10" class="empty">No ${com.name} issued for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
@@ -3391,7 +3622,13 @@ function renderMaizeSummary(){
   const totRec=allRec.reduce((a,b)=>a+Number(b.received||0),0);
   const totIss=allIss.reduce((a,b)=>a+Number(b.issued||0),0);
   const totAvail=totRec-totIss;
-  const batches=[...new Set([...allRec.map(x=>x.batchName),...allIss.map(x=>x.batchName)])];
+  // Financial aggregates
+  const cumCost=allRec.reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
+  const cumRev=allIss.reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
+  const cumProfit=cumRev-cumCost;
+  const cumStockVal=cumCost; // stock value = total cost of all stock ever received
+  const hasPricing=cumCost>0||cumRev>0;
+  const profitColor=cumProfit>=0?'var(--green)':'var(--red)';
   return `
     <div class="card">
       <div class="ctitle">${com.icon} Cumulative ${com.name} Summary</div>
@@ -3403,25 +3640,62 @@ function renderMaizeSummary(){
         <div class="sbox bl" style="grid-column:1/-1"><div class="sv">${totAvail.toLocaleString()}</div><div class="sl">System Available (Received − Issued)</div></div>
       </div>
     </div>
+    ${hasPricing?`
+    <div class="sh">Financial Summary</div>
+    <div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue)">
+      <div class="ctitle" style="margin-bottom:12px">💰 Cumulative Financials</div>
+      <div class="srow">
+        <div class="sbox am"><div class="sv" style="font-size:16px">${zm(cumCost)}</div><div class="sl">Cum. Cost (Total Spend)</div></div>
+        <div class="sbox" style="background:#0a1628"><div class="sv" style="font-size:16px;color:var(--green)">${zm(cumRev)}</div><div class="sl">Cum. Revenue (Total Earned)</div></div>
+      </div>
+      <div class="srow">
+        <div class="sbox" style="background:#0a1628;grid-column:1/-1;border:1px solid ${cumProfit>=0?'var(--green)':'var(--red)'}">
+          <div class="sv" style="font-size:20px;color:${profitColor}">${cumProfit>=0?'+':''}${zm(cumProfit)}</div>
+          <div class="sl">Cum. Gross Profit (Revenue − Cost)</div>
+        </div>
+      </div>
+      <div class="srow">
+        <div class="sbox" style="background:#0a1628;grid-column:1/-1">
+          <div class="sv" style="font-size:16px;color:var(--blue)">${zm(cumStockVal)}</div>
+          <div class="sl">Cum. Stock Value (All Stock Ever Received)</div>
+        </div>
+      </div>
+    </div>`:`
+    <div class="warn" style="margin-bottom:12px">💡 Add Unit Price when receiving and Sale Price when issuing to unlock financial tracking (Cost, Revenue, Profit).</div>`}
+    <div class="sh">Per-Batch Breakdown</div>
     <div class="card" style="padding:0"><div class="tw"><table>
-      <thead><tr><th>Batch</th><th style="text-align:right">Received</th><th style="text-align:right">Issued</th><th style="text-align:right;color:var(--blue)">Available</th><th style="text-align:right">Physical</th><th style="text-align:right">Variance</th></tr></thead>
-      <tbody>${renderMaizeBatchSummaryRows()}</tbody>
+      <thead><tr>
+        <th>Batch</th>
+        <th style="text-align:right">Received</th>
+        <th style="text-align:right">Issued</th>
+        <th style="text-align:right;color:var(--blue)">Available</th>
+        <th style="text-align:right">Physical</th>
+        <th style="text-align:right">Variance</th>
+        ${hasPricing?'<th style="text-align:right;color:var(--amber)">Cost</th><th style="text-align:right;color:var(--green)">Revenue</th><th style="text-align:right">Profit</th>':''}
+      </tr></thead>
+      <tbody>${renderMaizeBatchSummaryRows(hasPricing)}</tbody>
     </table></div></div>`;
 }
 
-function renderMaizeBatchSummaryRows(){
+function renderMaizeBatchSummaryRows(hasPricing){
   const allRec=cRec(CCOM); const allIss=cIss(CCOM);
   const batches=[...new Set([...allRec.map(x=>x.batchName),...allIss.map(x=>x.batchName)])];
-  if(batches.length===0)return`<tr><td colspan="6" class="empty">No batches yet</td></tr>`;
+  if(batches.length===0)return`<tr><td colspan="${hasPricing?9:6}" class="empty">No batches yet</td></tr>`;
   return batches.map(bn=>{
-    const rec=allRec.filter(r=>r.batchName===bn).reduce((a,b)=>a+Number(b.received||0),0);
-    const iss=allIss.filter(i=>i.batchName===bn).reduce((a,b)=>a+Number(b.issued||0),0);
+    const recItems=allRec.filter(r=>r.batchName===bn);
+    const issItems=allIss.filter(i=>i.batchName===bn);
+    const rec=recItems.reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=issItems.reduce((a,b)=>a+Number(b.issued||0),0);
     const avail=rec-iss;
     const latest=batchPhysical(bn,CCOM);
     const phys=latest?Number(latest.physicalCount):null;
     const variance=phys!==null?avail-phys:null;
     const varColor=variance===null?'var(--muted)':variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
     const varTxt=variance===null?'—':variance<0?`-${Math.abs(variance).toLocaleString()}`:(variance===0?'0':'+'+variance.toLocaleString());
+    const batchCost=recItems.reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
+    const batchRev=issItems.reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
+    const batchProfit=batchRev-batchCost;
+    const profitCol=batchProfit>=0?'var(--green)':'var(--red)';
     return `<tr>
       <td style="font-weight:700">${bn}</td>
       <td style="text-align:right">${rec.toLocaleString()}</td>
@@ -3429,25 +3703,29 @@ function renderMaizeBatchSummaryRows(){
       <td style="color:var(--blue);font-weight:700;text-align:right">${avail.toLocaleString()}</td>
       <td style="color:var(--green);text-align:right">${phys!==null?phys.toLocaleString():'—'}</td>
       <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
+      ${hasPricing?`
+      <td style="color:var(--amber);text-align:right;font-size:11px">${batchCost>0?zm(batchCost):'—'}</td>
+      <td style="color:var(--green);text-align:right;font-size:11px">${batchRev>0?zm(batchRev):'—'}</td>
+      <td style="color:${profitCol};font-weight:700;text-align:right;font-size:11px">${(batchCost>0||batchRev>0)?(batchProfit>=0?'+':'')+zm(batchProfit):'—'}</td>`:''}
     </tr>`;
   }).join('');
 }
 
-// ── Receive form
 function openMaizeRecForm(){
   const com=getCom(CCOM);
   openModal(`
     <div class="mtitle">${com.icon} Receive ${com.name}</div>
     <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="mr-batch" placeholder="e.g. Batch 1, Batch A…"/></div>
     <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Received</div><input class="fi" type="number" id="mr-rec" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Unit Price (${cur()} per ${com.unit.slice(0,-1)||com.unit}) <span style="color:var(--muted);font-weight:400;font-size:10px">— optional</span></div><input class="fi" type="number" id="mr-uprice" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Date Received</div><input class="fi" type="date" id="mr-date" value="${today()}"/></div>
-    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveMaizeRec()">✓ Save</button></div>`);
-}
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveMaizeRec()">✓ Save</button></div>`);}
 function saveMaizeRec(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const batch=uc(document.getElementById('mr-batch').value);
   const rec=Number(document.getElementById('mr-rec').value||0);
   if(!batch||!rec){alert('Enter batch name and quantity.');return;}
-  const payload={id:uid(),batchName:batch,date:document.getElementById('mr-date').value,time:nowTime(),received:rec};
+  const unitPrice=Number(document.getElementById('mr-uprice').value||0);
+  const payload={id:uid(),batchName:batch,date:document.getElementById('mr-date').value,time:nowTime(),received:rec,unitPrice};
   const cid=CCOM;
   updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=[...(cr[cid]||[]),payload];return{...d,commodityReceived:cr};});
   closeModal();
@@ -3463,6 +3741,7 @@ function openMaizeIssForm(){
     <div class="fw"><div class="fl">Batch Name</div><select class="fi" id="mi-batch">${opts}</select></div>
     <div class="fw"><div class="fl">Transporter Name</div><input class="fi" id="mi-trans" placeholder="e.g. Truck A, John's Truck…"/></div>
     <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Issued</div><input class="fi" type="number" id="mi-qty" placeholder="0" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Sale Price (${cur()} per ${com.unit.slice(0,-1)||com.unit}) <span style="color:var(--muted);font-weight:400;font-size:10px">— optional</span></div><input class="fi" type="number" id="mi-sprice" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Date Issued</div><input class="fi" type="date" id="mi-date" value="${today()}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveMaizeIss()">✓ Issue</button></div>`);
 }
@@ -3472,7 +3751,8 @@ function saveMaizeIss(){if(isReadOnly()){alert("🔒 This account is in read-onl
   const qty=Number(document.getElementById('mi-qty').value||0);
   if(!qty){alert('Enter quantity to issue.');return;}
   if(!trans){alert('Enter transporter name.');return;}
-  const payload={id:uid(),batchName:batch,date:document.getElementById('mi-date').value,time:nowTime(),transporter:trans,issued:qty};
+  const salePrice=Number(document.getElementById('mi-sprice').value||0);
+  const payload={id:uid(),batchName:batch,date:document.getElementById('mi-date').value,time:nowTime(),transporter:trans,issued:qty,salePrice};
   const cid=CCOM;
   updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=[...(ci[cid]||[]),payload];return{...d,commodityIssued:ci};});
   closeModal();
@@ -3557,6 +3837,7 @@ function openEditMaizeRec(id){
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
     <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="emr-batch" value="${esc(rec.batchName)}" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Received</div><input class="fi" type="number" id="emr-rec" value="${rec.received}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Unit Price (${cur()} per ${com.unit.slice(0,-1)||com.unit})</div><input class="fi" type="number" id="emr-uprice" value="${rec.unitPrice||0}" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="emr-date" value="${rec.date}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveEditMaizeRec('${id}')">✓ Save Changes</button></div>`);
 }
@@ -3566,8 +3847,9 @@ function saveEditMaizeRec(id){
   const batch=uc(document.getElementById('emr-batch').value);
   const qty=Number(document.getElementById('emr-rec').value||0);
   if(!batch||!qty){alert('Enter batch name and quantity.');return;}
+  const unitPrice=Number(document.getElementById('emr-uprice').value||0);
   const cid=CCOM;
-  updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=(cr[cid]||[]).map(x=>String(x.id)===String(id)?{...x,batchName:batch,received:qty,date:document.getElementById('emr-date').value}:x);return{...d,commodityReceived:cr};});
+  updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=(cr[cid]||[]).map(x=>String(x.id)===String(id)?{...x,batchName:batch,received:qty,unitPrice,date:document.getElementById('emr-date').value}:x);return{...d,commodityReceived:cr};});
   closeModal();
 }
 
@@ -3585,6 +3867,7 @@ function openEditMaizeIss(id){
     <div class="fw"><div class="fl">Batch</div><select class="fi" id="emi-batch">${opts}</select></div>
     <div class="fw"><div class="fl">Transporter</div><input class="fi" id="emi-trans" value="${iss.transporter||''}" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Issued</div><input class="fi" type="number" id="emi-qty" value="${iss.issued}" inputmode="numeric"/></div>
+    <div class="fw"><div class="fl">Sale Price (${cur()} per ${com.unit.slice(0,-1)||com.unit})</div><input class="fi" type="number" id="emi-sprice" value="${iss.salePrice||0}" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="emi-date" value="${iss.date}"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn ba" onclick="saveEditMaizeIss('${id}')">✓ Save Changes</button></div>`);
 }
@@ -3596,8 +3879,9 @@ function saveEditMaizeIss(id){
   const qty=Number(document.getElementById('emi-qty').value||0);
   if(!qty){alert('Enter quantity.');return;}
   if(!trans){alert('Enter transporter name.');return;}
+  const salePrice=Number(document.getElementById('emi-sprice').value||0);
   const cid=CCOM;
-  updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=(ci[cid]||[]).map(x=>String(x.id)===String(id)?{...x,batchName:batch,transporter:trans,issued:qty,date:document.getElementById('emi-date').value}:x);return{...d,commodityIssued:ci};});
+  updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=(ci[cid]||[]).map(x=>String(x.id)===String(id)?{...x,batchName:batch,transporter:trans,issued:qty,salePrice,date:document.getElementById('emi-date').value}:x);return{...d,commodityIssued:ci};});
   closeModal();
 }
 
@@ -3717,10 +4001,11 @@ function renderStaff(){
       <button class="stab${STAB==='roster'?' act':''}" id="stab-roster">Roster</button>
       <button class="stab${STAB==='earnings'?' act':''}" id="stab-earnings">Earnings</button>
       <button class="stab${STAB==='payments'?' act':''}" id="stab-payments">💳 Payments</button>
+      <button class="stab${STAB==='leave'?' act':''}" id="stab-leave">🏖 Leave</button>
       <button class="stab${STAB==='stafflist'?' act':''}" id="stab-stafflist">👥 Staff List</button>
       <button class="stab${STAB==='rolesrates'?' act':''}" id="stab-rolesrates">⚙️ Roles & Rates</button>
     </div>
-    ${STAB==='logs'?renderStaffLogs():STAB==='roster'?renderRoster():STAB==='earnings'?renderEarnings():STAB==='payments'?renderPayments():STAB==='rolesrates'?renderRolesRatesTab():renderStaffList()}`;
+    ${STAB==='logs'?renderStaffLogs():STAB==='roster'?renderRoster():STAB==='earnings'?renderEarnings():STAB==='payments'?renderPayments():STAB==='leave'?renderLeave():STAB==='rolesrates'?renderRolesRatesTab():renderStaffList()}`;
 }
 
 function renderStaffLogs(){
@@ -3745,9 +4030,35 @@ function renderStaffLogs(){
 
   const rows=logs.slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id))).map(log=>{
     const s=staffById[log.staffId];
+    // Absence / leave entries
+    if(log.entryType&&log.entryType!=='work'){
+      const typeLabels={absent:'ABSENT',leave:'ON LEAVE',sick:'SICK DAY'};
+      const typeColors={absent:'var(--red)',leave:'var(--blue)',sick:'var(--amber)'};
+      const lbl=typeLabels[log.entryType]||log.entryType.toUpperCase();
+      const col=typeColors[log.entryType]||'var(--muted)';
+      return `<tr>
+        <td style="white-space:nowrap"><div style='font-size:12px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:10px;color:var(--muted)'>${log.time||'—'}</div></td>
+        <td style="font-weight:700">${s?.name||'—'}</td>
+        <td><span class="tag">${esc(log.role||s?.role||'—')}</span></td>
+        <td colspan="6" style="color:${col};font-weight:700">${lbl}${log.absenceNote?' — '+esc(log.absenceNote):''}</td>
+        ${USER.role==='admin'?`<td><button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
+      </tr>`;
+    }
     const net=Number(log.earnings||0)-Number(log.deduction||0);
     const cum=cumMap[log.id]||{cumBags:0,cumNet:0};
     const editable=isWithin24h(log);
+    // Hours worked calculation
+    const stdHrs=Number((DATA.depotInfo||{}).standardShiftHours||8);
+    let hoursCell='—';
+    if(log.timeIn&&log.timeOut){
+      const [ih,im]=log.timeIn.split(':').map(Number);
+      const [oh,om]=log.timeOut.split(':').map(Number);
+      let mins=(oh*60+om)-(ih*60+im);
+      if(mins<0)mins+=1440;
+      const hrs=(mins/60).toFixed(1);
+      const ot=mins/60>stdHrs;
+      hoursCell=`${hrs}h${ot?` <span style="color:var(--amber);font-size:9px">OT</span>`:''}`;
+    }
     return `<tr>
       <td style="white-space:nowrap"><div style='font-size:12px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:10px;color:var(--muted)'>${log.time||'—'}</div></td>
       <td style="font-weight:700">${s?.name||'—'}</td>
@@ -3757,7 +4068,7 @@ function renderStaffLogs(){
       <td style="color:var(--green);font-weight:600;text-align:right">${zm(log.earnings)}</td>
       <td style="color:${Number(log.deduction||0)>0?'var(--red)':'var(--muted)'};text-align:right">-${zm(log.deduction||0)}</td>
       <td style="color:var(--green);font-weight:700;text-align:right">${zm(net)}</td>
-      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${log.timeOut||'—'}</td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${log.timeOut||'—'}<br><span style="color:var(--blue)">${hoursCell}</span></td>
       <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${cum.cumQty.toLocaleString()}<br><span style="font-size:9px;color:var(--muted);font-weight:400">${cum.cumUnit}</span></td>
       <td style="color:var(--purple);font-weight:700;text-align:right">${zm(cum.cumNet)}</td>
       ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
@@ -3767,7 +4078,7 @@ function renderStaffLogs(){
     <div class="prow">${pBtns('staff')}</div>
     <div class="srow">
       <div class="sbox"><div class="sv">${totQty.toLocaleString()}</div><div class="sl">Total Qty (Period)</div></div>
-      <div class="sbox bl"><div class="sv">K${totNet.toFixed(0)}</div><div class="sl">Net (Period)</div></div>
+      <div class="sbox bl"><div class="sv">${cur()} ${totNet.toFixed(0)}</div><div class="sl">Net (Period)</div></div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
       🔵 <span style="color:var(--blue);font-weight:700">Cum. Qty</span> &amp; 🟣 <span style="color:var(--purple);font-weight:700">Cum. Net</span> = running career total per staff up to that day (qty in task's own unit)
@@ -3790,22 +4101,26 @@ function renderStaffLogs(){
 
 function renderRoster(){
   const statusBadge=s=>{
-    if(s.status==='expelled')return`<span class="bdg br2" style="font-size:10px">EXPELLED</span>`;
+    if(s.status==='terminated')return`<span class="bdg br2" style="font-size:10px">TERMINATED</span>`;
+    if(s.status==='resigned')return`<span class="bdg br2" style="font-size:10px">RESIGNED</span>`;
+    if(s.status==='expelled')return`<span class="bdg br2" style="font-size:10px">TERMINATED</span>`;
     if(s.status==='suspended')return`<span class="bdg ba2" style="font-size:10px">SUSPENDED</span>`;
     return`<span class="bdg bg2" style="font-size:10px">ACTIVE</span>`;
   };
   const actionBtns=s=>{
     if(USER.role!=='admin')return'';
-    if(s.status==='expelled')
+    const isInactive=s.status==='terminated'||s.status==='resigned'||s.status==='expelled';
+    if(isInactive)
       return`<button class="btn bg bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','active')">↩ Reinstate</button>`;
     if(s.status==='suspended')
       return`<div style="display:flex;gap:6px">
         <button class="btn bg bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','active')">↩ Reinstate</button>
-        <button class="btn br bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','expelled')">⛔ Expel</button>
+        <button class="btn br bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button>
       </div>`;
     return`<div style="display:flex;gap:6px">
       <button class="btn ba bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','suspended')">⏸ Suspend</button>
-      <button class="btn br bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatus('${s.id}','expelled')">⛔ Expel</button>
+      <button class="btn bo bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatusReason('${s.id}','resigned')">🚪 Resigned</button>
+      <button class="btn br bsm" style="padding:4px 10px;font-size:11px" onclick="setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button>
     </div>`;
   };
   return allRoleNames().map(role=>{
@@ -3813,7 +4128,7 @@ function renderRoster(){
     const mRows=members.map(s=>{
       const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
       const net=sLogs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
-      const dimmed=s.status==='expelled'?'opacity:.55;':'';
+      const dimmed=(s.status==='expelled'||s.status==='terminated'||s.status==='resigned')?'opacity:.55;':'';
       return`<div style="display:flex;flex-direction:column;padding:12px 0;border-bottom:1px solid var(--border);gap:8px;${dimmed}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
@@ -3821,7 +4136,7 @@ function renderRoster(){
             <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(s.phone)||'No phone'} · ${sLogs.length} logs</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:14px;font-weight:700;color:var(--green)">K${net.toFixed(2)}</div>
+            <div style="font-size:14px;font-weight:700;color:var(--green)">${zm(net)}</div>
             <div style="font-size:11px;color:var(--muted)">cumulative</div>
           </div>
         </div>
@@ -3830,9 +4145,9 @@ function renderRoster(){
     }).join('');
     const active=members.filter(s=>s.status==='active').length;
     const susp=members.filter(s=>s.status==='suspended').length;
-    const exp=members.filter(s=>s.status==='expelled').length;
+    const exp=members.filter(s=>s.status==='expelled'||s.status==='terminated'||s.status==='resigned').length;
     return`<div class="card">
-      <div class="ctitle">👷 ${role}s <span style="font-size:12px;color:var(--muted);font-weight:400">${active} active${susp>0?` · ${susp} suspended`:''}${exp>0?` · ${exp} expelled`:''}</span></div>
+      <div class="ctitle">👷 ${role}s <span style="font-size:12px;color:var(--muted);font-weight:400">${active} active${susp>0?` · ${susp} suspended`:''}${exp>0?` · ${exp} inactive`:''}</span></div>
       ${members.length===0?`<div class="empty" style="padding:8px 0">No ${role.toLowerCase()}s registered</div>`:mRows}
     </div>`;
   }).join('');
@@ -3841,7 +4156,8 @@ function renderRoster(){
 function renderEarnings(){
   const staffList=DATA.staff;
   const rows=staffList.map(s=>{
-    const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id);
+    const allLogs=DATA.staffLogs.filter(l=>l.staffId===s.id&&(!l.entryType||l.entryType==='work'));
+    const sLogs=filterPeriod(allLogs,PERIOD.staff);
     const totBags=sLogs.reduce((a,b)=>a+Number(b.bags||0),0);
     const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
     const ded=sLogs.reduce((a,b)=>a+Number(b.deduction||0),0);
@@ -3855,6 +4171,7 @@ function renderEarnings(){
       <td style="color:var(--green);font-weight:700">${zm(net)}</td>
     </tr>`;}).join('');
   return `
+    <div class="prow">${pBtns('staff')}</div>
     <div style="background:#3d2a00;border:1px solid var(--amber);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.6"><b>\u26a0\ufe0f Wage Disclaimer:</b> All wage figures must be verified by management before payment. This app does not constitute an official payroll system.</div>
     <div class="card" style="padding:0"><div class="tw"><table>
       <thead><tr><th>Staff Name</th><th>Role</th><th>Total Bags</th><th>Gross Earn</th><th>Deductions</th><th>Net Earn</th></tr></thead>
@@ -3866,15 +4183,22 @@ function openStaffForm(){
   const roleOpts=allRoleNames().map(r=>`<option>${r}</option>`).join('');
   openModal(`
     <div class="mtitle">👤 Register Staff</div>
-    <div class="fw"><div class="fl">Full Name</div><input class="fi" id="sf-name" placeholder="e.g. John Banda"/></div>
-    <div class="fw"><div class="fl">Job Role</div><select class="fi" id="sf-role">${roleOpts||'<option>No roles defined</option>'}</select></div>
-    <div class="fw"><div class="fl">Phone (optional)</div><input class="fi" id="sf-phone" placeholder="0977 000 000" inputmode="tel"/></div>
+    <div class="fw"><div class="fl">Full Name <span style="color:var(--red)">*</span></div><input class="fi" id="sf-name" placeholder="E.G. JOHN BANDA"/></div>
+    <div class="fw"><div class="fl">Job Role <span style="color:var(--red)">*</span></div><select class="fi" id="sf-role">${roleOpts||'<option>No roles defined</option>'}</select></div>
+    <div class="fw"><div class="fl">Date Joined <span style="color:var(--red)">*</span></div><input class="fi" type="date" id="sf-joined" value="${today()}"/></div>
+    <div class="fw"><div class="fl">Phone (optional)</div><input class="fi" id="sf-phone" placeholder="0977 000 000" inputmode="tel" style="text-transform:none"/></div>
+    ${isAdmin()?`<div class="fw"><div class="fl">Employee ID / NRC Number <span style="font-size:10px;color:var(--muted)">(Admin only)</span></div><input class="fi" id="sf-empid" placeholder="E.G. NRC 123456/10/1" style="text-transform:none"/></div>`:'<input type="hidden" id="sf-empid"/>'}
+    <div class="fw"><div class="fl">Emergency Contact Name</div><input class="fi" id="sf-ecname" placeholder="E.G. MARY BANDA"/></div>
+    <div class="fw"><div class="fl">Emergency Contact Phone</div><input class="fi" id="sf-ecphone" placeholder="0977 000 000" inputmode="tel" style="text-transform:none"/></div>
+    <div class="fw"><div class="fl">Notes (optional)</div><textarea class="fi" id="sf-notes" placeholder="E.G. SEASONAL WORKER, PROBATION UNTIL DEC 2025…" rows="2" style="resize:none;height:auto"></textarea></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveStaff()">✓ Register</button></div>`);
 }
 function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const name=uc(document.getElementById('sf-name').value);
   if(!name){alert('Enter staff name.');return;}
-  const payload={id:uid(),name,role:document.getElementById('sf-role').value,phone:document.getElementById('sf-phone').value,status:'active'};
+  const joined=document.getElementById('sf-joined').value;
+  if(!joined){alert('Enter date joined.');return;}
+  const payload={id:uid(),name,role:document.getElementById('sf-role').value,dateJoined:joined,phone:document.getElementById('sf-phone').value,employeeId:(document.getElementById('sf-empid').value||'').trim(),emergencyContactName:uc(document.getElementById('sf-ecname').value),emergencyContactPhone:(document.getElementById('sf-ecphone').value||'').trim(),notes:uc(document.getElementById('sf-notes').value),status:'active'};
   updateData(d=>({...d,staff:[...d.staff,payload]}));
   closeModal();
 }
@@ -3887,20 +4211,46 @@ function openLogForm(){
   const opts=activeStaff.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} (${esc(s.role)})</option>`).join('');
   openModal(`
     <div class="mtitle">📋 Log Work ${!ONLINE?'<span style="font-size:14px;color:var(--amber)">· Offline</span>':''}</div>
+    <div class="fw"><div class="fl">Entry Type</div>
+      <select class="fi" id="lf-entry-type" onchange="onEntryTypeChange()">
+        <option value="work">Work Session</option>
+        <option value="absent">Absent (Unexcused)</option>
+        <option value="leave">On Leave</option>
+        <option value="sick">Sick Day</option>
+      </select>
+    </div>
     <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lf-staff" onchange="onStaffChange()">${opts}</select></div>
-    <div class="fw"><div class="fl">Role</div><div class="fi" id="lf-role-display" style="background:#0a1628;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="lf-role"/></div>
-    <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="onTaskChange()"><option>—</option></select></div>
-    <div class="fw" id="lf-qty-wrap"><div class="fl" id="lf-qty-label">Quantity</div><input class="fi" type="number" id="lf-bags" placeholder="0" inputmode="decimal" step="0.01" oninput="calcGross()"/></div>
-    <div id="gross-hint"></div>
-    <div class="fw"><div class="fl">Deduction (ZMW)</div><input class="fi" type="number" id="lf-ded" value="0" inputmode="decimal" oninput="calcGross()"/></div>
-    <div class="fw"><div class="fl">Deduction Reason</div><select class="fi" id="lf-dr"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option>${r}</option>`).join('')}</select></div>
-    <div class="twobox">
-      <div class="fw"><div class="fl">Time In</div><input class="fi" type="time" id="lf-in"/></div>
-      <div class="fw"><div class="fl">Time Out</div><input class="fi" type="time" id="lf-out"/></div>
+    <div id="lf-work-fields">
+      <div class="fw"><div class="fl">Role</div><div class="fi" id="lf-role-display" style="background:#0a1628;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="lf-role"/></div>
+      <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="onTaskChange()"><option>—</option></select></div>
+      <div class="fw" id="lf-qty-wrap"><div class="fl" id="lf-qty-label">Quantity</div><input class="fi" type="number" id="lf-bags" placeholder="0" inputmode="decimal" step="0.01" oninput="calcGross()"/></div>
+      <div id="gross-hint"></div>
+      <div class="fw"><div class="fl" style="display:flex;justify-content:space-between;align-items:center">Deductions <button type="button" onclick="addDeductionLine()" style="background:none;border:1px solid var(--green);border-radius:6px;color:var(--green);cursor:pointer;padding:1px 8px;font-size:11px;font-weight:700">+ Add</button></div>
+        <div id="lf-deductions">
+          <div class="ded-line" style="display:grid;grid-template-columns:1fr 110px 28px;gap:6px;margin-bottom:6px">
+            <select class="fi ded-reason" style="padding:8px 10px;font-size:12px"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option>${r}</option>`).join('')}</select>
+            <input class="fi ded-amount" type="number" placeholder="0.00" value="0" inputmode="decimal" step="0.01" oninput="calcGross()" style="padding:8px 10px;font-size:13px"/>
+            <button type="button" onclick="removeDeductionLine(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:17px;padding:0">🗑</button>
+          </div>
+        </div>
+      </div>
+      <div class="twobox">
+        <div class="fw"><div class="fl">Time In</div><input class="fi" type="time" id="lf-in" oninput="calcGross()"/></div>
+        <div class="fw"><div class="fl">Time Out</div><input class="fi" type="time" id="lf-out" oninput="calcGross()"/></div>
+      </div>
+      <div id="lf-hours-hint" style="margin-bottom:8px"></div>
     </div>
     <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="lf-date" value="${today()}"/></div>
+    <div class="fw" id="lf-note-wrap" style="display:none"><div class="fl">Note (optional)</div><input class="fi" id="lf-absence-note" placeholder="E.G. FAMILY EMERGENCY"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveLog()">✓ Save Log</button></div>`);
   onStaffChange();
+}
+function onEntryTypeChange(){
+  const type=document.getElementById('lf-entry-type')?.value;
+  const workFields=document.getElementById('lf-work-fields');
+  const noteWrap=document.getElementById('lf-note-wrap');
+  if(type==='work'){workFields.style.display='';noteWrap.style.display='none';}
+  else{workFields.style.display='none';noteWrap.style.display='';}
 }
 
 function onStaffChange(){
@@ -3938,32 +4288,100 @@ function onTaskRoleChange(){
   updateQtyLabel();
   calcGross();
 }
+function _calcHoursHint(inId,outId,hintId){
+  const inV=document.getElementById(inId)?.value;
+  const outV=document.getElementById(outId)?.value;
+  const hintEl=document.getElementById(hintId);
+  if(!hintEl)return;
+  if(inV&&outV){
+    const [ih,im]=inV.split(':').map(Number);
+    const [oh,om]=outV.split(':').map(Number);
+    let mins=(oh*60+om)-(ih*60+im);
+    if(mins<0)mins+=1440;
+    const hrs=(mins/60).toFixed(2);
+    const stdHrs=Number((DATA.depotInfo||{}).standardShiftHours||8);
+    const ot=mins/60>stdHrs;
+    hintEl.innerHTML=`<div class="${ot?'warn':'hint'}" style="margin-bottom:8px">⏱ Hours worked: <strong>${hrs} hrs</strong>${ot?` &nbsp;⚠️ Overtime (>${stdHrs}h standard shift)`:''}`;
+  } else {
+    hintEl.innerHTML='';
+  }
+}
 function calcGross(){
   const qty=document.getElementById('lf-bags')?.value;
   const role=document.getElementById('lf-role')?.value;
   const task=document.getElementById('lf-task')?.value;
-  const ded=Number(document.getElementById('lf-ded')?.value||0);
+  const ded=_totalDeductionAmount('lf-deductions');
   const hint=document.getElementById('gross-hint');
+  _calcHoursHint('lf-in','lf-out','lf-hours-hint');
   if(qty&&hint){
     const g=getEarnings(qty,role,task);
     const net=Math.max(0,g-ded);
     const ul=role&&task?taskRateUnitLabel(role,task):'unit';
     const rate=role&&task?(()=>{const ro=DATA.staffRoles.find(r=>r.name===role);const to=(ro?.tasks||[]).find(t=>t.name===task);return Number(to?.rate||0)})():0;
-    hint.innerHTML=`<div class="hint">${Number(qty).toLocaleString()} ${ul}${Number(qty)!==1?'s':''} × K${rate.toFixed(2)}/${ul} = <strong>K${g.toFixed(2)} gross</strong> &nbsp;|&nbsp; Net: K${net.toFixed(2)}</div>`;
+    hint.innerHTML=`<div class="hint">${Number(qty).toLocaleString()} ${ul}${Number(qty)!==1?'s':''} × K${rate.toFixed(2)}/${ul} = <strong>K${g.toFixed(2)} gross</strong> &nbsp;|&nbsp; Deductions: K${ded.toFixed(2)} &nbsp;|&nbsp; Net: <strong>K${net.toFixed(2)}</strong></div>`;
   }
 }
+// ── MULTI-DEDUCTION HELPERS ──────────────────────────────────────────────────
+function _totalDeductionAmount(containerId){
+  let total=0;
+  document.querySelectorAll(`#${containerId} .ded-amount`).forEach(el=>{total+=Number(el.value||0);});
+  // fallback for old single field
+  const oldField=document.getElementById('lf-ded');
+  if(oldField&&!document.getElementById(containerId))total+=Number(oldField.value||0);
+  return total;
+}
+function _collectDeductions(containerId){
+  const lines=[];
+  document.querySelectorAll(`#${containerId} .ded-line`).forEach(row=>{
+    const reason=row.querySelector('.ded-reason')?.value||'';
+    const amount=Number(row.querySelector('.ded-amount')?.value||0);
+    if(amount>0||reason)lines.push({reason,amount});
+  });
+  return lines;
+}
+function addDeductionLine(){
+  const container=document.getElementById('lf-deductions');
+  if(!container)return;
+  const line=document.createElement('div');
+  line.className='ded-line';
+  line.style='display:grid;grid-template-columns:1fr 110px 28px;gap:6px;margin-bottom:6px';
+  line.innerHTML=`<select class="fi ded-reason" style="padding:8px 10px;font-size:12px"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option>${r}</option>`).join('')}</select><input class="fi ded-amount" type="number" placeholder="0.00" value="0" inputmode="decimal" step="0.01" oninput="calcGross()" style="padding:8px 10px;font-size:13px"/><button type="button" onclick="removeDeductionLine(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:17px;padding:0">🗑</button>`;
+  container.appendChild(line);
+}
+function removeDeductionLine(btn){
+  const line=btn.closest('.ded-line');
+  const container=document.getElementById('lf-deductions');
+  if(container&&container.querySelectorAll('.ded-line').length>1)line.remove();
+  else{line.querySelector('.ded-amount').value=0;line.querySelector('.ded-reason').value='';}
+  calcGross();
+}
 function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
+  const entryType=(document.getElementById('lf-entry-type')?.value)||'work';
   const sid=document.getElementById('lf-staff').value;
+  const date=document.getElementById('lf-date').value;
+  const timeIn=document.getElementById('lf-in')?.value||'';
+  const timeOut=document.getElementById('lf-out')?.value||'';
+  if(entryType!=='work'){
+    // Absence/leave entry
+    const absenceNote=uc(document.getElementById('lf-absence-note')?.value||'');
+    const payload={id:uid(),staffId:Number(sid),date,entryType,absenceNote,time:nowTime()};
+    updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
+    closeModal();
+    return;
+  }
   const qty=Number(document.getElementById('lf-bags').value||0);
   const role=document.getElementById('lf-role').value;
   const task=document.getElementById('lf-task').value;
   if(!sid||!qty){alert('Select staff and enter a quantity greater than zero.');return;}
   const ru=taskRateUnit(role,task);
   const earnings=getEarnings(qty,role,task);
-  const ded=Number(document.getElementById('lf-ded').value||0);
-  // bags field: for bag-based tasks store qty as bags; for others store as qty (bags stays 0 for non-bag tasks)
+  const deductions=_collectDeductions('lf-deductions');
+  const ded=deductions.reduce((a,b)=>a+b.amount,0);
+  const net=Math.max(0,earnings-ded);
+  // Confirmation step (fix 13)
+  if(!confirm(`Confirm Log Entry:\n${task} · ${qty} × K${(earnings/qty||0).toFixed(2)} = K${earnings.toFixed(2)} gross\nDeductions: K${ded.toFixed(2)}\nNet: K${net.toFixed(2)}\n\nProceed?`))return;
   const bagsVal=ru==='bag'?qty:0;
-  const payload={id:uid(),staffId:Number(sid),role,task,bags:bagsVal,qty,rateUnit:ru,earnings,deduction:ded,deductionReason:document.getElementById('lf-dr').value,timeIn:document.getElementById('lf-in').value,timeOut:document.getElementById('lf-out').value,date:document.getElementById('lf-date').value,time:nowTime()};
+  const payload={id:uid(),staffId:Number(sid),role,task,bags:bagsVal,qty,rateUnit:ru,earnings,deduction:ded,deductions,deductionReason:deductions.map(d=>d.reason).filter(Boolean).join('; '),timeIn,timeOut,date,time:nowTime(),entryType:'work'};
   updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
   closeModal();
 }
@@ -4038,6 +4456,7 @@ function renderPayments(){
         <div class="sl">${unpaid>0?'UNPAID BALANCE':'FULLY PAID ✓'}</div>
       </div>
       ${events.length===0?'<div class="empty">No work logs or payments yet</div>':`
+      <div style="text-align:right;margin-bottom:8px"><button class="btn bg bsm" onclick="generatePayslip('${s.id}')">🧾 Generate Payslip</button></div>
       <div class="tw"><table>
         <thead><tr><th>Date</th><th>Type</th><th>Details</th><th style="text-align:right">Earned</th><th style="text-align:right">Paid</th><th style="text-align:right;color:var(--green)">Cum.Earned</th><th style="text-align:right;color:var(--blue)">Cum.Paid</th><th style="text-align:right;color:var(--amber)">Unpaid</th><th></th></tr></thead>
         <tbody>${eRows}</tbody>
@@ -4059,7 +4478,9 @@ function renderPayments(){
 function renderStaffList(){
   const roles=allRoleNames();
   const statusBadge=s=>{
-    if(s.status==='expelled')return`<span class="bdg br2" style="font-size:10px">EXPELLED</span>`;
+    if(s.status==='terminated')return`<span class="bdg br2" style="font-size:10px">TERMINATED</span>`;
+    if(s.status==='resigned')return`<span class="bdg br2" style="font-size:10px">RESIGNED</span>`;
+    if(s.status==='expelled')return`<span class="bdg br2" style="font-size:10px">TERMINATED</span>`;
     if(s.status==='suspended')return`<span class="bdg ba2" style="font-size:10px">SUSPENDED</span>`;
     return`<span class="bdg bg2" style="font-size:10px">ACTIVE</span>`;
   };
@@ -4068,7 +4489,7 @@ function renderStaffList(){
     if(members.length===0)return`<div class="card"><div class="ctitle">👷 ${role}s</div><div class="empty" style="padding:8px 0">No ${role.toLowerCase()}s registered</div></div>`;
     const active=members.filter(s=>!s.status||s.status==='active').length;
     const susp=members.filter(s=>s.status==='suspended').length;
-    const exp=members.filter(s=>s.status==='expelled').length;
+    const exp=members.filter(s=>s.status==='expelled'||s.status==='terminated'||s.status==='resigned').length;
     const avatarColors=['lo','st','pu','rd'];
     const avatarClass=avatarColors[ri%avatarColors.length];
     const initials=n=>n.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
@@ -4114,7 +4535,7 @@ function renderStaffList(){
       </div>`;
     }).join('');
     return`<div style="margin-bottom:16px">
-      <div class="sh" style="margin-bottom:8px">👷 ${role}s <span style="font-size:11px;color:var(--muted);font-weight:400">${active} active${susp>0?` · ${susp} suspended`:''}${exp>0?` · ${exp} expelled`:''}</span></div>
+      <div class="sh" style="margin-bottom:8px">👷 ${role}s <span style="font-size:11px;color:var(--muted);font-weight:400">${active} active${susp>0?` · ${susp} suspended`:''}${exp>0?` · ${exp} inactive`:''}</span></div>
       ${cards}
     </div>`;
   }).join('');
@@ -4134,7 +4555,8 @@ function openStaffDetail(id){
   const net=gross-ded;
   const paid=sPays.reduce((a,b)=>a+Number(b.amount||0),0);
   const unpaid=net-paid;
-  const statusBadge=s.status==='expelled'?`<span class="bdg br2">EXPELLED</span>`:s.status==='suspended'?`<span class="bdg ba2">SUSPENDED</span>`:`<span class="bdg bg2">ACTIVE</span>`;
+  const isInactive=s.status==='terminated'||s.status==='resigned'||s.status==='expelled';
+  const statusBadge=isInactive?(s.status==='resigned'?`<span class="bdg br2">RESIGNED</span>`:`<span class="bdg br2">TERMINATED</span>`):s.status==='suspended'?`<span class="bdg ba2">SUSPENDED</span>`:`<span class="bdg bg2">ACTIVE</span>`;
   const taskBreakdown=tasksForRole(s.role).map(tObj=>{
     const task=tObj.name;
     const tLogs=sLogs.filter(l=>l.task===task);
@@ -4160,11 +4582,11 @@ function openStaffDetail(id){
     </div>`;
   }).join('');
   const actionBtns=USER.role==='admin'?(
-    s.status==='expelled'
+    (s.status==='terminated'||s.status==='resigned'||s.status==='expelled')
       ?`<button class="btn bg" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button>`
       :s.status==='suspended'
-        ?`<div style="display:flex;gap:8px"><button class="btn bg" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','expelled')">⛔ Expel</button></div>`
-        :`<div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','suspended')">⏸ Suspend</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','expelled')">⛔ Expel</button></div>`
+        ?`<div style="display:flex;gap:8px"><button class="btn bg" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button></div>`
+        :`<div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','suspended')">⏸ Suspend</button><button class="btn bo" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','resigned')">🚪 Resigned</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button></div>`
   ):'';
   openModal(`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
@@ -4173,8 +4595,13 @@ function openStaffDetail(id){
         <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">${esc(s.name)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="tag">${esc(s.role)}</span>${statusBadge}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:3px">${esc(s.phone)||'No phone on record'}</div>
+        ${s.dateJoined?`<div style="font-size:11px;color:var(--muted)">Joined: <strong style="color:var(--text)">${fmtDate(s.dateJoined)}</strong></div>`:''}
+        ${s.employeeId&&isAdmin()?`<div style="font-size:11px;color:var(--muted)">ID: <strong style="color:var(--blue)">${esc(s.employeeId)}</strong></div>`:''}
+        ${s.statusDate&&s.status!=='active'?`<div style="font-size:11px;color:var(--amber)">${s.status==='resigned'?'Resigned':'Left'}: ${fmtDate(s.statusDate)}${s.statusReason?` — ${esc(s.statusReason)}`:''}</div>`:''}
       </div>
     </div>
+    ${s.emergencyContactName?`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:12px"><span style="color:var(--muted)">🆘 Emergency Contact: </span><strong>${esc(s.emergencyContactName)}</strong>${s.emergencyContactPhone?` · ${esc(s.emergencyContactPhone)}`:''}</div>`:''}
+    ${s.notes?`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:var(--muted)">📝 ${esc(s.notes)}</div>`:''}
     <div class="srow">
       <div class="sbox"><div class="sv" style="font-size:20px">${zm(net)}</div><div class="sl">Total Earned</div></div>
       <div class="sbox bl"><div class="sv" style="font-size:20px">${zm(paid)}</div><div class="sl">Total Paid</div></div>
@@ -4199,12 +4626,12 @@ function openPayForm(){
   const opts=DATA.staff.map(s=>{
     const earned=DATA.staffLogs.filter(l=>l.staffId===s.id).reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
     const paid=(DATA.staffPayments||[]).filter(p=>p.staffId===s.id).reduce((a,b)=>a+Number(b.amount||0),0);
-    return `<option value="${s.id}">${esc(s.name)} (${esc(s.role)}) — Balance: K${(earned-paid).toFixed(2)}</option>`;
+    return `<option value="${s.id}">${esc(s.name)} (${esc(s.role)}) — Balance: ${zm(earned-paid)}</option>`;
   }).join('');
   openModal(`
     <div class="mtitle">💳 Record Payment</div>
     <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="pf-staff">${opts}</select></div>
-    <div class="fw"><div class="fl">Amount Paid (ZMW)</div><input class="fi" type="number" id="pf-amount" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
+    <div class="fw"><div class="fl">Amount Paid (${cur()})</div><input class="fi" type="number" id="pf-amount" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
     <div class="fw"><div class="fl">Date of Payment</div><input class="fi" type="date" id="pf-date" value="${today()}"/></div>
     <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="pf-notes" placeholder="E.G. CASH, MOBILE MONEY…" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="savePayment()">✓ Save Payment</button></div>`);
@@ -4219,6 +4646,73 @@ function savePayment(){if(isReadOnly()){alert("🔒 This account is in read-only
   closeModal();
 }
 function delPayment(id){if(!requireAdmin('delete payment records'))return;if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
+
+// ── PAYSLIP GENERATOR (Fix 5) ────────────────────────────────────────────────
+function generatePayslip(staffId){
+  const s=DATA.staff.find(x=>String(x.id)===String(staffId));
+  if(!s){alert('Staff not found.');return;}
+  const di=DATA.depotInfo||{};
+  const today=new Date();
+  const period=today.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const sLogs=DATA.staffLogs.filter(l=>l.staffId===s.id&&(!l.entryType||l.entryType==='work'));
+  const payments=(DATA.staffPayments||[]).filter(p=>p.staffId===s.id);
+  const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
+  // Collect all deduction lines across logs
+  const dedLines=[];
+  sLogs.forEach(l=>{
+    if(l.deductions&&l.deductions.length){
+      l.deductions.forEach(d=>{if(d.amount>0)dedLines.push(d);});
+    } else if(Number(l.deduction||0)>0){
+      dedLines.push({reason:l.deductionReason||'Deduction',amount:Number(l.deduction)});
+    }
+  });
+  // Group deduction lines by reason
+  const dedByReason={};
+  dedLines.forEach(d=>{const k=d.reason||'Deduction';dedByReason[k]=(dedByReason[k]||0)+d.amount;});
+  const totalDed=Object.values(dedByReason).reduce((a,b)=>a+b,0);
+  const net=Math.max(0,gross-totalDed);
+  const totalPaid=payments.reduce((a,b)=>a+Number(b.amount||0),0);
+  const unpaid=net-totalPaid;
+  const dedRows=Object.entries(dedByReason).map(([r,a])=>`<tr><td style="padding:6px 10px">${esc(r)}</td><td style="text-align:right;padding:6px 10px;color:#c00">- ${zm(a)}</td></tr>`).join('')||'<tr><td colspan="2" style="padding:6px 10px;color:#888">None</td></tr>';
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Payslip — ${esc(s.name)}</title>
+<style>body{font-family:'Times New Roman',serif;font-size:13pt;margin:2cm;color:#111;}
+h1{font-size:22pt;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:16px;}
+h2{font-size:15pt;margin:0 0 4px}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{background:#f0f0f0;padding:7px 10px;text-align:left;border:1px solid #ccc;font-size:11pt}
+td{padding:6px 10px;border:1px solid #ddd;font-size:11pt}
+.net{font-weight:bold;font-size:14pt;background:#e8ffe8}
+.sig{margin-top:40px;display:flex;justify-content:space-between}
+.sig div{border-top:1px solid #000;padding-top:4px;width:40%;font-size:10pt;color:#555}
+.logo{font-size:10pt;color:#555;margin-bottom:4px}
+</style></head><body>
+<div class="logo">${esc(di.name||'My Depot Master')}${di.district?' · '+esc(di.district):''}${di.country?' · '+esc(di.country):''}</div>
+<h1>PAYSLIP</h1>
+<table><tr><th>Employee Name</th><td>${esc(s.name)}</td><th>Period</th><td>${period}</td></tr>
+<tr><th>Job Role</th><td>${esc(s.role)}</td><th>Date Issued</th><td>${today.toLocaleDateString('en-GB')}</td></tr>
+${s.dateJoined?`<tr><th>Date Joined</th><td>${fmtDate(s.dateJoined)}</td><th>Employee ID</th><td>${esc(s.employeeId||'—')}</td></tr>`:''}
+</table>
+<h2>Earnings</h2>
+<table><tr><th>Description</th><th style="text-align:right">Amount</th></tr>
+<tr><td>Gross Wages (${sLogs.length} sessions)</td><td style="text-align:right">${zm(gross)}</td></tr>
+</table>
+<h2>Deductions</h2>
+<table><tr><th>Reason</th><th style="text-align:right">Amount</th></tr>${dedRows}</table>
+<table><tr class="net"><td style="font-weight:bold">NET PAY</td><td style="text-align:right;font-weight:bold">${zm(net)}</td></tr>
+<tr><td style="color:#555">Already Paid</td><td style="text-align:right;color:#555">- ${zm(totalPaid)}</td></tr>
+<tr><td style="color:${unpaid>0?'#c00':'#060'};font-weight:bold">${unpaid>0?'OUTSTANDING BALANCE':'FULLY PAID'}</td><td style="text-align:right;font-weight:bold;color:${unpaid>0?'#c00':'#060'}">${zm(Math.abs(unpaid))}</td></tr>
+</table>
+<div class="sig"><div>Employee Signature<br><br>${esc(s.name)}</div><div>Authorised By<br><br>${esc(di.name||'Management')}</div></div>
+<p style="font-size:9pt;color:#888;margin-top:30px">Generated by My Depot Master · ${today.toLocaleString('en-GB')} · This payslip must be verified by management before payment.</p>
+</body></html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Payslip_${s.name.replace(/\s+/g,'_')}_${period.replace(/\s/g,'_')}.html`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  showToast('🧾 Payslip downloaded for '+s.name);
+}
 
 function delLog(id){if(!requireAdmin('delete work logs'))return;if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
 
@@ -4291,13 +4785,69 @@ function saveEditLog(id){
 }
 function setStaffStatus(id,status){
   if(!requireAdmin('change staff status'))return;
-  const labels={suspended:'Suspend this staff member? They will remain in all records.',expelled:'Expel this staff member? They will remain in all records but cannot be assigned new work.',active:'Reinstate this staff member?'};
+  const labels={suspended:'Suspend this staff member? They will remain in all records.',terminated:'Terminate this staff member? They will remain in all records.',resigned:'Mark this staff member as resigned? They will remain in all records.',expelled:'Mark this staff member as terminated? They will remain in all records.',active:'Reinstate this staff member?'};
   if(!confirm(labels[status]||'Change staff status?'))return;
-  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status}:s)}));
+  const effectiveStatus=status==='expelled'?'terminated':status;
+  const statusDate=status!=='active'?today():null;
+  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status:effectiveStatus,statusDate,statusReason:''}:s)}));
+}
+function setStaffStatusReason(id,status){
+  if(!requireAdmin('change staff status'))return;
+  const label=status==='resigned'?'Resignation':'Termination';
+  const reason=prompt(`${label} reason (optional):`)||'';
+  if(reason===null)return; // cancelled
+  const effectiveStatus=status;
+  const statusDate=today();
+  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status:effectiveStatus,statusDate,statusReason:reason}:s)}));
 }
 function delStaff(id){if(!requireAdmin('delete staff members'))return;if(!confirm('Delete this staff member? All their logs will remain.'))return;updateData(d=>({...d,staff:d.staff.filter(s=>String(s.id)!==String(id))}));}
 
 // ── ROLES & RATES SUBTAB (Staff tab) ─────────────────────────────────────────
+
+// ── LEAVE BALANCE (Fix 7) ─────────────────────────────────────────────────────
+function renderLeave(){
+  const leaveLog=DATA.leaveLog||[];
+  const stdAnnual=Number((DATA.depotInfo||{}).annualLeaveEntitlement||15);
+  const rows=DATA.staff.filter(s=>s.status==='active'||!s.status).map(s=>{
+    const sLeave=leaveLog.filter(l=>l.staffId===s.id);
+    const annualUsed=sLeave.filter(l=>l.type==='leave').reduce((a,b)=>a+Number(b.days||1),0);
+    const sickUsed=sLeave.filter(l=>l.type==='sick').reduce((a,b)=>a+Number(b.days||1),0);
+    const absences=sLeave.filter(l=>l.type==='absent').length;
+    return{s,annualUsed,sickUsed,absences,annualBal:stdAnnual-annualUsed};
+  });
+  const tableRows=rows.map(function(x){const s=x.s,annualUsed=x.annualUsed,sickUsed=x.sickUsed,absences=x.absences,annualBal=x.annualBal;
+    return `<tr><td style="font-weight:700">${esc(s.name)}</td><td><span class="tag">${esc(s.role)}</span></td><td style="text-align:right;color:var(--green)">${stdAnnual}</td><td style="text-align:right;color:var(--amber)">${annualUsed}</td><td style="text-align:right;font-weight:700;color:${annualBal<0?'var(--red)':annualBal<=3?'var(--amber)':'var(--green)'}">${annualBal}</td><td style="text-align:right;color:var(--blue)">${sickUsed}</td><td style="text-align:right;color:var(--red)">${absences}</td>${USER.role==='admin'?`<td><button class="btn bg bsm" style="padding:3px 8px;font-size:11px" onclick="openLeaveEntryForm('${s.id}')">+ Log</button></td>`:'<td></td>'}</tr>`;
+  }).join('');
+  const recentEntries=leaveLog.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,20);
+  const recentRows=recentEntries.map(function(l){
+    const s=DATA.staff.find(x=>String(x.id)===String(l.staffId));
+    const typeLabels={leave:'Annual Leave',sick:'Sick Day',absent:'Absent'};
+    const typeColors={leave:'var(--green)',sick:'var(--amber)',absent:'var(--red)'};
+    return`<tr><td style="white-space:nowrap">${fmtDate(l.date)}</td><td style="font-weight:700">${s?esc(s.name):'—'}</td><td style="color:${typeColors[l.type]||'var(--muted)'};font-weight:700">${typeLabels[l.type]||l.type}</td><td style="text-align:right">${l.days||1} day${(l.days||1)!==1?'s':''}</td><td style="color:var(--muted);font-size:11px">${esc(l.note||'')}</td>${USER.role==='admin'?`<td><button class="delbtn" onclick="delLeaveEntry('${l.id}')">🗑</button></td>`:'<td></td>'}</tr>`;
+  }).join('');
+  return `<div style="background:#0d2a4a;border:1px solid var(--blue);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--blue);line-height:1.6">ℹ️ Leave tracking — Annual entitlement set to <strong>${stdAnnual} days</strong>.</div>${USER.role==='admin'?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bg bsm" onclick="openLeaveEntryForm()">+ Log Leave / Absence</button></div>`:''}<div class="card" style="padding:0"><div class="ctitle" style="padding:14px 16px;margin-bottom:0">🏖 Leave Balances (Active Staff)</div><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th style="text-align:right">Entitlement</th><th style="text-align:right">Used</th><th style="text-align:right">Balance</th><th style="text-align:right;color:var(--blue)">Sick</th><th style="text-align:right;color:var(--red)">Absences</th><th></th></tr></thead><tbody>${rows.length===0?`<tr><td colspan="8" class="empty">No active staff</td></tr>`:tableRows}</tbody></table></div></div>${recentEntries.length>0?`<div class="card" style="padding:0"><div class="ctitle" style="padding:14px 16px;margin-bottom:0">📋 Recent Leave Log</div><div class="tw"><table><thead><tr><th>Date</th><th>Staff</th><th>Type</th><th style="text-align:right">Days</th><th>Note</th><th></th></tr></thead><tbody>${recentRows}</tbody></table></div></div>`:''}`;
+}
+function openLeaveEntryForm(preselectId){
+  const opts=DATA.staff.filter(s=>!s.status||s.status==='active').map(s=>`<option value="${s.id}"${String(s.id)===String(preselectId)?' selected':''}>${esc(s.name)} (${esc(s.role)})</option>`).join('');
+  openModal(`<div class="mtitle">🏖 Log Leave / Absence</div><div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lv-staff">${opts}</select></div><div class="fw"><div class="fl">Type</div><select class="fi" id="lv-type"><option value="leave">Annual Leave</option><option value="sick">Sick Day</option><option value="absent">Absent (Unexcused)</option></select></div><div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="lv-date" value="${today()}"/></div><div class="fw"><div class="fl">Days</div><input class="fi" type="number" id="lv-days" value="1" min="0.5" step="0.5" inputmode="decimal"/></div><div class="fw"><div class="fl">Note (optional)</div><input class="fi" id="lv-note" placeholder="E.G. APPROVED BY MANAGEMENT"/></div><div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveLeaveEntry()">✓ Save</button></div>`);
+}
+function saveLeaveEntry(){
+  if(isReadOnly()){alert('🔒 Read-only mode.');return;}
+  const staffId=document.getElementById('lv-staff').value;
+  const type=document.getElementById('lv-type').value;
+  const date=document.getElementById('lv-date').value;
+  const days=Number(document.getElementById('lv-days').value||1);
+  const note=uc(document.getElementById('lv-note').value);
+  if(!staffId||!date){alert('Select staff and date.');return;}
+  const entry={id:uid(),staffId:Number(staffId),type,date,days,note,time:nowTime()};
+  updateData(d=>({...d,leaveLog:[...(d.leaveLog||[]),entry]}));
+  closeModal();
+}
+function delLeaveEntry(id){
+  if(!requireAdmin('delete leave entries'))return;
+  if(!confirm('Delete this leave entry?'))return;
+  updateData(d=>({...d,leaveLog:(d.leaveLog||[]).filter(l=>String(l.id)!==String(id))}));
+}
 function renderRolesRatesTab(){
   if(!isAdmin())return`<div class="card"><div class="empty">⛔ Admin access required to manage roles and rates.</div></div>`;
   return `
@@ -4446,6 +4996,15 @@ function renderSettings(){
         </div>
       </div>
       <button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="resetFontSize()">↺ Reset to Default (100%)</button>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Currency</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="fi" id="currency-input" value="${esc(DATA.currency||'ZMW')}" placeholder="ZMW" maxlength="10" style="flex:1;text-transform:uppercase"/>
+          <button class="btn bg bsm" style="width:auto" onclick="saveCurrencySetting()">Save</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Enter any currency code or symbol (e.g. ZMW, USD, KES, K, $). Used on all financial figures across the app.</div>
+        <div id="currency-msg" style="margin-top:6px"></div>
+      </div>
     </div>
 
     ${_renderBioSection()}
@@ -5078,7 +5637,17 @@ function changeFontSize(delta){
 }
 function resetFontSize(){applyFontSize(FS_DEFAULT);}
 
-// ── PINCH-TO-ZOOM ─────────────────────────────────────────────────────────────
+// ── CURRENCY SETTING ──────────────────────────────────────────────────────────
+function saveCurrencySetting(){
+  if(!requireAdmin('change currency setting'))return;
+  const val=(document.getElementById('currency-input')?.value||'').trim().toUpperCase();
+  const msg=document.getElementById('currency-msg');
+  if(!val){if(msg)msg.innerHTML='<div class="err-box">Enter a currency code or symbol.</div>';return;}
+  updateData(d=>({...d,currency:val}));
+  if(msg)msg.innerHTML='<div class="ok-msg">✅ Currency updated to '+esc(val)+'</div>';
+  setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+
 (function(){
   let _startDist=0, _startPct=0, _pinching=false;
   function dist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
@@ -5131,7 +5700,7 @@ function attachTabListeners(){
   if(addStaff)addStaff.addEventListener('click',openStaffForm);
   if(logWork)logWork.addEventListener('click',openLogForm);
   if(payStaff)payStaff.addEventListener('click',openPayForm);
-  ['logs','roster','earnings','payments','stafflist','rolesrates'].forEach(t=>{
+  ['logs','roster','earnings','payments','leave','stafflist','rolesrates'].forEach(t=>{
     const el=document.getElementById('stab-'+t);
     if(el)el.addEventListener('click',()=>{STAB=t;render();});
   });
