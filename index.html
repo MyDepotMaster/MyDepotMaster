@@ -354,7 +354,7 @@ body.trial-mode .content{padding-top:44px;}
     <div class="land-hero">
       <div class="land-logo">MDM</div>
       <div class="land-title">My <span>Depot</span> Master</div>
-      <div class="land-tag">The smarter way to run your depot.<br>Built for Zambian business operators.</div>
+      <div class="land-tag">The smarter way to run your depot.<br>Built for African business operators.</div>
       <div class="land-badge">✨ v3.0 — Now with Auto Subscriptions</div>
     </div>
 
@@ -1409,7 +1409,7 @@ const DEFAULT={
   generalInventory:[],  // {id,date,itemName,received,good,damaged,condition,notes}
   generalIssued:[],     // {id,date,itemName,issued,notes}
   inventoryItems:[],    // admin-defined list of inventory names
-  commodities:[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}],
+  commodities:[],    // admin defines commodities — no default
   commodityReceived:{},
   commodityIssued:{},
   commodityStockCounts:{},
@@ -1424,7 +1424,7 @@ const DEFAULT={
   staffRoles:[],
   deductionReasons:['Damaged bags','Late arrival','Misconduct','Short count'],
   depotInfo:{name:'',district:'',country:'',setupDone:false},
-  currency:'ZMW',    // depot-wide currency symbol/code (e.g. ZMW, USD, KES)
+  currency:'',    // depot-wide currency symbol/code — admin must define (e.g. ZMW, USD, KES)
   inventoryPrices:{}, // {itemName: {purchasePrice, sellingPrice}} — per-item price memory
   books:[],          // {id,name,type,size,createdAt,updatedAt,data,mimeType}
   installId:'',
@@ -1470,30 +1470,54 @@ function idbSet(data){
   }));
 }
 
-// Sync save: always write to localStorage immediately as backup
-function sv(d){
-  try{localStorage.setItem(LK,JSON.stringify(d));}catch{}
-  // Also persist to IndexedDB asynchronously
-  idbSet(d).catch(()=>{});
+// Deep merge: IDB/localStorage data wins over DEFAULT for all keys.
+// Uses nested merge for object-valued keys so sub-arrays are NOT wiped.
+function mergeWithDefault(base,saved){
+  const result=JSON.parse(JSON.stringify(base));
+  if(!saved||typeof saved!=='object')return result;
+  Object.keys(saved).forEach(k=>{
+    const sv=saved[k],bv=result[k];
+    if(sv!==null&&typeof sv==='object'&&!Array.isArray(sv)&&typeof bv==='object'&&!Array.isArray(bv)){
+      result[k]=Object.assign({},bv,sv); // shallow merge for plain objects (e.g. commodityReceived)
+    } else {
+      result[k]=sv; // arrays, primitives: saved value always wins
+    }
+  });
+  return result;
 }
 
-// Load from IndexedDB first, fall back to localStorage
+// Sync save: always write to localStorage immediately, then IDB async
+function sv(d){
+  try{localStorage.setItem(LK,JSON.stringify(d));}catch(e){console.warn('localStorage save failed',e);}
+  idbSet(d).catch(e=>console.warn('IDB save failed',e));
+}
+
+// Sync load from localStorage only (called once at startup before IDB is ready)
 function ld(){
   try{
     const r=localStorage.getItem(LK);
     if(!r)return JSON.parse(JSON.stringify(DEFAULT));
-    return Object.assign(JSON.parse(JSON.stringify(DEFAULT)),JSON.parse(r));
+    return mergeWithDefault(DEFAULT,JSON.parse(r));
   }catch{return JSON.parse(JSON.stringify(DEFAULT));}
 }
 
-// Async init: load from IndexedDB and override if newer than localStorage copy
+// Async init: read IndexedDB; only replace DATA if IDB copy is strictly newer.
+// This is called once after login — must NOT wipe data already in DATA.
 async function initData(){
   try{
     const idbData=await idbGet();
-    if(idbData && (idbData._v||0)>=(DATA._v||0)){
-      DATA=Object.assign(JSON.parse(JSON.stringify(DEFAULT)),idbData);
-      // Sync back to localStorage so fallback is current
-      try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}
+    if(idbData&&typeof idbData==='object'){
+      const idbV=idbData._v||0;
+      const curV=DATA._v||0;
+      if(idbV>curV){
+        // IDB has a newer version — use it
+        DATA=mergeWithDefault(DEFAULT,idbData);
+        try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}
+      } else if(idbV<curV){
+        // localStorage is newer — push it back to IDB so both stay in sync
+        idbSet(DATA).catch(()=>{});
+      }
+      // if equal: both are in sync, do nothing
     }
   }catch(e){
     console.warn('IndexedDB load failed, using localStorage data',e);
@@ -1510,12 +1534,12 @@ let MTAB='received'; // commodity subtab
 let CCOM='maize'; // currently selected commodity id
 let GTAB='inventory'; // general subtab
 
-function uid(){return Date.now()+Math.random();}
+function uid(){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
 function nowTime(){return new Date().toTimeString().slice(0,5);} // HH:MM
 function uc(v){return(v||'').trim().toUpperCase();}
 function today(){return new Date().toISOString().split('T')[0];}
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
-function cur(){return(DATA&&DATA.currency)||'ZMW';}
+function cur(){return(DATA&&DATA.currency)||'';}
 function zm(n){return cur()+' '+Number(n||0).toFixed(2);}
 
 function filterPeriod(items,period,f='date'){
@@ -1919,7 +1943,7 @@ function startSignUp() {
             <span style="font-size:16px">🌍</span>
             <div>
               <div style="font-size:12px;font-weight:700;color:var(--white);letter-spacing:.04em">COUNTRY</div>
-              <div style="font-size:11px;color:var(--muted)">Your country (e.g. ZAMBIA)</div>
+              <div style="font-size:11px;color:var(--muted)">Your country (e.g. KENYA, GHANA, NIGERIA)</div>
             </div>
           </div>
         </div>
@@ -1968,7 +1992,7 @@ function renderSignupStep() {
       <div class="fw"><div class="fl">District <span style="color:var(--red)">*</span></div>
         <input class="fi" id="su-district" placeholder="E.G. MANSA DISTRICT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.district||'')}"/></div>
       <div class="fw"><div class="fl">Country <span style="color:var(--red)">*</span></div>
-        <input class="fi" id="su-country" placeholder="E.G. ZAMBIA" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.country||'ZAMBIA')}"/></div>
+        <input class="fi" id="su-country" placeholder="E.G. YOUR COUNTRY" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.country||'')}"/></div>
       <button class="btn bg" style="margin-top:8px" onclick="signupStep1Next()">Next →</button>`;
 
   } else if (_signupStep === 2) {
@@ -1989,6 +2013,20 @@ function renderSignupStep() {
         <input class="fi" type="email" id="su-email" placeholder="your@email.com" autocapitalize="none" autocomplete="email" spellcheck="false" style="text-transform:none" value="${esc(_signupData.recoveryEmail||'')}"/>
         <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.6">Used only for account recovery. Stored privately on this device.</div>
       </div>
+      <div class="fw"><div class="fl">Currency <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-currency" placeholder="E.G. ZMW, USD, KES, K, $" maxlength="10" style="text-transform:uppercase" value="${esc(_signupData.currency||'')}"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.6">Currency code or symbol used across all financial figures.</div>
+      </div>
+      <div class="fw"><div class="fl">Primary Commodity <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-com-name" placeholder="E.G. Maize, Wheat, Rice…" value="${esc(_signupData.comName||'')}"/>
+      </div>
+      <div class="twobox">
+        <div class="fw"><div class="fl">Commodity Icon</div>
+          <input class="fi" id="su-com-icon" placeholder="🌽" maxlength="4" style="font-size:22px;text-align:center" value="${esc(_signupData.comIcon||'')}"/></div>
+        <div class="fw"><div class="fl">Unit (e.g. bags)</div>
+          <input class="fi" id="su-com-unit" placeholder="bags, tonnes…" value="${esc(_signupData.comUnit||'')}"/></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">You can add more commodities later in Settings → Commodities.</div>
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px">
         <input type="checkbox" id="su-tos" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
         <div style="font-size:12px;color:var(--muted);line-height:1.8">
@@ -2025,7 +2063,11 @@ async function signupFinish() {
   const tos = document.getElementById('su-tos')?.checked;
   const err = document.getElementById('su-err3');
 
+  const _suCur=(document.getElementById('su-currency')?.value||'').trim();
+  const _suCom=(document.getElementById('su-com-name')?.value||'').trim();
   if (!username) { err.style.display='block'; err.textContent='Enter a username.'; return; }
+  if (!_suCur) { err.style.display='block'; err.textContent='Please enter a currency (e.g. ZMW, USD).'; return; }
+  if (!_suCom) { err.style.display='block'; err.textContent='Please enter your primary commodity name (e.g. Maize).'; return; }
   if (pass.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
   if (pass !== pass2) { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
   if (emailRaw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
@@ -2042,8 +2084,19 @@ async function signupFinish() {
     const installId = genInstallId();
 
     const fresh = JSON.parse(JSON.stringify(DEFAULT));
+    const suCurrency=(document.getElementById('su-currency')?.value||'').trim().toUpperCase();
+    const suComName=(document.getElementById('su-com-name')?.value||'').trim();
+    const suComIcon=(document.getElementById('su-com-icon')?.value||'').trim()||'📦';
+    const suComUnit=(document.getElementById('su-com-unit')?.value||'').trim()||'units';
     fresh.users = [{ username, password: hashed, role: 'admin', recoveryEmail: emailRaw || '' }];
     fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true, recoveryEmail: emailRaw || '' };
+    fresh.currency = suCurrency;
+    if(suComName){
+      const comId=suComName.toLowerCase().replace(/[^a-z0-9]/g,'_');
+      fresh.commodities=[{id:comId,name:suComName,icon:suComIcon,unit:suComUnit}];
+    } else {
+      fresh.commodities=[];
+    }
     fresh.installId = installId;
     fresh.trialStart = Date.now();
     fresh._v = 1;
@@ -2320,7 +2373,7 @@ function showDepotSetupModal(){
     </div>
     <div class="fw">
       <div class="fl">Country <span style="color:var(--red)">*</span></div>
-      <input class="fi" id="ds-country" placeholder="E.G. ZAMBIA" value="${di.country||''}" oninput="this.value=this.value.toUpperCase()"/>
+      <input class="fi" id="ds-country" placeholder="E.G. YOUR COUNTRY" value="${di.country||''}" oninput="this.value=this.value.toUpperCase()"/>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px">* All fields are required</div>
     <div class="mact">
@@ -2439,8 +2492,16 @@ function renderDash(){
   // Dashboard uses all commodities aggregated
   const _allCRec=(DATA.commodityReceived||{});
   const _allCIss=(DATA.commodityIssued||{});
-  const maizeRec=(_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).reduce((a,b)=>a+Number(b.received||0),0);
-  const maizeIss=(_allCIss['maize']||[]).concat(DATA.maizeIssued||[]).reduce((a,b)=>a+Number(b.issued||0),0);
+  // Dynamic: use first defined commodity for primary dashboard display
+  const _coms=DATA.commodities||[];
+  const _primCom=_coms[0]||null;
+  const _primId=_primCom?_primCom.id:'';
+  const _primRecs=_primId?[...(_allCRec[_primId]||[]),
+    ...(_primId==='maize'?DATA.maizeReceived||[]:[])]:[]; // include legacy maize data
+  const _primIss=_primId?[...(_allCIss[_primId]||[]),
+    ...(_primId==='maize'?DATA.maizeIssued||[]:[])]:[]; // include legacy maize data
+  const maizeRec=_primRecs.reduce((a,b)=>a+Number(b.received||0),0);
+  const maizeIss=_primIss.reduce((a,b)=>a+Number(b.issued||0),0);
   const maizeBal=maizeRec-maizeIss;
   const maizePct=maizeRec>0?Math.min(100,Math.round((maizeIss/maizeRec)*100)):0;
   const maizeBarColor=maizePct>=90?'var(--red)':maizePct>=60?'var(--amber)':'var(--blue)';
@@ -2451,8 +2512,8 @@ function renderDash(){
   const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   const todayStr=today();
 
-  const todayMaizeIn=(_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
-  const todayMaizeOut=(_allCIss['maize']||[]).concat(DATA.maizeIssued||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
+  const todayMaizeIn=_primRecs.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
+  const todayMaizeOut=_primIss.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
   const todayGenIn=DATA.generalInventory.filter(x=>x.date===todayStr).length;
   const todayStaffLogs=DATA.staffLogs.filter(x=>x.date===todayStr).length;
 
@@ -2470,17 +2531,22 @@ function renderDash(){
         warnings.push({icon:'📦',title:taskName.toUpperCase()+' MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags logged (${taskName}): <strong>${taskBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${Math.abs(diff).toLocaleString()}</strong>`});
     });
   })();
-  const batches=[...new Set((_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).map(x=>x.batchName))];
-  batches.forEach(bn=>{
-    const avail=batchAvail(bn);
-    const latest=batchPhysical(bn);
-    if(latest!==null){
-      const variance=Number(latest.physicalCount)-avail;
-      if(variance!==0){
-        const dir=variance<0?'SHORTAGE':'SURPLUS';
-        warnings.push({icon:'⚖️',title:`STOCK VARIANCE — ${bn}`,msg:`Physical count: <strong>${Number(latest.physicalCount).toLocaleString()}</strong> · System available: <strong>${avail.toLocaleString()}</strong> · <strong style="color:${variance<0?'var(--red)':'var(--amber)'}">${variance<0?variance:'+'+variance} bags (${dir})</strong>`});
+  // Check variance for all defined commodities
+  _coms.forEach(comObj=>{
+    const cid=comObj.id;
+    const allRecs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])]
+    const batchSet=[...new Set(allRecs.map(x=>x.batchName))];
+    batchSet.forEach(bn=>{
+      const avail=batchAvail(bn);
+      const latest=batchPhysical(bn);
+      if(latest!==null){
+        const variance=Number(latest.physicalCount)-avail;
+        if(variance!==0){
+          const dir=variance<0?'SHORTAGE':'SURPLUS';
+          warnings.push({icon:'⚖️',title:`STOCK VARIANCE — ${bn}`,msg:`Physical count: <strong>${Number(latest.physicalCount).toLocaleString()}</strong> · System available: <strong>${avail.toLocaleString()}</strong> · <strong style="color:${variance<0?'var(--red)':'var(--amber)'}">${variance<0?variance:'+'+variance} ${comObj.unit||'units'} (${dir})</strong>`});
+        }
       }
-    }
+    });
   });
   const genItems=[...new Set([...(DATA.inventoryItems||[]),...DATA.generalInventory.map(x=>x.itemName)])];
   genItems.forEach(name=>{
@@ -2500,7 +2566,7 @@ function renderDash(){
     const iss=DATA.generalIssued.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
     if(iss>rec) warnings.push({icon:'🔴',title:`NEGATIVE BALANCE — ${name}`,msg:`Issued (${iss.toLocaleString()}) exceeds received (${rec.toLocaleString()}). Balance: <strong style="color:var(--red)">${(rec-iss).toLocaleString()}</strong>`});
   });
-  if(maizeBal<0) warnings.push({icon:'🌽',title:'NEGATIVE MAIZE BALANCE',msg:`Total issued (${maizeIss.toLocaleString()}) exceeds total received (${maizeRec.toLocaleString()}). Balance: <strong style="color:var(--red)">${maizeBal.toLocaleString()} bags</strong>`});
+  if(_primCom&&maizeBal<0) warnings.push({icon:_primCom.icon||'📦',title:`NEGATIVE ${(_primCom.name||'COMMODITY').toUpperCase()} BALANCE`,msg:`Total issued (${maizeIss.toLocaleString()}) exceeds total received (${maizeRec.toLocaleString()}). Balance: <strong style="color:var(--red)">${maizeBal.toLocaleString()} ${_primCom.unit||'units'}</strong>`});
 
   const warnBlock=warnings.length===0?'':`
     <div style="background:linear-gradient(135deg,#3d1515,#2a1000);border:1.5px solid var(--red);border-radius:14px;padding:14px 16px;margin-bottom:14px">
@@ -2544,8 +2610,15 @@ function renderDash(){
   const allActivity=[
     ...DATA.generalInventory.map(x=>({date:x.date,time:x.time||'',desc:`${esc(x.itemName)}`,qty:`+${Number(x.received||0).toLocaleString()} units`,type:'rec'})),
     ...DATA.generalIssued.map(x=>({date:x.date,time:x.time||'',desc:`${esc(x.itemName)}`,qty:`-${Number(x.issued||0).toLocaleString()} units`,type:'iss'})),
-    ...(_allCRec['maize']||[]).concat(DATA.maizeReceived||[]).map(x=>({date:x.date,time:x.time||'',desc:`MAIZE — ${esc(x.batchName)}`,qty:`+${Number(x.received||0).toLocaleString()} bags`,type:'rec'})),
-    ...(_allCIss['maize']||[]).concat(DATA.maizeIssued||[]).map(x=>({date:x.date,time:x.time||'',desc:`MAIZE — ${esc(x.batchName)}`,qty:`-${Number(x.issued||0).toLocaleString()} bags`,type:'iss'})),
+    ..._coms.flatMap(comObj=>{
+      const cid=comObj.id;
+      const recs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])];
+      const iss=[...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])];
+      return[
+        ...recs.map(x=>({date:x.date,time:x.time||'',desc:`${comObj.name.toUpperCase()} — ${esc(x.batchName)}`,qty:`+${Number(x.received||0).toLocaleString()} ${comObj.unit}`,type:'rec'})),
+        ...iss.map(x=>({date:x.date,time:x.time||'',desc:`${comObj.name.toUpperCase()} — ${esc(x.batchName)}`,qty:`-${Number(x.issued||0).toLocaleString()} ${comObj.unit}`,type:'iss'})),
+      ];
+    }),
   ].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,8);
 
   return `
@@ -2581,14 +2654,14 @@ function renderDash(){
     <div class="sh">Today — ${todayStr}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:12px;padding:12px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Commodity In Today</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">${_primCom?_primCom.name:'Commodity'} In Today</div>
         <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--green)">${todayMaizeIn.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--muted)">bags received</div>
+        <div style="font-size:10px;color:var(--muted)">${_primCom?_primCom.unit:'units'} received</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:12px;padding:12px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Maize Out Today</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">${_primCom?_primCom.name:'Commodity'} Out Today</div>
         <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--amber)">${todayMaizeOut.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--muted)">bags issued</div>
+        <div style="font-size:10px;color:var(--muted)">${_primCom?_primCom.unit:'units'} issued</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:12px;padding:12px">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Stock Entries</div>
@@ -2602,17 +2675,18 @@ function renderDash(){
       </div>
     </div>
 
-    <!-- Maize Stock -->
-    <div class="sh">Maize Overview</div>
+    <!-- Primary Commodity Stock -->
+    ${_primCom?`<div class="sh">${_primCom.name} Overview</div>
     <div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue);margin-bottom:12px">
-      <div class="ctitle">🌽 Maize Bag Balance</div>
+      <div class="ctitle">${_primCom.icon} ${_primCom.name} Balance</div>`:''}
+    ${_primCom?`
       <div class="srow">
         <div class="sbox"><div class="sv">${maizeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
         <div class="sbox am"><div class="sv">${maizeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
       </div>
       <div style="background:#0a1628;border-radius:12px;padding:12px;text-align:center;margin-top:2px">
         <div style="font-family:var(--fh);font-size:32px;font-weight:900;color:${maizeBal<=0?'var(--red)':'var(--blue)'}">${maizeBal.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">BAGS IN STOCK AS AT TODAY</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${(_primCom?_primCom.unit.toUpperCase():'UNITS')} IN STOCK AS AT TODAY</div>
       </div>
       ${maizeRec>0?`
       <div style="margin-top:12px">
@@ -2623,10 +2697,10 @@ function renderDash(){
           <div style="background:${maizeBarColor};width:${maizePct}%;height:100%;border-radius:20px;transition:width .4s"></div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
-          <span>0 bags</span><span>${maizeRec.toLocaleString()} bags</span>
+          <span>0 ${_primCom?_primCom.unit:'units'}</span><span>${maizeRec.toLocaleString()} ${_primCom?_primCom.unit:'units'}</span>
         </div>
       </div>`:''}
-    </div>
+    </div>`:''}
 
     <!-- General Inventory -->
     ${uniqueItems.length>0?`
@@ -2753,6 +2827,7 @@ function renderGeneral(){
         <button class="btn bg bsm" id="btn-add-gen-rec">+ Receive</button>
         <button class="btn ba bsm" id="btn-add-gen-iss">+ Issue</button>
         <button class="btn bo bsm" id="btn-add-gen-sc">&#x1F4E6; Stock Count</button>
+        ${USER.role==='admin'?`<button class="btn bo bsm" onclick="openManageInventory()">⚙️ Manage</button>`:''}
       </div>
     </div>
     <div class="stabs">
@@ -3269,9 +3344,18 @@ function renderGenItemNamesTab(){
 
 // ── EDIT HELPERS ─────────────────────────────────────────────────────────────
 function isWithin24h(record){
-  // Uses the record's id (timestamp from uid()) as the creation time, with date+time as fallback
-  const recId=Number(record.id);
-  const base=isNaN(recId)?Date.now():recId;
+  // New uid format: "base36timestamp-randomsuffix"
+  // Old uid format: numeric float (Date.now()+Math.random())
+  const id=String(record.id||'');
+  let base;
+  if(id.includes('-')){
+    // New format: parse base36 timestamp part
+    base=parseInt(id.split('-')[0],36);
+  } else {
+    // Old numeric format
+    base=Number(id);
+  }
+  if(!base||isNaN(base))base=Date.now();
   return(Date.now()-base)<86400000;
 }
 
@@ -3383,7 +3467,7 @@ function migrateLegacyMaize(){
     changed=true;
   }
   // Ensure commodity lists and maps exist
-  if(!DATA.commodities||DATA.commodities.length===0) DATA.commodities=[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}];
+  // No default commodity injected — admin defines commodities during signup or in Settings
   if(!DATA.commodityReceived) DATA.commodityReceived={};
   if(!DATA.commodityIssued) DATA.commodityIssued={};
   if(!DATA.commodityStockCounts) DATA.commodityStockCounts={};
@@ -3416,9 +3500,17 @@ function batchPhysical(batchName, cid){
 // ── Main render for Commodities tab
 function renderMaize(){
   migrateLegacyMaize();
-  const coms=DATA.commodities||[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}];
+  const coms=DATA.commodities||[];
+  if(coms.length===0){
+    return `<div class="card" style="text-align:center;padding:32px 16px">
+      <div style="font-size:40px;margin-bottom:12px">📦</div>
+      <div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--white);margin-bottom:8px">No Commodities Defined</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:20px">Add your commodities (e.g. Maize, Wheat, Rice) to start tracking stock.</div>
+      ${USER.role==='admin'?`<button class="btn bg" onclick="openManageCommodities()">⚙️ Add Commodity</button>`:'<div style="color:var(--muted);font-size:12px">Ask your Admin to add commodities in Settings.</div>'}
+    </div>`;
+  }
   // Ensure CCOM is valid
-  if(!coms.find(c=>c.id===CCOM)) CCOM=coms[0]?.id||'maize';
+  if(!coms.find(c=>c.id===CCOM)) CCOM=coms[0]?.id||'';
   const com=getCom(CCOM);
 
   const comSelector=coms.length>1?`
@@ -3925,14 +4017,14 @@ function openManageCommodities(){
   renderManageCommoditiesModal();
 }
 function renderManageCommoditiesModal(){
-  const coms=(DATA.commodities||[{id:'maize',name:'Maize',icon:'🌽',unit:'bags'}]);
+  const coms=(DATA.commodities||[]);
   const rows=coms.map(c=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:22px">${c.icon}</span>
         <div><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11px;color:var(--muted)">Unit: ${esc(c.unit)} · ID: ${esc(c.id)}</div></div>
       </div>
-      ${c.id==='maize'?`<span style="font-size:11px;color:var(--muted);font-style:italic">default</span>`:`<button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>`}
+      ${coms.indexOf(c)===0?`<span style="font-size:11px;color:var(--muted);font-style:italic">primary</span>`:`<button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>`}
     </div>`).join('');
   openModal(`
     <div class="mtitle">⚙️ Manage Commodities</div>
@@ -3962,11 +4054,54 @@ function deleteCommodity(cid){
   const hasData=(cRec(cid).length+cIss(cid).length+cSC(cid).length)>0;
   if(hasData){alert(`Cannot delete "${com.name}" — it has existing records. Delete all its records first.`);return;}
   if(!confirm(`Delete commodity "${com.name}"? This cannot be undone.`))return;
-  if(CCOM===cid) CCOM='maize';
+  if(CCOM===cid) CCOM=(DATA.commodities||[]).filter(c=>c.id!==cid)[0]?.id||'';
   updateData(d=>({...d,commodities:(d.commodities||[]).filter(c=>c.id!==cid)}));
   renderManageCommoditiesModal();
 }
 
+
+// ── Manage Inventory Items (admin)
+function openManageInventory(){
+  if(!requireAdmin('manage inventory items'))return;
+  renderManageInventoryModal();
+}
+function renderManageInventoryModal(){
+  const items=DATA.inventoryItems||[];
+  const listHtml=items.length>0
+    ?items.map((item,i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-weight:700">${esc(item)}</span>
+        <button class="delbtn" onclick="removeInvItemModal(${i})">🗑</button>
+      </div>`).join('')
+    :`<div style="color:var(--muted);font-size:13px;margin-bottom:12px">No items defined yet. Add items below.</div>`;
+  openModal(`
+    <div class="mtitle">⚙️ Manage Inventory Items</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define item names for the General Inventory dropdown. Ensures consistent naming across all entries and reports.</div>
+    <div style="margin-bottom:12px">${listHtml}</div>
+    <div class="sh" style="margin-top:16px;margin-bottom:8px">Add New Item</div>
+    <div style="display:flex;gap:8px">
+      <input class="fi" id="new-inv-item-modal" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
+      <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItemModal()">+ ADD</button>
+    </div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Close</button></div>`);
+}
+function addInvItemModal(){
+  if(!requireAdmin('add inventory items'))return;
+  const val=document.getElementById('new-inv-item-modal').value.trim().toUpperCase();
+  if(!val){alert('Enter an item name.');return;}
+  const items=DATA.inventoryItems||[];
+  if(items.includes(val)){alert('Item already exists.');return;}
+  updateData(d=>({...d,inventoryItems:[...(d.inventoryItems||[]),val]}));
+  renderManageInventoryModal();
+}
+function removeInvItemModal(idx){
+  if(!requireAdmin('remove inventory items'))return;
+  const items=[...(DATA.inventoryItems||[])];
+  if(!confirm(`Remove "${items[idx]}" from item list?`))return;
+  items.splice(idx,1);
+  updateData(d=>({...d,inventoryItems:items}));
+  renderManageInventoryModal();
+}
 
 // ══════════════════════════════════════════════════════════
 // STAFF
@@ -4773,7 +4908,7 @@ function openEditLog(id){
     <div class="fw"><div class="fl">Task</div><select class="fi" id="elg-task" onchange="calcEditGross()">${taskOpts}</select></div>
     <div class="fw"><div class="fl" id="elg-qty-label">${qtyLbl}</div><input class="fi" type="number" id="elg-bags" value="${logQty}" inputmode="decimal" step="0.01" oninput="calcEditGross()"/></div>
     <div id="edit-gross-hint"></div>
-    <div class="fw"><div class="fl">Deduction (ZMW)</div><input class="fi" type="number" id="elg-ded" value="${log.deduction||0}" inputmode="decimal" oninput="calcEditGross()"/></div>
+    <div class="fw"><div class="fl">Deduction (${cur()})</div><input class="fi" type="number" id="elg-ded" value="${log.deduction||0}" inputmode="decimal" oninput="calcEditGross()"/></div>
     <div class="fw"><div class="fl">Deduction Reason</div><select class="fi" id="elg-dr"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option${r===log.deductionReason?' selected':''}>${r}</option>`).join('')}</select></div>
     <div class="twobox">
       <div class="fw"><div class="fl">Time In</div><input class="fi" type="time" id="elg-in" value="${log.timeIn||''}"/></div>
@@ -5033,7 +5168,7 @@ function renderSettings(){
       <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
         <div class="fl">Currency</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <input class="fi" id="currency-input" value="${esc(DATA.currency||'ZMW')}" placeholder="ZMW" maxlength="10" style="flex:1;text-transform:uppercase"/>
+          <input class="fi" id="currency-input" value="${esc(DATA.currency||'ZMW')}" placeholder="e.g. ZMW, USD, KES, K, $" maxlength="10" style="flex:1;text-transform:uppercase"/>
           <button class="btn bg bsm" style="width:auto" onclick="saveCurrencySetting()">Save</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Enter any currency code or symbol (e.g. ZMW, USD, KES, K, $). Used on all financial figures across the app.</div>
@@ -5208,13 +5343,13 @@ function showTOS(){
       <b style="color:var(--white)">3. No Warranties</b><p style="margin:4px 0 10px">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY. Calculations may not be accurate, complete, or suitable for any official, legal, or financial purpose.</p>
       <b style="color:var(--white)">4. Limitation of Liability</b><p style="margin:4px 0 10px">THE DEVELOPER IS NOT LIABLE FOR: data loss; financial loss; wage or count errors; labour disputes; regulatory penalties; or any indirect damages. Maximum liability = 3 months' subscription fees.</p>
       <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
-      <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally and synced to Google Firebase (USA) where configured. You consent to this. You are the data controller and responsible for compliance with the Zambia Data Protection Act No. 3 of 2021. The Developer does not sell your data.</p>
+      <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally and synced to Google Firebase (USA) where configured. You consent to this. You are the data controller and responsible for compliance with applicable local data protection laws. The Developer does not sell your data.</p>
       <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to MDM Developer. You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
       <b style="color:var(--white)">8. Subscription, Fees &amp; Activation</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Activation will be completed within 48 hours of confirmed payment receipt. Access may be suspended for non-payment. <b style="color:#ffcc66">The Developer reserves the right to change subscription fees and/or subscription periods (e.g. trial duration, active period length) at any time without prior notice.</b> The fee and period applicable at the time of your payment will be honoured for that payment cycle only. Continued use of the Software after any fee or period change constitutes acceptance of the new terms.</p>
       <b style="color:var(--white)">9. Indemnification</b><p style="margin:4px 0 10px">You indemnify the Developer from any claims, costs, or legal fees from your use, misuse, or breach of these Terms.</p>
-      <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of Zambia. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
+      <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of the country in which the operator is registered. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
       <b style="color:var(--white)">11. Modifications</b><p style="margin:4px 0 10px">Terms may be updated at any time. Continued use = acceptance.</p>
-      <b style="color:var(--white)">12. Age &amp; Legal Capacity</b><p style="margin:4px 0 10px">By using this Software you confirm you are at least 18 years old and legally capable of entering a binding agreement under Zambian law. Minors may not use this Software.</p>
+      <b style="color:var(--white)">12. Age &amp; Legal Capacity</b><p style="margin:4px 0 10px">By using this Software you confirm you are at least 18 years old and legally capable of entering a binding agreement under applicable local law. Minors may not use this Software.</p>
       <div style="background:#3d1515;border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#ff8080"><b>\u26a0\ufe0f IMPORTANT:</b> This is a general-purpose admin tool only — NOT legal, financial, or accounting advice. All figures must be independently verified.</div>
       <div style="text-align:center;font-size:11px">My Depot Master \u00b7 \u00a9 ${yr} MDM Developer \u00b7 All Rights Reserved</div>
     </div>
@@ -5223,7 +5358,7 @@ function showTOS(){
 function saveDepotInfo(){
   const name=uc(document.getElementById('di-name').value)||'MY COMPANY';
   const district=uc(document.getElementById('di-district').value);
-  const country=uc(document.getElementById('di-country').value)||'ZAMBIA';
+  const country=uc(document.getElementById('di-country').value)||'';
   updateData(d=>({...d,depotInfo:{...d.depotInfo,name,district,country,setupDone:true}}));
   applyDepotInfo();
   alert('\u2705 Company info updated!');
