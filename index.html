@@ -34,14 +34,18 @@
 </script>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%2300e096'/%3E%3Ctext x='50%25' y='58%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black' font-size='74' font-weight='900' fill='%230a1628'%3EMDM%3C/text%3E%3C/svg%3E"/>
 
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet"/>
+<!-- Fonts load async — app renders immediately offline with system fallbacks -->
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet"/></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --bg:#080f1c;--surface:#0e1929;--surface2:#131f30;--border:#1a2d47;
   --green:#00d68f;--green2:#00b87a;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;
   --text:#c8ddf5;--muted:#4d6d8f;--white:#f0f7ff;
-  --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+  --fh:'Syne','Arial Black','Arial',sans-serif;--fb:'DM Sans','Segoe UI','Helvetica Neue',Arial,sans-serif;--fm:'DM Mono','Courier New',monospace;
   --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;
   --shadow-sm:0 1px 3px rgba(0,0,0,.4);
   --shadow-md:0 4px 16px rgba(0,0,0,.5);
@@ -1202,21 +1206,19 @@ function copyNum(num) {
 // The SW is injected as a same-origin blob so scope resolution works.
 // On browsers that block blob-scope SWs the app still works via the
 // direct Cache API pre-cache below (manual cache fallback).
-const SW_VERSION = 'mdm-v5';
+const SW_VERSION = 'mdm-v6';
 // Capture the shell URL at registration time so the SW can cache it
 const SW_SHELL_URL = location.href;
+const SW_FONTS_URL = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 const SW_CODE = `
 const CACHE = '${SW_VERSION}';
+const SHELL = '${SW_SHELL_URL}';
 
 // On install: pre-cache the app shell so it's available offline immediately
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(cache => {
-      // Cache the shell page that registered this SW (passed via SW_SHELL_URL)
-      return cache.addAll([
-        '${SW_SHELL_URL}',
-        'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap'
-      ]).catch(() => {});
+      return cache.addAll([SHELL]).catch(() => {});
     }).then(() => self.skipWaiting())
   );
 });
@@ -1249,29 +1251,26 @@ function networkFirst(req) {
   return fetch(req).then(r => {
     if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
     return r;
-  }).catch(() => caches.match(req));
+  }).catch(() => caches.match(req).then(c => c || caches.match(SHELL)));
 }
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
   // Navigation requests — cache-first so the app shell loads instantly offline
-  // Falls back to network if not in cache yet (first visit)
   if (e.request.mode === 'navigate') {
     e.respondWith(
       caches.match(e.request).then(cached => {
         if (cached) {
-          // Serve from cache immediately; refresh in background
           fetch(e.request).then(r => {
             if (r && r.ok) caches.open(CACHE).then(c => c.put(e.request, r));
           }).catch(() => {});
           return cached;
         }
-        // Not cached yet — try network, then cache for next time
         return fetch(e.request).then(r => {
           if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
           return r;
-        }).catch(() => caches.match('${SW_SHELL_URL}'));
+        }).catch(() => caches.match(SHELL));
       })
     );
     return;
@@ -1297,23 +1296,28 @@ self.addEventListener('fetch', e => {
 // Blob-URL SWs may have limited scope on Android WebViews, so we ALSO cache
 // the shell directly from the main thread — this is the primary offline mechanism.
 if ('serviceWorker' in navigator) {
-  // Pre-cache the shell NOW (before load event) so it's available offline ASAP
+  // Pre-cache the shell HTML NOW from main thread — primary offline mechanism
+  // (blob-scope SWs on Android may not intercept navigation, so we cache directly)
   if ('caches' in window) {
     caches.open(SW_VERSION).then(cache => {
-      cache.add(location.href).catch(() => {});
-      cache.add('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap').catch(() => {});
+      // Save current page HTML directly — most reliable method
+      try {
+        cache.put(location.href, new Response(document.documentElement.outerHTML, {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        })).catch(() => cache.add(location.href).catch(() => {}));
+      } catch(e) { cache.add(location.href).catch(() => {}); }
+      // Cache fonts too if online
+      if (navigator.onLine) cache.add(SW_FONTS_URL).catch(() => {});
     }).catch(() => {});
   }
 
   window.addEventListener('load', () => {
-    // Re-cache after full load to capture any late-loaded resources
+    // Re-save after full load with latest HTML (catches any post-load changes)
     if ('caches' in window) {
       caches.open(SW_VERSION).then(cache => {
         cache.put(location.href, new Response(document.documentElement.outerHTML, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
-        })).catch(() => {
-          cache.add(location.href).catch(() => {});
-        });
+        })).catch(() => cache.add(location.href).catch(() => {}));
       }).catch(() => {});
     }
 
@@ -1339,19 +1343,14 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ── OFFLINE SHELL FALLBACK (no SW required) ──────────────────────────────────
-// When the page is loaded, check if we have the shell cached. On next offline
-// visit the browser may not trigger SW (blob-scope limitation), so we store
-// the current page HTML into Cache API directly every time we're online.
-// This makes the app work offline even on browsers that block blob SW scope.
+// Re-save shell to cache whenever we come back online
 window.addEventListener('online', () => {
   if ('caches' in window) {
     caches.open(SW_VERSION).then(cache => {
       cache.put(location.href, new Response(document.documentElement.outerHTML, {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      })).catch(() => {
-        cache.add(location.href).catch(() => {});
-      });
+      })).catch(() => cache.add(location.href).catch(() => {}));
+      cache.add(SW_FONTS_URL).catch(() => {});
     }).catch(() => {});
   }
 });
@@ -2017,16 +2016,7 @@ function renderSignupStep() {
         <input class="fi" id="su-currency" placeholder="E.G. ZMW, USD, KES, K, $" maxlength="10" style="text-transform:uppercase" value="${esc(_signupData.currency||'')}"/>
         <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.6">Currency code or symbol used across all financial figures.</div>
       </div>
-      <div class="fw"><div class="fl">Primary Commodity <span style="color:var(--red)">*</span></div>
-        <input class="fi" id="su-com-name" placeholder="E.G. Maize, Wheat, Rice…" value="${esc(_signupData.comName||'')}"/>
-      </div>
-      <div class="twobox">
-        <div class="fw"><div class="fl">Commodity Icon</div>
-          <input class="fi" id="su-com-icon" placeholder="🌽" maxlength="4" style="font-size:22px;text-align:center" value="${esc(_signupData.comIcon||'')}"/></div>
-        <div class="fw"><div class="fl">Unit (e.g. bags)</div>
-          <input class="fi" id="su-com-unit" placeholder="bags, tonnes…" value="${esc(_signupData.comUnit||'')}"/></div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">You can add more commodities later in Settings → Commodities.</div>
+      <div style="background:rgba(0,214,143,.06);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--green);line-height:1.7">💡 Add your commodities (e.g. Maize, Wheat, Rice) after sign-in via <strong>Settings → Commodities</strong>.</div>
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px">
         <input type="checkbox" id="su-tos" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
         <div style="font-size:12px;color:var(--muted);line-height:1.8">
@@ -2064,10 +2054,9 @@ async function signupFinish() {
   const err = document.getElementById('su-err3');
 
   const _suCur=(document.getElementById('su-currency')?.value||'').trim();
-  const _suCom=(document.getElementById('su-com-name')?.value||'').trim();
   if (!username) { err.style.display='block'; err.textContent='Enter a username.'; return; }
+  if (!/^[a-z0-9_]+$/.test(username)) { err.style.display='block'; err.textContent='⚠️ Username can only contain letters, numbers and underscores.'; return; }
   if (!_suCur) { err.style.display='block'; err.textContent='Please enter a currency (e.g. ZMW, USD).'; return; }
-  if (!_suCom) { err.style.display='block'; err.textContent='Please enter your primary commodity name (e.g. Maize).'; return; }
   if (pass.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
   if (pass !== pass2) { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
   if (emailRaw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
@@ -2085,18 +2074,10 @@ async function signupFinish() {
 
     const fresh = JSON.parse(JSON.stringify(DEFAULT));
     const suCurrency=(document.getElementById('su-currency')?.value||'').trim().toUpperCase();
-    const suComName=(document.getElementById('su-com-name')?.value||'').trim();
-    const suComIcon=(document.getElementById('su-com-icon')?.value||'').trim()||'📦';
-    const suComUnit=(document.getElementById('su-com-unit')?.value||'').trim()||'units';
     fresh.users = [{ username, password: hashed, role: 'admin', recoveryEmail: emailRaw || '' }];
     fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true, recoveryEmail: emailRaw || '' };
     fresh.currency = suCurrency;
-    if(suComName){
-      const comId=suComName.toLowerCase().replace(/[^a-z0-9]/g,'_');
-      fresh.commodities=[{id:comId,name:suComName,icon:suComIcon,unit:suComUnit}];
-    } else {
-      fresh.commodities=[];
-    }
+    fresh.commodities=[];
     fresh.installId = installId;
     fresh.trialStart = Date.now();
     fresh._v = 1;
@@ -2223,8 +2204,10 @@ async function doLogin(){
   try {
     await initData();
 
-    // Normalise stored usernames to lowercase
+    // Normalise stored usernames to lowercase and deduplicate (keep first occurrence)
     DATA.users = DATA.users.map(u => ({...u, username: (u.username||'').toLowerCase()}));
+    const _seenU = new Set();
+    DATA.users = DATA.users.filter(u => { if(_seenU.has(u.username)) return false; _seenU.add(u.username); return true; });
 
     // Migrate plain-text passwords to new format on first use
     let needsSave = false;
@@ -2512,8 +2495,18 @@ function renderDash(){
   const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   const todayStr=today();
 
-  const todayMaizeIn=_primRecs.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
-  const todayMaizeOut=_primIss.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
+  const todayAllIn=_coms.reduce((sum,comObj)=>{
+    const cid=comObj.id;
+    const recs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])];
+    return sum+recs.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
+  },0);
+  const todayAllOut=_coms.reduce((sum,comObj)=>{
+    const cid=comObj.id;
+    const iss=[...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])];
+    return sum+iss.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
+  },0);
+  const todayMaizeIn=todayAllIn;
+  const todayMaizeOut=todayAllOut;
   const todayGenIn=DATA.generalInventory.filter(x=>x.date===todayStr).length;
   const todayStaffLogs=DATA.staffLogs.filter(x=>x.date===todayStr).length;
 
@@ -2654,14 +2647,14 @@ function renderDash(){
     <div class="sh">Today — ${todayStr}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:12px;padding:12px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">${_primCom?_primCom.name:'Commodity'} In Today</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Commodities In Today</div>
         <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--green)">${todayMaizeIn.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--muted)">${_primCom?_primCom.unit:'units'} received</div>
+        <div style="font-size:10px;color:var(--muted)">units received</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:12px;padding:12px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">${_primCom?_primCom.name:'Commodity'} Out Today</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Commodities Out Today</div>
         <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--amber)">${todayMaizeOut.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--muted)">${_primCom?_primCom.unit:'units'} issued</div>
+        <div style="font-size:10px;color:var(--muted)">units issued</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:12px;padding:12px">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Stock Entries</div>
@@ -2675,33 +2668,40 @@ function renderDash(){
       </div>
     </div>
 
-    <!-- Primary Commodity Stock -->
-    ${_primCom?`<div class="sh">${_primCom.name} Overview</div>
-    <div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue);margin-bottom:12px">
-      <div class="ctitle">${_primCom.icon} ${_primCom.name} Balance</div>`:''}
-    ${_primCom?`
-      <div class="srow">
-        <div class="sbox"><div class="sv">${maizeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
-        <div class="sbox am"><div class="sv">${maizeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
-      </div>
-      <div style="background:#0a1628;border-radius:12px;padding:12px;text-align:center;margin-top:2px">
-        <div style="font-family:var(--fh);font-size:32px;font-weight:900;color:${maizeBal<=0?'var(--red)':'var(--blue)'}">${maizeBal.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${(_primCom?_primCom.unit.toUpperCase():'UNITS')} IN STOCK AS AT TODAY</div>
-      </div>
-      ${maizeRec>0?`
-      <div style="margin-top:12px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
-          <span>Issued vs Received</span><span style="color:${maizeBarColor};font-weight:700">${maizePct}%</span>
+    <!-- Commodities Overview -->
+    ${_coms.length>0?`<div class="sh">Commodities Overview</div>
+    ${_coms.map(comObj=>{
+      const cid=comObj.id;
+      const cRecs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])];
+      const cIss=[...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])];
+      const cRec=cRecs.reduce((a,b)=>a+Number(b.received||0),0);
+      const cIssTotal=cIss.reduce((a,b)=>a+Number(b.issued||0),0);
+      const cBal=cRec-cIssTotal;
+      const cPct=cRec>0?Math.min(100,Math.round((cIssTotal/cRec)*100)):0;
+      const cBarColor=cPct>=90?'var(--red)':cPct>=60?'var(--amber)':'var(--blue)';
+      return `<div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue);margin-bottom:12px">
+        <div class="ctitle">${comObj.icon||'📦'} ${esc(comObj.name)}</div>
+        <div class="srow">
+          <div class="sbox"><div class="sv">${cRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
+          <div class="sbox am"><div class="sv">${cIssTotal.toLocaleString()}</div><div class="sl">Total Issued</div></div>
         </div>
-        <div style="background:#0a1628;border-radius:20px;height:10px;overflow:hidden">
-          <div style="background:${maizeBarColor};width:${maizePct}%;height:100%;border-radius:20px;transition:width .4s"></div>
+        <div style="background:#0a1628;border-radius:12px;padding:12px;text-align:center;margin-top:2px">
+          <div style="font-family:var(--fh);font-size:32px;font-weight:900;color:${cBal<=0?'var(--red)':'var(--blue)'}">${cBal.toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${(comObj.unit||'UNITS').toUpperCase()} IN STOCK AS AT TODAY</div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
-          <span>0 ${_primCom?_primCom.unit:'units'}</span><span>${maizeRec.toLocaleString()} ${_primCom?_primCom.unit:'units'}</span>
-        </div>
-      </div>`:''}
-    </div>`:''}
-
+        ${cRec>0?`<div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
+            <span>Issued vs Received</span><span style="color:${cBarColor};font-weight:700">${cPct}%</span>
+          </div>
+          <div style="background:#0a1628;border-radius:20px;height:10px;overflow:hidden">
+            <div style="background:${cBarColor};width:${cPct}%;height:100%;border-radius:20px;transition:width .4s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
+            <span>0 ${comObj.unit||'units'}</span><span>${cRec.toLocaleString()} ${comObj.unit||'units'}</span>
+          </div>
+        </div>`:''}
+      </div>`;
+    }).join('')}`:`<div class="card" style="margin-bottom:12px"><div class="empty" style="padding:20px 16px">📦 No commodities added yet.<br><span style="font-size:12px">Go to <strong>Settings → Commodities</strong> to add your first commodity.</span></div></div>`}
     <!-- General Inventory -->
     ${uniqueItems.length>0?`
     <div class="sh">Inventory Balances</div>
@@ -4024,7 +4024,7 @@ function renderManageCommoditiesModal(){
         <span style="font-size:22px">${c.icon}</span>
         <div><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11px;color:var(--muted)">Unit: ${esc(c.unit)} · ID: ${esc(c.id)}</div></div>
       </div>
-      ${coms.indexOf(c)===0?`<span style="font-size:11px;color:var(--muted);font-style:italic">primary</span>`:`<button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>`}
+      <button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>
     </div>`).join('');
   openModal(`
     <div class="mtitle">⚙️ Manage Commodities</div>
@@ -5224,9 +5224,10 @@ function renderSettings(){
     </div>
 
     ${USER.role==='admin'?`
-    <div class="sh">User Account</div>
+    <div class="sh">User Accounts</div>
     <div class="card">
       ${users}
+      <div style="margin-top:12px"><button class="btn bg bsm" style="width:100%" onclick="addUser()">+ Add User</button></div>
     </div>
 
     <div class="sh">Role Permissions</div>
@@ -5535,11 +5536,54 @@ function changePw(){
   document.getElementById('pw-new').value='';document.getElementById('pw-conf').value='';
 }
 function addUser(){
-  alert('⛔ Only one account is allowed per device. Multiple usernames are not permitted.');
+  if(!requireAdmin('add users'))return;
+  openModal(`
+    <div class="mtitle">👤 Add User</div>
+    <div id="au-err" class="err-box" style="display:none"></div>
+    <div class="fw"><div class="fl">Username <span style="color:var(--red)">*</span></div>
+      <input class="fi" id="au-user" placeholder="e.g. dataentry1" autocapitalize="none" autocomplete="off" style="text-transform:none"/>
+    </div>
+    <div class="fw"><div class="fl">Role <span style="color:var(--red)">*</span></div>
+      <select class="fi" id="au-role">
+        <option value="data_entry">Data Entry</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="fw"><div class="fl">Password <span style="color:var(--red)">*</span></div>
+      <input class="fi" type="password" id="au-pass" placeholder="Min 4 characters" autocomplete="new-password"/>
+    </div>
+    <div class="fw"><div class="fl">Confirm Password <span style="color:var(--red)">*</span></div>
+      <input class="fi" type="password" id="au-pass2" placeholder="Repeat password" autocomplete="new-password"/>
+    </div>
+    <div class="mact">
+      <button class="btn bg" onclick="_confirmAddUser()">✅ Add User</button>
+      <button class="btn bo" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+function _confirmAddUser(){
+  if(!requireAdmin('add users'))return;
+  if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
+  const username = (document.getElementById('au-user')?.value||'').trim().toLowerCase().replace(/\s+/g,'');
+  const role = document.getElementById('au-role')?.value||'data_entry';
+  const pass = document.getElementById('au-pass')?.value||'';
+  const pass2 = document.getElementById('au-pass2')?.value||'';
+  const err = document.getElementById('au-err');
+  err.style.display='none';
+  if(!username){ err.style.display='block'; err.textContent='⚠️ Enter a username.'; return; }
+  if(!/^[a-z0-9_]+$/.test(username)){ err.style.display='block'; err.textContent='⚠️ Username can only contain letters, numbers and underscores.'; return; }
+  // Duplicate check — case-insensitive
+  const exists=(DATA.users||[]).some(u=>(u.username||'').toLowerCase()===username);
+  if(exists){ err.style.display='block'; err.textContent='⛔ Username "'+username+'" is already taken. Choose a different one.'; return; }
+  if(pass.length<4){ err.style.display='block'; err.textContent='⚠️ Password must be at least 4 characters.'; return; }
+  if(pass!==pass2){ err.style.display='block'; err.textContent='❌ Passwords do not match.'; return; }
+  const hashed=hashPassword(pass);
+  updateData(d=>({...d,users:[...(d.users||[]),{username,password:hashed,role}]}));
+  closeModal();
+  showToast('✅ User "'+username+'" added.');
 }
 function removeUser(username){
   if(!requireAdmin('remove users'))return;
-  if(username==='admin'){alert('Cannot remove admin.');return;}
+  if(username===USER.username){alert('⛔ You cannot remove your own account.');return;}
   if(!confirm(`Remove user "${username}"?`))return;
   bioRemove(username); // clean up any fingerprint credential for this user
   updateData(d=>({...d,users:d.users.filter(u=>u.username!==username)}));
@@ -5584,6 +5628,13 @@ function handleImportFile(input){
       if (!imported || typeof imported !== 'object' || !Array.isArray(imported.users)) {
         alert('❌ Invalid backup file. Please use a valid MDM backup JSON.'); return;
       }
+      // Deduplicate users by username (case-insensitive, keep first)
+      const _seen = new Set();
+      imported.users = imported.users.filter(u => {
+        const key = (u.username||'').toLowerCase();
+        if(_seen.has(key)) return false;
+        _seen.add(key); return true;
+      });
       // Strip any plain-text passwords before saving (they will be migrated on next login)
       DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), imported);
       DATA._v = (DATA._v || 0) + 1;
