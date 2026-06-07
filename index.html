@@ -1530,7 +1530,7 @@ let ONLINE=navigator.onLine;
 let PERIOD={dashboard:'monthly',general:'monthly',maize:'monthly',staff:'monthly'};
 let STAB='logs'; // staff subtab
 let MTAB='received'; // commodity subtab
-let CCOM='maize'; // currently selected commodity id
+let CCOM=''; // currently selected commodity id — resolved dynamically to first defined commodity
 let GTAB='inventory'; // general subtab
 
 function uid(){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
@@ -1636,6 +1636,7 @@ function showLoginScreen() {
   _hideAllOverlays();
   _hideMainUI();
   document.getElementById('login-screen').style.display = 'flex';
+  updateConnStatus();
 }
 
 function showLandingLogin() {
@@ -1999,7 +2000,7 @@ function renderSignupStep() {
       <button class="signup-back" onclick="signupGoBack()">← Back</button>
       ${prog}
       <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px">👤 Create Account</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Set up the admin username and password for your company. You can add more users later in Settings.</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Set up the admin username and password for your company. Once signed in, you can add additional users via <strong style="color:var(--text)">Settings → User Accounts → Add User</strong>.</div>
       <div id="su-err3" class="err-box" style="display:none"></div>
       <div class="fw"><div class="fl">Admin Username <span style="color:var(--red)">*</span></div>
         <input class="fi" id="su-user" placeholder="E.G. manager" autocapitalize="none" autocomplete="off" style="text-transform:none" value="${esc(_signupData.username||'')}"/></div>
@@ -2512,18 +2513,6 @@ function renderDash(){
 
   // ── Warnings ──────────────────────────────────────────────────────────────
   const warnings=[];
-  (function(){
-    const allTasks=[...(DATA.staffRoles||[]).flatMap(r=>(r.tasks||[]).map(t=>t.name))];
-    const uniqueTasks=[...new Set(allTasks)];
-    uniqueTasks.forEach(taskName=>{
-      const taskLogs=DATA.staffLogs.filter(l=>l.task===taskName);
-      if(taskLogs.length===0)return;
-      const taskBags=taskLogs.reduce((a,b)=>a+Number(b.bags||0),0);
-      const diff=taskBags-maizeRec;
-      if(diff!==0)
-        warnings.push({icon:'📦',title:taskName.toUpperCase()+' MISMATCH',msg:`Bags received: <strong>${maizeRec.toLocaleString()}</strong> · Bags logged (${taskName}): <strong>${taskBags.toLocaleString()}</strong> · Difference: <strong style="color:var(--red)">${Math.abs(diff).toLocaleString()}</strong>`});
-    });
-  })();
   // Check variance for all defined commodities
   _coms.forEach(comObj=>{
     const cid=comObj.id;
@@ -2638,7 +2627,7 @@ function renderDash(){
     <!-- Quick Actions -->
     <div class="sh" style="margin-top:0">Quick Actions</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" style="background:linear-gradient(135deg,#002b1f,#001a0e);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">🌽</span>Commodity In</button>
+      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" style="background:linear-gradient(135deg,#002b1f,#001a0e);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">${_primCom?_primCom.icon:'📦'}</span>Commodity In</button>
       <button onclick="showTab('general');setTimeout(()=>openGenRecForm(),80)" style="background:linear-gradient(135deg,#0d2a00,#082000);border:1.5px solid var(--amber);border-radius:12px;padding:12px 6px;color:var(--amber);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">📦</span>Receive</button>
       <button onclick="showTab('staff');setTimeout(()=>openLogForm(),80)" style="background:linear-gradient(135deg,#0d1a40,#060f28);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Log Work</button>
     </div>
@@ -2677,6 +2666,10 @@ function renderDash(){
       const cRec=cRecs.reduce((a,b)=>a+Number(b.received||0),0);
       const cIssTotal=cIss.reduce((a,b)=>a+Number(b.issued||0),0);
       const cBal=cRec-cIssTotal;
+      // Stock value: balance × latest unit price
+      const latestUP=cRecs.filter(r=>Number(r.unitPrice||0)>0).slice(-1)[0];
+      const cUnitPrice=latestUP?Number(latestUP.unitPrice):0;
+      const cStockValue=cBal>0&&cUnitPrice>0?cBal*cUnitPrice:0;
       const cPct=cRec>0?Math.min(100,Math.round((cIssTotal/cRec)*100)):0;
       const cBarColor=cPct>=90?'var(--red)':cPct>=60?'var(--amber)':'var(--blue)';
       return `<div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue);margin-bottom:12px">
@@ -2688,6 +2681,7 @@ function renderDash(){
         <div style="background:#0a1628;border-radius:12px;padding:12px;text-align:center;margin-top:2px">
           <div style="font-family:var(--fh);font-size:32px;font-weight:900;color:${cBal<=0?'var(--red)':'var(--blue)'}">${cBal.toLocaleString()}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${(comObj.unit||'UNITS').toUpperCase()} IN STOCK AS AT TODAY</div>
+          ${cStockValue>0?`<div style="font-size:12px;color:var(--amber);font-weight:700;margin-top:6px">💰 Stock Value: ${zm(cStockValue)}</div>`:''}
         </div>
         ${cRec>0?`<div style="margin-top:12px">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
@@ -2716,13 +2710,14 @@ function renderDash(){
     <div class="card" style="margin-bottom:12px">
       <div class="ctitle" style="justify-content:space-between">
         <span>👷 Staff Summary</span>
+        <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:capitalize">${PERIOD.dashboard}</span>
         <button class="book-btn" style="font-size:11px" onclick="showTab('staff')">View →</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="sbox"><div class="sv">${DATA.staff.filter(s=>s.status!=='expelled').length}</div><div class="sl">Active Staff</div></div>
+        <div class="sbox"><div class="sv">${DATA.staff.filter(s=>s.status!=='expelled'&&s.status!=='terminated'&&s.status!=='resigned').length}</div><div class="sl">Active Staff</div></div>
       <div class="sbox bl"><div class="sv">${cur()} ${netEarn.toFixed(0)}</div><div class="sl">Period Net Earn</div></div>
-        <div class="sbox"><div class="sv">${logs.reduce((a,b)=>a+Number(b.bags||0),0).toLocaleString()}</div><div class="sl">Bags (Period)</div></div>
-        <div class="sbox"><div class="sv">${logs.length}</div><div class="sl">Log Entries</div></div>
+        <div class="sbox"><div class="sv">${logs.filter(l=>!l.entryType||l.entryType==='work').reduce((a,b)=>a+Number(b.bags||0),0).toLocaleString()}</div><div class="sl">Bags (Period)</div></div>
+        <div class="sbox"><div class="sv">${logs.filter(l=>!l.entryType||l.entryType==='work').length}</div><div class="sl">Work Sessions</div></div>
       </div>
       <div class="prow" style="margin-top:10px">${pBtns('dashboard')}</div>
     </div>
@@ -2841,6 +2836,16 @@ function renderGeneral(){
     ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():GTAB==='stockcount'?renderGenStockCount():GTAB==='itemnames'?renderGenItemNamesTab():renderGenSummary()}`;
 }
 
+// Generic table search helper — hides rows where none of the cell text matches the query
+function filterTable(tableId, q){
+  const term=(q||'').toLowerCase();
+  const tbody=document.querySelector('#'+tableId+' tbody');
+  if(!tbody)return;
+  tbody.querySelectorAll('tr').forEach(row=>{
+    row.style.display=(!term||row.textContent.toLowerCase().includes(term))?'':'none';
+  });
+}
+
 function renderGenReceived(){
   const items=filterPeriod(DATA.generalInventory,PERIOD.general);
   // Build all-time cumulative per-item (sorted by date+time asc)
@@ -2900,7 +2905,10 @@ function renderGenReceived(){
       <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Period Received</div></div>
       <div class="sbox bl"><div class="sv">${items.length}</div><div class="sl">Entries (Period)</div></div>
     </div>
-    <div class="card" style="padding:0"><div class="tw"><table>
+    <div style="margin-bottom:10px">
+      <input class="fi" id="gen-inv-search" placeholder="🔍 Search by item name, condition…" oninput="filterTable('gen-inv-table',this.value)" style="font-size:13px"/>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table id="gen-inv-table">
       <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Purchase Price</th><th style="text-align:right">Stock Value</th><th style="text-align:right">Good</th><th style="text-align:right">Damaged</th><th>Cond.</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
       <tbody>${items.length===0?`<tr><td colspan="10" class="empty">No received items for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
@@ -2948,7 +2956,10 @@ function renderGenIssued(){
       <div class="sbox"><div class="sv" style="font-size:15px">${zm(cumSales)}</div><div class="sl">Cumulative Sales</div></div>
       <div class="sbox am"><div class="sv" style="font-size:15px">${zm(periodSales)}</div><div class="sl">Period Sales</div></div>
     </div>`:''}
-    <div class="card" style="padding:0"><div class="tw"><table>
+    <div style="margin-bottom:10px">
+      <input class="fi" id="gen-iss-search" placeholder="🔍 Search by item name or notes…" oninput="filterTable('gen-iss-table',this.value)" style="font-size:13px"/>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table id="gen-iss-table">
       <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Selling Price</th><th style="text-align:right">Sale Value</th><th>Notes</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
       <tbody>${items.length===0?`<tr><td colspan="8" class="empty">No issued items for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
@@ -3267,16 +3278,20 @@ function renderGenStockCount(){
     </tr>`;
   }).join('');
 
-  // Count history table for current period
+  // Count history table for current period — compute system qty AT TIME OF COUNT
   const countRows=counts.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).map(c=>{
-    const avail=itemAvail(c.itemName);
-    const variance=Number(c.physicalCount)-avail;
+    // System available at the time of this count: sum of records on or before count date/time
+    const countDT=c.date+(c.time||'00:00');
+    const recAtCount=DATA.generalInventory.filter(r=>r.itemName===c.itemName&&((r.date+( r.time||'00:00'))<=countDT)).reduce((a,b)=>a+Number(b.received||0),0);
+    const issAtCount=DATA.generalIssued.filter(i=>i.itemName===c.itemName&&((i.date+(i.time||'00:00'))<=countDT)).reduce((a,b)=>a+Number(b.issued||0),0);
+    const availAtCount=recAtCount-issAtCount;
+    const variance=Number(c.physicalCount)-availAtCount;
     const varColor=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
     const varTxt=(variance>=0?'+':'')+variance.toLocaleString();
     return `<tr>
       <td style="font-weight:600">${esc(c.itemName)}</td>
       <td style="white-space:nowrap">${fmtDate(c.date)}<br><span style="font-size:10px;color:var(--muted)">${c.time||'&#x2014;'}</span></td>
-      <td style="color:var(--blue);text-align:right">${avail.toLocaleString()}</td>
+      <td style="color:var(--blue);text-align:right">${availAtCount.toLocaleString()}</td>
       <td style="color:var(--green);text-align:right">${Number(c.physicalCount).toLocaleString()}</td>
       <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
       <td style="font-size:11px;color:var(--muted)">${esc(c.notes)||'&#x2014;'}</td>
@@ -3568,11 +3583,11 @@ function renderMaizeRec(){
     </td>
     <td style="font-weight:600">${esc(item.batchName)}</td>
     <td style="color:var(--green);text-align:right;font-weight:700">${qty.toLocaleString()}</td>
-    <td style="color:var(--muted);text-align:right;font-size:12px">${up>0?zm(up):'—'}</td>
-    <td style="color:var(--amber);text-align:right;font-size:12px">${up>0?zm(stockVal):'—'}</td>
+    ${USER.role==='admin'?`<td style="color:var(--muted);text-align:right;font-size:12px">${up>0?zm(up):'—'}</td>
+    <td style="color:var(--amber);text-align:right;font-size:12px">${up>0?zm(stockVal):'—'}</td>`:''}
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--green);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
-    <td style="color:var(--amber);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumCostMap[item.id]>0?zm(cumCostMap[item.id]):'—'}</td>
+    ${USER.role==='admin'?`<td style="color:var(--amber);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumCostMap[item.id]>0?zm(cumCostMap[item.id]):'—'}</td>`:''}
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeRec=all.reduce((a,b)=>a+Number(b.received||0),0);
@@ -3590,7 +3605,7 @@ function renderMaizeRec(){
       <div class="srow">
         <div class="sbox bl" style="grid-column:1/-1"><div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div></div>
       </div>
-      ${allTimeCost>0?`<div class="srow">
+      ${allTimeCost>0&&USER.role==='admin'?`<div class="srow">
         <div class="sbox am"><div class="sv" style="font-size:16px">${zm(allTimeCost)}</div><div class="sl">Cum. Cost (Total Spend)</div></div>
         <div class="sbox" style="background:#0a1628"><div class="sv" style="font-size:16px">${zm(allTimeSV)}</div><div class="sl">Cum. Stock Value</div></div>
       </div>`:''}
@@ -3606,11 +3621,11 @@ function renderMaizeRec(){
       <thead><tr>
         <th>Date & Time</th><th>Batch</th>
         <th style="text-align:right">Received</th>
-        <th style="text-align:right;color:var(--muted)">Unit Price</th>
-        <th style="text-align:right;color:var(--amber)">Stock Value</th>
+        ${USER.role==='admin'?`<th style="text-align:right;color:var(--muted)">Unit Price</th>
+        <th style="text-align:right;color:var(--amber)">Stock Value</th>`:''}
         <th style="text-align:right;color:var(--blue)">Available</th>
         <th style="text-align:right;color:var(--green);border-left:2px solid var(--border)">Cum.Rec</th>
-        <th style="text-align:right;color:var(--amber);border-left:1px solid var(--border)">Cum.Cost</th>
+        ${USER.role==='admin'?`<th style="text-align:right;color:var(--amber);border-left:1px solid var(--border)">Cum.Cost</th>`:''}
         ${USER.role==='admin'?'<th></th>':''}
       </tr></thead>
       <tbody>${items.length===0?`<tr><td colspan="9" class="empty">No ${com.name} received for this period</td></tr>`:rows}</tbody>
@@ -3646,11 +3661,11 @@ function renderMaizeIss(){
     <td style="font-weight:600">${esc(item.batchName)}</td>
     <td style="color:var(--blue);font-size:12px">${esc(item.transporter)||'—'}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700">${qty.toLocaleString()}</td>
-    <td style="color:var(--muted);text-align:right;font-size:12px">${sp>0?zm(sp):'—'}</td>
-    <td style="color:var(--green);text-align:right;font-size:12px">${sp>0?zm(revenue):'—'}</td>
+    ${USER.role==='admin'?`<td style="color:var(--muted);text-align:right;font-size:12px">${sp>0?zm(sp):'—'}</td>
+    <td style="color:var(--green);text-align:right;font-size:12px">${sp>0?zm(revenue):'—'}</td>`:''}
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
-    <td style="color:var(--green);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumRevMap[item.id]>0?zm(cumRevMap[item.id]):'—'}</td>
+    ${USER.role==='admin'?`<td style="color:var(--green);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumRevMap[item.id]>0?zm(cumRevMap[item.id]):'—'}</td>`:''}
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeIss=all.reduce((a,b)=>a+Number(b.issued||0),0);
@@ -3664,7 +3679,7 @@ function renderMaizeIss(){
         <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
         <div class="sbox bl"><div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div></div>
       </div>
-      ${allTimeRev>0?`<div class="srow">
+      ${allTimeRev>0&&USER.role==='admin'?`<div class="srow">
         <div class="sbox" style="background:#0a1628;grid-column:1/-1"><div class="sv" style="font-size:16px;color:var(--green)">${zm(allTimeRev)}</div><div class="sl">Cum. Revenue (Total Earned)</div></div>
       </div>`:''}
       <div class="sbox" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628;margin-top:8px">
@@ -3678,11 +3693,11 @@ function renderMaizeIss(){
       <thead><tr>
         <th>Date & Time</th><th>Batch</th><th>Transporter</th>
         <th style="text-align:right">Issued</th>
-        <th style="text-align:right;color:var(--muted)">Sale Price</th>
-        <th style="text-align:right;color:var(--green)">Revenue</th>
+        ${USER.role==='admin'?`<th style="text-align:right;color:var(--muted)">Sale Price</th>
+        <th style="text-align:right;color:var(--green)">Revenue</th>`:''}
         <th style="text-align:right;color:var(--blue)">Available</th>
         <th style="text-align:right;color:var(--amber);border-left:2px solid var(--border)">Cum.Iss</th>
-        <th style="text-align:right;color:var(--green);border-left:1px solid var(--border)">Cum.Rev</th>
+        ${USER.role==='admin'?`<th style="text-align:right;color:var(--green);border-left:1px solid var(--border)">Cum.Rev</th>`:''}
         ${USER.role==='admin'?'<th></th>':''}
       </tr></thead>
       <tbody>${items.length===0?`<tr><td colspan="10" class="empty">No ${com.name} issued for this period</td></tr>`:rows}</tbody>
@@ -3711,14 +3726,17 @@ function renderMaizeVariance(){
     </tr>`;}).join('');
 
   const countRows=counts.slice().reverse().map(c=>{
-    const avail=batchAvail(c.batchName,CCOM);
-    const variance=Number(c.physicalCount)-avail;
+    // System available at the time of this count: only records on or before count date
+    const recAtCount=cRec(CCOM).filter(r=>r.batchName===c.batchName&&r.date<=c.date).reduce((a,b)=>a+Number(b.received||0),0);
+    const issAtCount=cIss(CCOM).filter(i=>i.batchName===c.batchName&&i.date<=c.date).reduce((a,b)=>a+Number(b.issued||0),0);
+    const availAtCount=recAtCount-issAtCount;
+    const variance=Number(c.physicalCount)-availAtCount;
     const varColor=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
     const varTxt=variance<0?`${variance.toLocaleString()}`:(variance===0?'0':'+'+variance.toLocaleString());
     return `<tr>
       <td style="font-weight:600">${esc(c.batchName)}</td>
       <td style="white-space:nowrap">${fmtDate(c.date)}</td>
-      <td style="color:var(--blue);text-align:right">${avail.toLocaleString()}</td>
+      <td style="color:var(--blue);text-align:right">${availAtCount.toLocaleString()}</td>
       <td style="color:var(--green);text-align:right">${Number(c.physicalCount).toLocaleString()}</td>
       <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
       <td style="font-size:11px;color:var(--muted)">${esc(c.notes)||'—'}</td>
@@ -4018,14 +4036,22 @@ function openManageCommodities(){
 }
 function renderManageCommoditiesModal(){
   const coms=(DATA.commodities||[]);
-  const rows=coms.map(c=>`
+  const rows=coms.map(c=>{
+    const recCount=cRec(c.id).length;
+    const issCount=cIss(c.id).length;
+    const scCount=cSC(c.id).length;
+    const hasData=(recCount+issCount+scCount)>0;
+    return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:22px">${c.icon}</span>
         <div><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11px;color:var(--muted)">Unit: ${esc(c.unit)} · ID: ${esc(c.id)}</div></div>
       </div>
-      <button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>
-    </div>`).join('');
+      <div style="display:flex;gap:6px;align-items:center">
+        ${hasData?`<button class="btn ba bsm" style="padding:4px 9px;font-size:11px" onclick="bulkClearCommodity('${c.id}')" title="Delete all records for this commodity">🗑 Clear All</button>`:''}
+        <button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>
+      </div>
+    </div>`}).join('');
   openModal(`
     <div class="mtitle">⚙️ Manage Commodities</div>
     <div style="margin-bottom:12px">${rows||'<div class="empty">No commodities yet.</div>'}</div>
@@ -4034,6 +4060,21 @@ function renderManageCommoditiesModal(){
     <div class="fw"><div class="fl">Icon (emoji)</div><input class="fi" id="nc-icon" placeholder="🌾" maxlength="4" style="font-size:22px;text-align:center"/></div>
     <div class="fw"><div class="fl">Unit (singular)</div><input class="fi" id="nc-unit" placeholder="bags, tonnes, litres…"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Close</button><button class="btn bg" onclick="addCommodity()">+ Add</button></div>`);
+}
+function bulkClearCommodity(cid){
+  if(!requireAdmin('clear commodity records'))return;
+  if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
+  const com=getCom(cid);
+  const total=cRec(cid).length+cIss(cid).length+cSC(cid).length;
+  if(!confirm(`Delete ALL ${total} records for "${com.name}"?\n\nThis removes all received, issued, and stock count records. This cannot be undone.`))return;
+  updateData(d=>{
+    const cr={...(d.commodityReceived||{})};cr[cid]=[];
+    const ci={...(d.commodityIssued||{})};ci[cid]=[];
+    const cs={...(d.commodityStockCounts||{})};cs[cid]=[];
+    return{...d,commodityReceived:cr,commodityIssued:ci,commodityStockCounts:cs};
+  });
+  showToast(`✅ All records cleared for "${com.name}".`);
+  renderManageCommoditiesModal();
 }
 function addCommodity(){
   if(!requireAdmin('add commodities'))return;
@@ -4252,7 +4293,10 @@ function renderStaffLogs(){
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
       🔵 <span style="color:var(--blue);font-weight:700">Cum. Qty</span> &amp; 🟣 <span style="color:var(--purple);font-weight:700">Cum. Net</span> = running career total per staff up to that day (qty in task's own unit)
     </div>
-    <div class="card" style="padding:0"><div class="tw"><table>
+    <div style="margin-bottom:10px">
+      <input class="fi" id="staff-log-search" placeholder="🔍 Search by name, role, or task…" oninput="filterStaffLogTable(this.value)" style="font-size:13px"/>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table id="staff-log-table">
       <thead><tr>
         <th>Date</th><th>Staff</th><th>Role</th><th>Task</th>
         <th style="text-align:right">Qty</th>
@@ -4266,6 +4310,15 @@ function renderStaffLogs(){
       </tr></thead>
       <tbody>${logs.length===0?`<tr><td colspan="12" class="empty">No logs for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
+}
+
+function filterStaffLogTable(q){
+  const term=(q||'').toLowerCase();
+  const tbody=document.querySelector('#staff-log-table tbody');
+  if(!tbody)return;
+  tbody.querySelectorAll('tr').forEach(row=>{
+    row.style.display=(!term||row.textContent.toLowerCase().includes(term))?'':'none';
+  });
 }
 
 function renderRoster(){
@@ -4327,10 +4380,16 @@ function renderEarnings(){
   const rows=staffList.map(s=>{
     const allLogs=DATA.staffLogs.filter(l=>l.staffId===s.id&&(!l.entryType||l.entryType==='work'));
     const sLogs=filterPeriod(allLogs,PERIOD.staff);
+    const absLogs=filterPeriod(DATA.staffLogs.filter(l=>l.staffId===s.id&&l.entryType&&l.entryType!=='work'),PERIOD.staff);
     const totBags=sLogs.reduce((a,b)=>a+Number(b.bags||0),0);
     const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
     const ded=sLogs.reduce((a,b)=>a+Number(b.deduction||0),0);
     const net=gross-ded;
+    const absCount=absLogs.length;
+    const absLabel=absLogs.map(l=>{
+      const t={absent:'Absent',leave:'Leave',sick:'Sick'}[l.entryType]||l.entryType;
+      return t+(l.absenceNote?' ('+l.absenceNote+')':'');
+    }).join(', ');
     return `<tr>
       <td style="font-weight:700">${esc(s.name)}</td>
       <td><span class="tag">${esc(s.role)}</span></td>
@@ -4338,13 +4397,15 @@ function renderEarnings(){
       <td style="color:var(--green)">${zm(gross)}</td>
       <td style="color:var(--red)">-${zm(ded)}</td>
       <td style="color:var(--green);font-weight:700">${zm(net)}</td>
+      <td style="text-align:center;color:${absCount>0?'var(--amber)':'var(--muted)'};font-weight:${absCount>0?'700':'400'}">${absCount>0?absCount:'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${absCount>0?esc(absLabel):'—'}</td>
     </tr>`;}).join('');
   return `
     <div class="prow">${pBtns('staff')}</div>
-    <div style="background:#3d2a00;border:1px solid var(--amber);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.6"><b>\u26a0\ufe0f Wage Disclaimer:</b> All wage figures must be verified by management before payment. This app does not constitute an official payroll system.</div>
+    <div style="background:#3d2a00;border:1px solid var(--amber);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.6"><b>⚠️ Wage Disclaimer:</b> All wage figures must be verified by management before payment. This app does not constitute an official payroll system.</div>
     <div class="card" style="padding:0"><div class="tw"><table>
-      <thead><tr><th>Staff Name</th><th>Role</th><th>Total Bags</th><th>Gross Earn</th><th>Deductions</th><th>Net Earn</th></tr></thead>
-      <tbody>${staffList.length===0?`<tr><td colspan="6" class="empty">No staff registered</td></tr>`:rows}</tbody>
+      <thead><tr><th>Staff Name</th><th>Role</th><th>Total Bags</th><th>Gross Earn</th><th>Deductions</th><th>Net Earn</th><th style="text-align:center;color:var(--amber)">Absences</th><th>Absence Notes</th></tr></thead>
+      <tbody>${staffList.length===0?`<tr><td colspan="8" class="empty">No staff registered</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
@@ -4582,7 +4643,8 @@ function renderPayments(){
     const sPays=payments.filter(p=>p.staffId===s.id).sort((a,b)=>a.date.localeCompare(b.date));
     // Merge and sort all events by date
     const events=[
-      ...sLogs.map(l=>({type:'earn',date:l.date,id:l.id,amount:Number(l.earnings||0)-Number(l.deduction||0),bags:l.bags,task:l.task,role:l.role})),
+      ...sLogs.filter(l=>!l.entryType||l.entryType==='work').map(l=>({type:'earn',date:l.date,id:l.id,amount:Number(l.earnings||0)-Number(l.deduction||0),bags:l.bags,task:l.task,role:l.role})),
+      ...sLogs.filter(l=>l.entryType&&l.entryType!=='work').map(l=>({type:'absent',date:l.date,id:l.id,amount:0,entryType:l.entryType,note:l.absenceNote||''})),
       ...sPays.map(p=>({type:'pay',date:p.date,id:p.id,amount:Number(p.amount||0),notes:p.notes}))
     ].sort((a,b)=>a.date.localeCompare(b.date)||a.type.localeCompare(b.type));
     let cumEarned=0,cumPaid=0;
@@ -4593,6 +4655,20 @@ function renderPayments(){
           <td><span class="bdg bg2">WORK</span></td>
           <td style="font-size:12px;color:var(--muted)">${esc(ev.role)} · ${esc(ev.task)} · ${Number(ev.bags||0)} BAGS</td>
           <td style="color:var(--green);font-weight:700;text-align:right">${zm(ev.amount)}</td>
+          <td style="color:var(--muted);text-align:right">—</td>
+          <td style="color:var(--green);font-weight:700;text-align:right">${zm(cumEarned)}</td>
+          <td style="color:var(--blue);font-weight:700;text-align:right">${zm(cumPaid)}</td>
+          <td style="color:${(cumEarned-cumPaid)>0?'var(--amber)':'var(--green)'};font-weight:700;text-align:right">${zm(cumEarned-cumPaid)}</td>
+          <td></td>
+        </tr>`;
+      } else if(ev.type==='absent'){
+        const absBadgeColor=ev.entryType==='absent'?'br2':ev.entryType==='sick'?'ba2':'bb2';
+        const absLabel=ev.entryType==='absent'?'ABSENT':ev.entryType==='sick'?'SICK':'LEAVE';
+        return `<tr style="background:rgba(245,158,11,.04)">
+          <td style="white-space:nowrap">${fmtDate(ev.date)}</td>
+          <td><span class="bdg ${absBadgeColor}" style="font-size:9px">${absLabel}</span></td>
+          <td style="font-size:12px;color:var(--muted)">${ev.note?esc(ev.note):'No note'}</td>
+          <td style="color:var(--muted);text-align:right">—</td>
           <td style="color:var(--muted);text-align:right">—</td>
           <td style="color:var(--green);font-weight:700;text-align:right">${zm(cumEarned)}</td>
           <td style="color:var(--blue);font-weight:700;text-align:right">${zm(cumPaid)}</td>
@@ -4757,6 +4833,8 @@ function openStaffDetail(id){
         ?`<div style="display:flex;gap:8px"><button class="btn bg" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button></div>`
         :`<div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','suspended')">⏸ Suspend</button><button class="btn bo" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','resigned')">🚪 Resigned</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button></div>`
   ):'';
+  const editDetailsBtn=USER.role==='admin'?`<button class="btn bo bsm" style="width:100%;margin-bottom:8px" onclick="closeModal();setTimeout(()=>openEditStaffDetails('${s.id}'),50)">✏️ Edit Details</button>`:'';
+
   openModal(`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
       <div class="sl-avatar ${s.role==='Loader'?'lo':'st'}" style="width:50px;height:50px;font-size:20px">${s.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>
@@ -4785,8 +4863,42 @@ function openStaffDetail(id){
     </div>
     ${taskBreakdown?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:4px">TASK BREAKDOWN</div>${taskBreakdown}</div>`:''}
     ${recentLogs?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:4px">RECENT SESSIONS</div>${recentLogs}</div>`:''}
+    ${editDetailsBtn}
     ${actionBtns?`<div style="margin-top:14px">${actionBtns}</div>`:''}
     <div style="margin-top:10px"><button class="btn bo" onclick="closeModal()">Close</button></div>`);
+}
+
+// ── EDIT STAFF DETAILS ───────────────────────────────────────────────────────
+function openEditStaffDetails(id){
+  if(!requireAdmin('edit staff details'))return;
+  const s=DATA.staff.find(x=>String(x.id)===String(id));
+  if(!s){alert('Staff member not found.');return;}
+  const roleOpts=allRoleNames().map(r=>`<option${r===s.role?' selected':''}>${r}</option>`).join('');
+  openModal(`
+    <div class="mtitle">✏️ Edit Staff Details</div>
+    <div class="fw"><div class="fl">Full Name <span style="color:var(--red)">*</span></div><input class="fi" id="esd-name" value="${esc(s.name)}" placeholder="FULL NAME"/></div>
+    <div class="fw"><div class="fl">Job Role <span style="color:var(--red)">*</span></div><select class="fi" id="esd-role">${roleOpts||'<option>No roles defined</option>'}</select></div>
+    <div class="fw"><div class="fl">Phone</div><input class="fi" id="esd-phone" value="${esc(s.phone||'')}" placeholder="0977 000 000" inputmode="tel" style="text-transform:none"/></div>
+    <div class="fw"><div class="fl">Employee ID / NRC Number</div><input class="fi" id="esd-empid" value="${esc(s.employeeId||'')}" placeholder="E.G. NRC 123456/10/1" style="text-transform:none"/></div>
+    <div class="fw"><div class="fl">Emergency Contact Name</div><input class="fi" id="esd-ecname" value="${esc(s.emergencyContactName||'')}" placeholder="E.G. MARY BANDA"/></div>
+    <div class="fw"><div class="fl">Emergency Contact Phone</div><input class="fi" id="esd-ecphone" value="${esc(s.emergencyContactPhone||'')}" placeholder="0977 000 000" inputmode="tel" style="text-transform:none"/></div>
+    <div class="fw"><div class="fl">Notes</div><textarea class="fi" id="esd-notes" rows="2" style="resize:none;height:auto">${esc(s.notes||'')}</textarea></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveEditStaffDetails('${id}')">✓ Save Changes</button></div>`);
+}
+function saveEditStaffDetails(id){
+  if(!requireAdmin('edit staff details'))return;
+  if(isReadOnly()){alert('🔒 This account is in read-only mode.');return;}
+  const name=uc(document.getElementById('esd-name').value);
+  if(!name){alert('Enter staff name.');return;}
+  const role=document.getElementById('esd-role').value;
+  const phone=(document.getElementById('esd-phone').value||'').trim();
+  const employeeId=(document.getElementById('esd-empid').value||'').trim();
+  const emergencyContactName=uc(document.getElementById('esd-ecname').value);
+  const emergencyContactPhone=(document.getElementById('esd-ecphone').value||'').trim();
+  const notes=uc(document.getElementById('esd-notes').value);
+  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,name,role,phone,employeeId,emergencyContactName,emergencyContactPhone,notes}:s)}));
+  closeModal();
+  showToast('✅ Staff details updated.');
 }
 
 // Payment form
@@ -5174,6 +5286,16 @@ function renderSettings(){
         <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Enter any currency code or symbol (e.g. ZMW, USD, KES, K, $). Used on all financial figures across the app.</div>
         <div id="currency-msg" style="margin-top:6px"></div>
       </div>
+      ${USER.role==='admin'?`
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Standard Shift Hours</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="fi" id="shift-hours-input" type="number" min="1" max="24" step="0.5" value="${Number((DATA.depotInfo||{}).standardShiftHours||8)}" style="flex:1" inputmode="decimal"/>
+          <button class="btn bg bsm" style="width:auto" onclick="saveShiftHours()">Save</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Hours in a standard shift. Used to detect overtime in Work Logs (e.g. 8 = any session exceeding 8 hours shows an OT flag).</div>
+        <div id="shift-hours-msg" style="margin-top:6px"></div>
+      </div>`:''}
     </div>
 
     ${_renderBioSection()}
@@ -5703,6 +5825,8 @@ async function bioCheckAndShowBtn(){
 // Register fingerprint for the currently-logged-in user
 async function bioRegister(username){
   const uname = (username||'').toLowerCase();
+  // Remove any existing credential for this username first (guards against delete+re-add stale creds)
+  bioRemove(uname);
   const challenge = crypto.getRandomValues(new Uint8Array(32));
   const rpId = window.location.hostname || undefined;
   const cred = await navigator.credentials.create({publicKey:{
@@ -5877,6 +6001,16 @@ function saveCurrencySetting(){
   if(!val){if(msg)msg.innerHTML='<div class="err-box">Enter a currency code or symbol.</div>';return;}
   updateData(d=>({...d,currency:val}));
   if(msg)msg.innerHTML='<div class="ok-msg">✅ Currency updated to '+esc(val)+'</div>';
+  setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+
+function saveShiftHours(){
+  if(!requireAdmin('change shift hours setting'))return;
+  const val=Number(document.getElementById('shift-hours-input')?.value||8);
+  const msg=document.getElementById('shift-hours-msg');
+  if(!val||val<1||val>24){if(msg)msg.innerHTML='<div class="err-box">Enter a value between 1 and 24.</div>';return;}
+  updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),standardShiftHours:val}}));
+  if(msg)msg.innerHTML='<div class="ok-msg">✅ Standard shift set to '+val+' hours.</div>';
   setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
 }
 
@@ -6513,12 +6647,15 @@ function downloadBookById(id) {
 function _triggerDownload(book) {
   let content, mime, filename;
   if(book.type==='docx') {
-    // Download as plain HTML file (opens in Word/browser)
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(book.name)}</title>
-<style>body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.8;margin:2.5cm;color:#111;}</style></head>
-<body>${book.htmlContent||''}</body></html>`;
-    content = html; mime = 'text/html';
-    filename = book.name.replace(/\.docx$/i,'')+'.html';
+    // Download as Word-compatible MHTML document (opens natively in Microsoft Word)
+    const wordHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta charset='UTF-8'><title>${esc(book.name)}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+<style>body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.8;margin:2.5cm;color:#111;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ccc;padding:6px 10px;}</style>
+</head><body>${book.htmlContent||''}</body></html>`;
+    content = wordHtml;
+    mime = 'application/msword';
+    filename = book.name.replace(/\.docx$/i,'').replace(/\.html?$/i,'')+'.docx';
   } else {
     // Download as CSV
     const grid = book.gridData||[[]];
