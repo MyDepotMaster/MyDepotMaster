@@ -354,8 +354,8 @@ body.trial-mode .content{padding-top:44px;}
     <div class="land-hero">
       <div class="land-logo">MDM</div>
       <div class="land-title">My <span>Depot</span> Master</div>
-      <div class="land-tag">The smarter way to run your company.<br>Built for modern business operators.</div>
-      <div class="land-badge">✨ v2.0 — Now with Books &amp; Spreadsheets</div>
+      <div class="land-tag">The smarter way to run your depot.<br>Built for Zambian business operators.</div>
+      <div class="land-badge">✨ v3.0 — Now with Auto Subscriptions</div>
     </div>
 
     <!-- Live Stats Strip -->
@@ -366,11 +366,11 @@ body.trial-mode .content{padding-top:44px;}
       </div>
       <div class="land-stat">
         <div class="land-stat-num">Free</div>
-        <div class="land-stat-lbl">14-Day<br>Trial</div>
+        <div class="land-stat-lbl">1-Month<br>Trial</div>
       </div>
       <div class="land-stat">
-        <div class="land-stat-num">K150</div>
-        <div class="land-stat-lbl">Per 2<br>Months</div>
+        <div class="land-stat-num">K100</div>
+        <div class="land-stat-lbl">Per<br>Month</div>
       </div>
     </div>
 
@@ -424,16 +424,16 @@ body.trial-mode .content{padding-top:44px;}
     <!-- Pricing & CTA -->
     <div class="land-cta">
       <div class="land-pricing">
-        <div class="land-pricing-badge">⚡ 14-DAY FREE TRIAL</div>
+        <div class="land-pricing-badge">🎁 1-MONTH FREE TRIAL</div>
         <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin-bottom:4px">
-          <div class="land-pricing-price">K150</div>
-          <div style="font-size:15px;color:#6a88a8;font-weight:500">/ 2 months</div>
+          <div class="land-pricing-price">K100</div>
+          <div style="font-size:15px;color:#6a88a8;font-weight:500">/ month</div>
         </div>
-        <div class="land-pricing-sub">No payment needed to start your free trial.<br>Pay via <strong style="color:var(--white)">Airtel Money</strong> or <strong style="color:var(--white)">MTN MoMo</strong> to continue.</div>
+        <div class="land-pricing-sub">No payment needed to start your free trial.<br>Pay via <strong style="color:var(--white)">Airtel Money</strong>, <strong style="color:var(--white)">MTN MoMo</strong>, or <strong style="color:var(--white)">card</strong> to continue.</div>
       </div>
 
       <button class="land-btn-primary" onclick="startSignUp()">
-        🚀 Get Started — It's Free
+        🚀 Start Free — 1 Month Trial
       </button>
 
       <div class="land-divider"><span>already have an account?</span></div>
@@ -481,7 +481,7 @@ body.trial-mode .content{padding-top:44px;}
     </div>
     <div style="width:100%;max-width:400px">
       <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">💳 Make Payment To Activate</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Send <strong style="color:var(--white)">K150</strong> via <strong style="color:var(--text)">Airtel Money</strong> or <strong style="color:var(--text)">MTN Mobile Money</strong> to the number below, then WhatsApp/call to confirm your Company License Key.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Subscribe for <strong style="color:var(--white)">K100/month</strong> via <strong style="color:var(--text)">Airtel Money</strong>, <strong style="color:var(--text)">MTN MoMo</strong>, <strong style="color:var(--text)">Zamtel</strong>, or <strong style="color:var(--text)">card</strong>. Your account activates instantly after payment.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
@@ -752,11 +752,12 @@ const FB_CONFIG = {
 // ═══════════════════════════════════════════════════════════
 
 // ── LICENSE STATE ─────────────────────────────────────────
-let LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 14 };
+let LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 30 };
 const LICENSE_CACHE_KEY = 'mdm_license_cache';
 const LICENSE_GRACE_MS  = 7 * 24 * 60 * 60 * 1000; // 7-day offline grace
-const TRIAL_MS          = 14 * 24 * 60 * 60 * 1000; // 14-day trial
-const ACTIVE_MONTHS     = 2; // months active after payment
+const TRIAL_MS          = 30 * 24 * 60 * 60 * 1000; // 30-day trial (1 month)
+const ACTIVE_MONTHS     = 1; // months active after payment (monthly subscription)
+const SUB_GRACE_MS      = 3 * 24 * 60 * 60 * 1000;  // 3-day grace after trial/expiry
 
 let fbConfigured = false;
 
@@ -974,15 +975,19 @@ function depotKey() {
 function computeEffectiveStatus(raw, trialStart, activeUntil) {
   if (raw === 'suspended') return 'suspended';
   if (raw === 'pending_approval') return 'pending_approval';
-  if (raw === 'trial' || raw === 'active') {
-    if (raw === 'trial') {
-      const ts = trialStart || Date.now();
-      return (Date.now() > ts + TRIAL_MS) ? 'trial_expired' : 'trial';
-    }
-    if (raw === 'active') {
-      if (activeUntil && Date.now() > activeUntil) return 'expired';
-      return 'active';
-    }
+  const now = Date.now();
+  if (raw === 'trial') {
+    const ts = trialStart || now;
+    if (now <= ts + TRIAL_MS) return 'trial';
+    // After trial ends — apply 3-day grace
+    if (now <= ts + TRIAL_MS + SUB_GRACE_MS) return 'trial_grace';
+    return 'trial_expired';
+  }
+  if (raw === 'active') {
+    if (!activeUntil || now <= activeUntil) return 'active';
+    // After active period ends — apply 3-day grace
+    if (now <= activeUntil + SUB_GRACE_MS) return 'expired_grace';
+    return 'expired';
   }
   return raw || 'trial';
 }
@@ -1083,7 +1088,7 @@ function applyLicenseMode() {
   if (eff === 'pending_approval') {
     if (bsIcon)  bsIcon.textContent  = '⏳';
     if (bsTitle) bsTitle.textContent = 'Awaiting Approval';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your company is <strong style="color:var(--amber)">pending admin approval</strong>.<br><br>You will be activated shortly. Please message or call the developer to follow up.';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your company is <strong style="color:var(--amber)">pending admin approval</strong>.<br><br>You will be activated shortly. Please contact the developer to follow up.';
     if (bsKey)   bsKey.textContent   = depotKey();
     if (blocked) blocked.style.display = 'flex';
 
@@ -1092,17 +1097,39 @@ function applyLicenseMode() {
     if (banner) banner.style.display = 'flex';
     if (msg) msg.textContent = LICENSE.suspendedMsg || 'This account is suspended. Contact your administrator.';
 
+  } else if (eff === 'trial_grace') {
+    // 3-day grace after trial — read-only with countdown banner
+    document.body.classList.add('readonly-mode');
+    const graceEnds = (LICENSE.trialStart || 0) + TRIAL_MS + SUB_GRACE_MS;
+    const graceDaysLeft = Math.max(0, Math.ceil((graceEnds - Date.now()) / (24*60*60*1000)));
+    document.body.classList.add('trial-mode');
+    if (trialBnr) trialBnr.style.display = 'flex';
+    if (trialMsg) trialMsg.textContent = `⚠️ ${graceDaysLeft} day${graceDaysLeft===1?'':'s'} left — subscribe to keep adding data.`;
+    if (trialTag) { trialTag.textContent = `${graceDaysLeft}D LEFT`; trialTag.style.background='var(--red)'; }
+
   } else if (eff === 'trial_expired') {
+    document.body.classList.add('readonly-mode');
     if (bsIcon)  bsIcon.textContent  = '⏳';
     if (bsTitle) bsTitle.textContent = 'Trial Period Ended';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>14-day free trial</strong> has ended. Make a payment and contact the developer to activate your company.';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>1-month free trial</strong> has ended.<br><br>Subscribe for <strong style="color:var(--green)">K100/month</strong> to continue adding data. You can still view all your records.';
     if (bsKey)   bsKey.textContent   = depotKey();
     if (blocked) blocked.style.display = 'flex';
 
+  } else if (eff === 'expired_grace') {
+    // 3-day grace after subscription expiry — read-only with countdown banner
+    document.body.classList.add('readonly-mode');
+    const graceEnds = (LICENSE.activeUntil || 0) + SUB_GRACE_MS;
+    const graceDaysLeft = Math.max(0, Math.ceil((graceEnds - Date.now()) / (24*60*60*1000)));
+    document.body.classList.add('trial-mode');
+    if (trialBnr) trialBnr.style.display = 'flex';
+    if (trialMsg) trialMsg.textContent = `⚠️ ${graceDaysLeft} day${graceDaysLeft===1?'':'s'} left — subscribe to keep adding data.`;
+    if (trialTag) { trialTag.textContent = `${graceDaysLeft}D LEFT`; trialTag.style.background='var(--red)'; }
+
   } else if (eff === 'expired') {
+    document.body.classList.add('readonly-mode');
     if (bsIcon)  bsIcon.textContent  = '🔒';
     if (bsTitle) bsTitle.textContent = 'Subscription Expired';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>2-month active period</strong> has ended. Renew your subscription to continue using My Depot Master.';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your subscription has ended.<br><br>Renew for <strong style="color:var(--green)">K100/month</strong> to continue adding data. All your records are safe and visible.';
     if (bsKey)   bsKey.textContent   = depotKey();
     if (blocked) blocked.style.display = 'flex';
 
@@ -1112,7 +1139,7 @@ function applyLicenseMode() {
     if (daysLeft <= 10 && trialBnr) {
       document.body.classList.add('trial-mode');
       trialBnr.style.display = 'flex';
-      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Pay K150 to keep access.`;
+      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Subscribe for K100/month to keep access.`;
       if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
     }
 
@@ -1125,7 +1152,7 @@ function applyLicenseMode() {
       if (daysLeft <= 10 && daysLeft > 0 && trialBnr) {
         document.body.classList.add('trial-mode');
         trialBnr.style.display = 'flex';
-        if (trialMsg) trialMsg.textContent = `Subscription expires in ${daysLeft} day${daysLeft===1?'':'s'}. Pay K150 to renew.`;
+        if (trialMsg) trialMsg.textContent = `Subscription expires in ${daysLeft} day${daysLeft===1?'':'s'}. Renew for K100/month.`;
         if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
       }
     }
@@ -1140,7 +1167,8 @@ function applyLicenseMode() {
 // checkLicense() always re-fetches from Firebase first.
 function isReadOnly() {
   const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
-  return eff === 'suspended';
+  // Read-only for: suspended, both grace periods, and fully expired states
+  return ['suspended','trial_grace','trial_expired','expired_grace','expired'].includes(eff);
 }
 
 // Role enforcement — always check server-side (in-memory USER object),
@@ -2034,7 +2062,7 @@ async function signupFinish() {
       });
     } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
 
-    LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 14 };
+    LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 30 };
     saveCachedLicense(LICENSE);
 
     USER = DATA.users[0];
@@ -2045,7 +2073,7 @@ async function signupFinish() {
     applyLicenseMode();
     showTab('dashboard');
     scheduleFbSync();
-    showToast('⏳ 14-day trial started! Welcome, ' + username);
+    showToast('🎉 1-month free trial started! Welcome, ' + username);
   } catch(e) {
     if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
     err.style.display='block';
@@ -2070,7 +2098,7 @@ function _bfSave(state) {
   try { localStorage.setItem(_BF_KEY, JSON.stringify(state)); } catch {}
 }
 const _BF_MAX = 5;
-const _BF_LOCK_MS = 15 * 60 * 1000; // 15-minute lockout (was 1 min, easily bypassed)
+const _BF_LOCK_MS = 60 * 1000; // 60-second lockout
 
 function _bfFail() {
   const s = _bfLoad();
@@ -2085,8 +2113,8 @@ function _bfOk() { _bfSave({ attempts: 0, lockedUntil: 0 }); }
 function _bfLocked() {
   const s = _bfLoad();
   if (s.lockedUntil && Date.now() < s.lockedUntil) {
-    const mins = Math.ceil((s.lockedUntil - Date.now()) / 60000);
-    return `⛔ Too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`;
+    const secs = Math.ceil((s.lockedUntil - Date.now()) / 1000);
+    return `⛔ Too many failed attempts. Try again in ${secs} second${secs !== 1 ? 's' : ''}.`;
   }
   return null;
 }
@@ -2166,8 +2194,8 @@ async function doLogin(){
       const _rem = _BF_MAX - (_s.attempts || 0);
       err.style.display='block';
       err.innerHTML = _rem > 0
-        ? `❌ Invalid username or password. ${_rem} attempt${_rem!==1?'s':''} left before 15-min lockout.`
-        : '⛔ Too many failed attempts. Try again in 15 minutes.';
+        ? `❌ Invalid username or password. ${_rem} attempt${_rem!==1?'s':''} left before 60-second lockout.`
+        : '⛔ Too many failed attempts. Try again in 60 seconds.';
       return;
     }
     _bfOk();
@@ -4921,10 +4949,10 @@ function renderLicenseCard(){
     const d = LICENSE.trialDaysLeft || trialDaysRemaining(LICENSE.trialStart||0);
     statusColor = d<=3?'var(--red)':d<=7?'var(--amber)':'var(--purple)';
     statusLabel = `⏳ TRIAL`;
-    statusDetail = `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6"><strong style="color:${statusColor}">${d} day${d===1?'':'s'} remaining</strong> of 14-day free trial</div>`;
+    statusDetail = `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6"><strong style="color:${statusColor}">${d} day${d===1?'':'s'} remaining</strong> of 1-month free trial</div>`;
   } else if (eff === 'trial_expired') {
     statusColor = 'var(--red)'; statusLabel = '⏳ TRIAL EXPIRED';
-    statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your 14-day trial has ended. Pay to activate.</div>`;
+    statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your 1-month trial has ended. Subscribe for K100/month.</div>`;
   } else if (eff === 'expired') {
     statusColor = 'var(--red)'; statusLabel = '🔒 EXPIRED';
     statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your subscription has expired. Renew to continue.</div>`;
@@ -5126,7 +5154,7 @@ function renderSettings(){
 
 
     <div class="card">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K150 per 2 months</strong>. Pay via mobile money, then send your <strong style="color:var(--text)">Company License Key</strong> on WhatsApp to get activated.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K100/month</strong>. Pay via Airtel Money, MTN MoMo, Zamtel, or card. Your account activates instantly after payment.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
