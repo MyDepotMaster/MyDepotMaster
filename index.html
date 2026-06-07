@@ -1539,7 +1539,8 @@ function uc(v){return(v||'').trim().toUpperCase();}
 function today(){return new Date().toISOString().split('T')[0];}
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
 function cur(){return(DATA&&DATA.currency)||'';}
-function zm(n){return cur()+' '+Number(n||0).toFixed(2);}
+function zm(n){const c=cur();return(c?c+' ':'')+Number(n||0).toFixed(2);}
+function zmFull(n){const c=cur()||'—';return c+' '+Number(n||0).toFixed(2);}
 
 function filterPeriod(items,period,f='date'){
   if(period==='all')return items;
@@ -2478,17 +2479,20 @@ function renderDash(){
   const _allCIss=(DATA.commodityIssued||{});
   // Dynamic: use first defined commodity for primary dashboard display
   const _coms=DATA.commodities||[];
-  const _primCom=_coms[0]||null;
-  const _primId=_primCom?_primCom.id:'';
-  const _primRecs=_primId?[...(_allCRec[_primId]||[]),
-    ...(_primId==='maize'?DATA.maizeReceived||[]:[])]:[]; // include legacy maize data
-  const _primIss=_primId?[...(_allCIss[_primId]||[]),
-    ...(_primId==='maize'?DATA.maizeIssued||[]:[])]:[]; // include legacy maize data
-  const maizeRec=_primRecs.reduce((a,b)=>a+Number(b.received||0),0);
-  const maizeIss=_primIss.reduce((a,b)=>a+Number(b.issued||0),0);
-  const maizeBal=maizeRec-maizeIss;
-  const maizePct=maizeRec>0?Math.min(100,Math.round((maizeIss/maizeRec)*100)):0;
-  const maizeBarColor=maizePct>=90?'var(--red)':maizePct>=60?'var(--amber)':'var(--blue)';
+  // Per-commodity stats for dashboard
+  const _comStats=_coms.map(comObj=>{
+    const cid=comObj.id;
+    const recs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])];
+    const iss=[...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])];
+    const rec=recs.reduce((a,b)=>a+Number(b.received||0),0);
+    const issued=iss.reduce((a,b)=>a+Number(b.issued||0),0);
+    const bal=rec-issued;
+    const pct=rec>0?Math.min(100,Math.round((issued/rec)*100)):0;
+    const barColor=pct>=90?'var(--red)':pct>=60?'var(--amber)':'var(--blue)';
+    const todayIn=recs.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
+    const todayOut=iss.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
+    return{...comObj,rec,issued,bal,pct,barColor,todayIn,todayOut};
+  });
 
   const di=DATA.depotInfo||{};
   const now=new Date();
@@ -2496,25 +2500,15 @@ function renderDash(){
   const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   const todayStr=today();
 
-  const todayAllIn=_coms.reduce((sum,comObj)=>{
-    const cid=comObj.id;
-    const recs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])];
-    return sum+recs.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
-  },0);
-  const todayAllOut=_coms.reduce((sum,comObj)=>{
-    const cid=comObj.id;
-    const iss=[...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])];
-    return sum+iss.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
-  },0);
-  const todayMaizeIn=todayAllIn;
-  const todayMaizeOut=todayAllOut;
+  const todayAllIn=_comStats.reduce((a,c)=>a+c.todayIn,0);
+  const todayAllOut=_comStats.reduce((a,c)=>a+c.todayOut,0);
   const todayGenIn=DATA.generalInventory.filter(x=>x.date===todayStr).length;
   const todayStaffLogs=DATA.staffLogs.filter(x=>x.date===todayStr).length;
 
   // ── Warnings ──────────────────────────────────────────────────────────────
   const warnings=[];
   // Check variance for all defined commodities
-  _coms.forEach(comObj=>{
+  _comStats.forEach(comObj=>{
     const cid=comObj.id;
     const allRecs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])]
     const batchSet=[...new Set(allRecs.map(x=>x.batchName))];
@@ -2548,7 +2542,7 @@ function renderDash(){
     const iss=DATA.generalIssued.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
     if(iss>rec) warnings.push({icon:'🔴',title:`NEGATIVE BALANCE — ${name}`,msg:`Issued (${iss.toLocaleString()}) exceeds received (${rec.toLocaleString()}). Balance: <strong style="color:var(--red)">${(rec-iss).toLocaleString()}</strong>`});
   });
-  if(_primCom&&maizeBal<0) warnings.push({icon:_primCom.icon||'📦',title:`NEGATIVE ${(_primCom.name||'COMMODITY').toUpperCase()} BALANCE`,msg:`Total issued (${maizeIss.toLocaleString()}) exceeds total received (${maizeRec.toLocaleString()}). Balance: <strong style="color:var(--red)">${maizeBal.toLocaleString()} ${_primCom.unit||'units'}</strong>`});
+  _comStats.forEach(c=>{if(c.bal<0)warnings.push({icon:c.icon||'📦',title:`NEGATIVE ${c.name.toUpperCase()} BALANCE`,msg:`Total issued (${c.issued.toLocaleString()}) exceeds total received (${c.rec.toLocaleString()}). Balance: <strong style="color:var(--red)">${c.bal.toLocaleString()} ${c.unit||'units'}</strong>`});});
 
   const warnBlock=warnings.length===0?'':`
     <div style="background:linear-gradient(135deg,#3d1515,#2a1000);border:1.5px solid var(--red);border-radius:14px;padding:14px 16px;margin-bottom:14px">
@@ -2592,7 +2586,7 @@ function renderDash(){
   const allActivity=[
     ...DATA.generalInventory.map(x=>({date:x.date,time:x.time||'',desc:`${esc(x.itemName)}`,qty:`+${Number(x.received||0).toLocaleString()} units`,type:'rec'})),
     ...DATA.generalIssued.map(x=>({date:x.date,time:x.time||'',desc:`${esc(x.itemName)}`,qty:`-${Number(x.issued||0).toLocaleString()} units`,type:'iss'})),
-    ..._coms.flatMap(comObj=>{
+    ...(_comStats.length?_comStats:_coms).flatMap(comObj=>{
       const cid=comObj.id;
       const recs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])];
       const iss=[...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])];
@@ -2604,6 +2598,7 @@ function renderDash(){
   ].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,8);
 
   return `
+    ${!DATA.currency&&USER.role==='admin'?`<div class="warn" style="margin-bottom:12px">⚠️ No currency set. Go to <strong>Display Preferences → Currency</strong> below to set your currency (e.g. ZMW, USD, KES).</div>`:''}
     ${statusBanner()}
 
     <!-- Welcome Header -->
@@ -2627,7 +2622,7 @@ function renderDash(){
     <!-- Quick Actions -->
     <div class="sh" style="margin-top:0">Quick Actions</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" style="background:linear-gradient(135deg,#002b1f,#001a0e);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">${_primCom?_primCom.icon:'📦'}</span>Commodity In</button>
+      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" style="background:linear-gradient(135deg,#002b1f,#001a0e);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">${_comStats[0]?_comStats[0].icon:'📦'}</span>Commodity In</button>
       <button onclick="showTab('general');setTimeout(()=>openGenRecForm(),80)" style="background:linear-gradient(135deg,#0d2a00,#082000);border:1.5px solid var(--amber);border-radius:12px;padding:12px 6px;color:var(--amber);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">📦</span>Receive</button>
       <button onclick="showTab('staff');setTimeout(()=>openLogForm(),80)" style="background:linear-gradient(135deg,#0d1a40,#060f28);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Log Work</button>
     </div>
@@ -2637,12 +2632,12 @@ function renderDash(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:12px;padding:12px">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Commodities In Today</div>
-        <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--green)">${todayMaizeIn.toLocaleString()}</div>
+        <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--green)">${todayAllIn.toLocaleString()}</div>
         <div style="font-size:10px;color:var(--muted)">units received</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:12px;padding:12px">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Commodities Out Today</div>
-        <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--amber)">${todayMaizeOut.toLocaleString()}</div>
+        <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--amber)">${todayAllOut.toLocaleString()}</div>
         <div style="font-size:10px;color:var(--muted)">units issued</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:12px;padding:12px">
@@ -4837,7 +4832,7 @@ function openStaffDetail(id){
 
   openModal(`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
-      <div class="sl-avatar ${s.role==='Loader'?'lo':'st'}" style="width:50px;height:50px;font-size:20px">${s.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>
+      <div class="sl-avatar st" style="width:50px;height:50px;font-size:20px">${s.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>
       <div>
         <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">${esc(s.name)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="tag">${esc(s.role)}</span>${statusBadge}</div>
@@ -5254,6 +5249,7 @@ function renderSettings(){
       </div>
     </div>`).join('');
   return `
+    ${!DATA.currency&&USER.role==='admin'?`<div class="warn" style="margin-bottom:12px">⚠️ No currency set. Go to <strong>Display Preferences → Currency</strong> below to set your currency (e.g. ZMW, USD, KES).</div>`:''}
     ${statusBanner()}
     ${renderLicenseCard()}
     <div class="sh">Company Information</div>
@@ -5280,7 +5276,7 @@ function renderSettings(){
       <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
         <div class="fl">Currency</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <input class="fi" id="currency-input" value="${esc(DATA.currency||'ZMW')}" placeholder="e.g. ZMW, USD, KES, K, $" maxlength="10" style="flex:1;text-transform:uppercase"/>
+          <input class="fi" id="currency-input" value="${esc(DATA.currency||'')}" placeholder="e.g. ZMW, USD, KES, K, $" maxlength="10" style="flex:1;text-transform:uppercase"/>
           <button class="btn bg bsm" style="width:auto" onclick="saveCurrencySetting()">Save</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Enter any currency code or symbol (e.g. ZMW, USD, KES, K, $). Used on all financial figures across the app.</div>
@@ -5354,13 +5350,17 @@ function renderSettings(){
 
     <div class="sh">Role Permissions</div>
     <div class="card" style="padding:0"><div class="tw"><table>
-      <thead><tr><th>Feature</th><th>Admin</th><th>Data Entry</th></tr></thead>
+      <thead><tr><th>Feature</th><th>Admin</th><th>Manager</th><th>Staff</th></tr></thead>
       <tbody>
-        <tr><td>Add records</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
-        <tr><td>Edit / Delete</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td></tr>
-        <tr><td>View dashboards</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
-        <tr><td>Set pay rates</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td></tr>
-        <tr><td>Change own password</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
+        <tr><td>Add records</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>Edit / Delete</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>View dashboards</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
+        <tr><td>Set pay rates</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>Manage commodities</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>Manage inventory items</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>Access Settings</td><td style="color:var(--green)">✅</td><td style="color:var(--red)">❌</td><td style="color:var(--red)">❌</td></tr>
+        <tr><td>Change own password</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
+        <tr><td>View own earnings</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td><td style="color:var(--green)">✅</td></tr>
       </tbody>
     </table></div></div>
 
@@ -5518,7 +5518,7 @@ function renderRolesEditor(){
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
-            <span style="font-size:11px;color:var(--muted)">K</span>
+            <span style="font-size:11px;color:var(--muted)">${cur()||'K'}</span>
             <input type="number" step="0.01" min="0" value="${Number(task.rate||0).toFixed(2)}"
               style="width:72px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;appearance:none;"
               oninput="this.dataset.dirty='1'"
