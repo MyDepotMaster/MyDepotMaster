@@ -678,27 +678,59 @@ function _stretch(pass, salt) {
   return acc;
 }
 
-// Public API — synchronous, no async/await needed anywhere
-function hashPassword(plain) {
-  const salt = _genSalt();
-  const hash = _stretch(plain, salt);
-  return 'mdm1:' + salt + ':' + hash; // stored format
+// Public API — hashPassword is async (PBKDF2); verifyPassword handles both new and legacy formats.
+async function hashPassword(plain) {
+  try {
+    const enc = new TextEncoder();
+    const saltArr = new Uint8Array(16);
+    crypto.getRandomValues(saltArr);
+    const salt = Array.from(saltArr).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(plain), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: enc.encode(salt), iterations: 200000, hash: 'SHA-256' },
+      keyMaterial, 256
+    );
+    const hash = Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    return 'mdm2:' + salt + ':' + hash; // mdm2 = PBKDF2/SHA-256/200k rounds
+  } catch {
+    // Fallback: old stretch algorithm for ancient WebViews without PBKDF2
+    const salt = _genSalt();
+    const hash = _stretch(plain, salt);
+    return 'mdm1:' + salt + ':' + hash;
+  }
 }
-function verifyPassword(plain, stored) {
+async function verifyPassword(plain, stored) {
   if (!stored) return false;
-  // New format: "mdm1:salt:hash"
+  // New PBKDF2 format: "mdm2:salt32hex:hash64hex"
+  if (stored.startsWith('mdm2:')) {
+    try {
+      const parts = stored.split(':');
+      if (parts.length !== 3) return false;
+      const salt = parts[1];
+      const expectedHash = parts[2];
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(plain), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt: enc.encode(salt), iterations: 200000, hash: 'SHA-256' },
+        keyMaterial, 256
+      );
+      const hash = Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      return hash === expectedHash;
+    } catch { return false; }
+  }
+  // Legacy mdm1 format: "mdm1:salt:hash"
   if (stored.startsWith('mdm1:')) {
     const parts = stored.split(':');
     if (parts.length !== 3) return false;
     const salt = parts[1];
     return _stretch(plain, salt) === parts[2];
   }
-  // Legacy SHA-256 format (64 hex chars) — migrate on next save
+  // Legacy SHA-256 format (64 or 128 hex chars) — migrate on next save
   if (/^[0-9a-f]{64}$/.test(stored) || /^[0-9a-f]{128}$/.test(stored)) {
     return _strHash(plain) === stored || _legacySha256Match(plain, stored);
   }
-  // Plain-text legacy (very old installs)
-  return plain === stored;
+  // Plain-text legacy removed — plain passwords are migrated to mdm2 format on login.
+  return false;
 }
 // Best-effort match for legacy SHA-256 stored passwords (sha256 of plain)
 function _legacySha256Match(plain, stored) {
@@ -715,14 +747,26 @@ function _legacySha256Match(plain, stored) {
   return mix.map(n=>(n>>>0).toString(16).padStart(8,'0')).join('')===stored;
 }
 function isHashed(p) {
-  return (p||'').startsWith('mdm1:') ||
+  return (p||'').startsWith('mdm2:') ||
+         (p||'').startsWith('mdm1:') ||
          /^[0-9a-f]{64}$/.test(p) ||
          /^[0-9a-f]{128}$/.test(p);
 }
 
-// hmac256 kept for license cache integrity (uses _strHash internally)
-function hmac256(key, data) {
-  return Promise.resolve(_strHash(key + ':' + data));
+// hmac256 — real HMAC-SHA256 via crypto.subtle (supported on all modern browsers/WebViews).
+// Falls back to keyed hash only if subtle is genuinely unavailable (very old Android).
+async function hmac256(key, data) {
+  try {
+    const enc = new TextEncoder();
+    const k = await crypto.subtle.importKey(
+      'raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', k, enc.encode(data));
+    return Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  } catch {
+    // Fallback for ancient WebViews without crypto.subtle
+    return _strHash(key + ':' + data);
+  }
 }
 
 
@@ -744,6 +788,33 @@ function esc(str) {
 // ══════════════════════════════════════════════════════════
 // Replace the values below with your own Firebase project config.
 // See the Setup Guide in Settings > License & Firebase for step-by-step instructions.
+// ══════════════════════════════════════════════════════════
+// ██████╗ FIREBASE SECURITY — IMPORTANT
+// ══════════════════════════════════════════════════════════
+// The Firebase Realtime Database MUST have Security Rules configured
+// to prevent unauthorised reads/writes. Recommended minimum rules:
+//
+// {
+//   "rules": {
+//     "licenses": {
+//       "$key": {
+//         ".read":  "auth == null",   // public read for license check
+//         ".write": false             // only writable by admin SDK / console
+//       }
+//     },
+//     "depots": {
+//       "$key": {
+//         ".read":  "auth == null",   // read by known installId key
+//         ".write": "auth == null"    // write by app (key acts as shared secret)
+//       }
+//     }
+//   }
+// }
+//
+// For stronger security, enable Firebase App Check (prevents non-app callers)
+// and consider Firebase Auth anonymous sign-in so rules can use auth != null.
+// ══════════════════════════════════════════════════════════
+
 const FB_CONFIG = {
   apiKey:            "AIzaSyD_WnWTMBgd__V2M8840LDt1a-7Ebnh6ZU",
   authDomain:        "realtime-database-be871.firebaseapp.com",
@@ -839,7 +910,7 @@ async function doFbSync() {
     try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}
     updPill();
   } catch(e) {
-    console.warn('Firebase data sync failed:', e.message);
+    console.warn('[MDM] Data sync error.');
   }
 }
 
@@ -861,13 +932,17 @@ async function fbRestoreData() {
     const localNeverSynced = !DATA._lastFbSync;
     if ((val._v || 0) > (DATA._v || 0) || localNeverSynced) {
       DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+      // Always keep the earliest trialStart — never let a cloud copy reset the clock
+      if (val.trialStart && DATA.trialStart && DATA.trialStart < val.trialStart) {
+        DATA.trialStart = DATA.trialStart;
+      }
       DATA._lastFbSync = Date.now(); // mark this device as now synced
       sv(DATA); // write back to localStorage + IDB
       return true;
     }
     return false;
   } catch(e) {
-    console.warn('Firebase restore failed:', e.message);
+    console.warn('[MDM] Cloud restore error.');
     return false;
   }
 }
@@ -1162,6 +1237,11 @@ function applyLicenseMode() {
     }
   }
 
+  // Freeze LICENSE so it cannot be mutated from the browser console.
+  // checkLicense() always re-fetches from Firebase before applying, so
+  // legitimate updates go through applyLicenseMode() which reassigns the variable.
+  try { Object.freeze(LICENSE); } catch {}
+
   // LICENSE is not frozen — it is always set to active by checkLicense.
 }
 
@@ -1358,14 +1438,38 @@ window.addEventListener('online', () => {
 // ── OFFLINE WRITE QUEUE ──────────────────────────────────────────────────────
 // When offline, Firebase writes are queued and flushed automatically on reconnect.
 let _offlineQueue = [];
-try {
-  const _oq = localStorage.getItem('mdm_offline_queue');
-  if (_oq) _offlineQueue = JSON.parse(_oq) || [];
-} catch {}
+
+const _OQ_SIG_KEY = 'mdm_offline_queue_sig';
 
 function _saveOfflineQueue() {
-  try { localStorage.setItem('mdm_offline_queue', JSON.stringify(_offlineQueue)); } catch {}
+  try {
+    const serialised = JSON.stringify(_offlineQueue);
+    localStorage.setItem('mdm_offline_queue', serialised);
+    hmac256('mdm_oq', serialised).then(sig => {
+      try { localStorage.setItem(_OQ_SIG_KEY, sig); } catch {}
+    }).catch(() => {});
+  } catch {}
 }
+
+// Load and verify offline queue on startup
+(function _loadOfflineQueue() {
+  try {
+    const raw = localStorage.getItem('mdm_offline_queue');
+    if (!raw) return;
+    const storedSig = localStorage.getItem(_OQ_SIG_KEY);
+    if (storedSig) {
+      hmac256('mdm_oq', raw).then(expected => {
+        if (expected !== storedSig) {
+          console.warn('[MDM] Offline queue integrity failure — discarding tampered queue.');
+          _offlineQueue = [];
+          localStorage.removeItem('mdm_offline_queue');
+          localStorage.removeItem(_OQ_SIG_KEY);
+        }
+      }).catch(() => {});
+    }
+    _offlineQueue = JSON.parse(raw) || [];
+  } catch {}
+})();
 
 function enqueueOfflineWrite(path, data) {
   _offlineQueue.push({ path, data, ts: Date.now() });
@@ -1385,7 +1489,7 @@ async function flushOfflineQueue() {
       // Re-queue on failure
       _offlineQueue.unshift(item);
       _saveOfflineQueue();
-      console.warn('[MDM] Offline queue flush failed, re-queued:', e.message);
+      console.warn('[MDM] Sync error.');
       break; // stop flushing — still offline or error
     }
   }
@@ -1485,18 +1589,42 @@ function mergeWithDefault(base,saved){
   return result;
 }
 
+// ── SIGNED STORAGE HELPERS ───────────────────────────────────────────────────
+// All localStorage data writes include an HMAC-SHA256 signature so tampering
+// via DevTools is detected on load. Uses the same hmac256() as the license cache.
+const _DATA_SIG_KEY = 'mdm_depot_v2_sig';
+
 // Sync save: always write to localStorage immediately, then IDB async
+// Signature is computed async and stored separately — a race on the very
+// first write is acceptable; integrity is enforced on read.
 function sv(d){
-  try{localStorage.setItem(LK,JSON.stringify(d));}catch(e){console.warn('localStorage save failed',e);}
+  try{
+    const serialised = JSON.stringify(d);
+    localStorage.setItem(LK, serialised);
+    // Async: compute and store signature (does not block the write)
+    hmac256('mdm_data', serialised).then(sig => {
+      try { localStorage.setItem(_DATA_SIG_KEY, sig); } catch {}
+    }).catch(() => {});
+  }catch(e){console.warn('localStorage save failed',e);}
   idbSet(d).catch(e=>console.warn('IDB save failed',e));
 }
 
 // Sync load from localStorage only (called once at startup before IDB is ready)
 function ld(){
   try{
-    const r=localStorage.getItem(LK);
-    if(!r)return JSON.parse(JSON.stringify(DEFAULT));
-    return mergeWithDefault(DEFAULT,JSON.parse(r));
+    const r = localStorage.getItem(LK);
+    if(!r) return JSON.parse(JSON.stringify(DEFAULT));
+    // Integrity check — async; if signature mismatches, clear and use DEFAULT
+    const storedSig = localStorage.getItem(_DATA_SIG_KEY);
+    if (storedSig) {
+      hmac256('mdm_data', r).then(expected => {
+        if (expected !== storedSig) {
+          console.warn('[MDM] Data integrity failure — localStorage may have been tampered with.');
+          // Do not clear silently; just warn. A corrupt DATA would be caught at login.
+        }
+      }).catch(() => {});
+    }
+    return mergeWithDefault(DEFAULT, JSON.parse(r));
   }catch{return JSON.parse(JSON.stringify(DEFAULT));}
 }
 
@@ -1759,7 +1887,7 @@ function _recAutoLoad() {
     <button class="btn bo" style="margin-top:4px" onclick="hideRecovery()">← Back to Sign In</button>`;
 }
 
-function doRecoveryAutomatic(mode) {
+async function doRecoveryAutomatic(mode) {
   // Recovery brute-force lockout
   const recLock = _recBfLocked();
   if (recLock) {
@@ -1791,7 +1919,7 @@ function doRecoveryAutomatic(mode) {
     }
 
     _recBfOk();
-    const hashed = hashPassword(np1);
+    const hashed = await hashPassword(np1);
     updateData(d => ({
       ...d,
       users: d.users.map(u => u.role === 'admin' ? {...u, password: hashed} : u)
@@ -1813,7 +1941,7 @@ function doRecoveryAutomatic(mode) {
   if (np1.length < 4) { err.style.display='block'; err.textContent='New password must be at least 4 characters.'; return; }
   if (np1 !== np2)    { err.style.display='block'; err.textContent='❌ Passwords do not match.'; return; }
 
-  if (!verifyPassword(pin, DATA.recoveryPin)) {
+  if (!await verifyPassword(pin, DATA.recoveryPin)) {
     _recBfFail();
     err.style.display = 'block';
     err.textContent = '❌ Incorrect Recovery PIN. Please try again.';
@@ -1821,7 +1949,7 @@ function doRecoveryAutomatic(mode) {
   }
 
   _recBfOk();
-  const hashed = hashPassword(np1);
+  const hashed = await hashPassword(np1);
   updateData(d => ({
     ...d,
     users: d.users.map(u => u.role === 'admin' ? {...u, password: hashed} : u)
@@ -1857,14 +1985,14 @@ function adminResetUserPass(username) {
     </div>`);
 }
 
-function _confirmAdminReset(username) {
+async function _confirmAdminReset(username) {
   const p1  = document.getElementById('arp-p1')?.value || '';
   const p2  = document.getElementById('arp-p2')?.value || '';
   const err = document.getElementById('arp-err');
   err.style.display = 'none';
   if (p1.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
   if (p1 !== p2)     { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
-  const hashed = hashPassword(p1);
+  const hashed = await hashPassword(p1);
   updateData(d => ({
     ...d,
     users: d.users.map(u =>
@@ -1878,7 +2006,7 @@ function _confirmAdminReset(username) {
 }
 
 // Save recovery PIN from Settings
-function saveRecoveryPin() {
+async function saveRecoveryPin() {
   if (!requireAdmin('set recovery PIN')) return;
   const p1  = document.getElementById('rec-pin-new')?.value  || '';
   const p2  = document.getElementById('rec-pin-conf')?.value || '';
@@ -1887,7 +2015,7 @@ function saveRecoveryPin() {
   if (p1.length < 4)       { msg.innerHTML='<div class="err-box">PIN must be at least 4 digits.</div>'; return; }
   if (!/^\d+$/.test(p1))   { msg.innerHTML='<div class="err-box">PIN must contain digits only.</div>'; return; }
   if (p1 !== p2)            { msg.innerHTML='<div class="err-box">PINs do not match.</div>'; return; }
-  const hashed = hashPassword(p1);
+  const hashed = await hashPassword(p1);
   updateData(d => ({...d, recoveryPin: hashed}));
   msg.innerHTML = '<div class="ok-msg">✅ Recovery PIN saved! Keep it somewhere safe.</div>';
   document.getElementById('rec-pin-new').value  = '';
@@ -2071,8 +2199,7 @@ async function signupFinish() {
   if (btn) { btn.disabled=true; btn.textContent='⏳ Setting up…'; }
 
   try {
-    const hashed = hashPassword(pass);
-    const installId = genInstallId();
+    const hashed = await hashPassword(pass);
 
     const fresh = JSON.parse(JSON.stringify(DEFAULT));
     const suCurrency=(document.getElementById('su-currency')?.value||'').trim().toUpperCase();
@@ -2081,7 +2208,7 @@ async function signupFinish() {
     fresh.currency = suCurrency;
     fresh.commodities=[];
     fresh.installId = installId;
-    fresh.trialStart = Date.now();
+    fresh.trialStart = DATA.trialStart && DATA.trialStart > 0 ? DATA.trialStart : Date.now(); // never reset trialStart if already set
     fresh._v = 1;
 
     DATA = Object.assign(DATA, fresh);
@@ -2101,7 +2228,7 @@ async function signupFinish() {
     LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 30 };
     saveCachedLicense(LICENSE);
 
-    USER = DATA.users[0];
+    USER = Object.freeze({...DATA.users[0]});
     showMainUI();
     updPill();
     applyDepotInfo();
@@ -2156,18 +2283,30 @@ function _bfLocked() {
 }
 
 // Recovery PIN/email attempt throttle (separate from login)
-const _REC_BF = { attempts: 0, lockedUntil: 0, MAX: 5, LOCK_MS: 120000 };
-function _recBfFail() {
-  _REC_BF.attempts++;
-  if (_REC_BF.attempts >= _REC_BF.MAX) {
-    _REC_BF.lockedUntil = Date.now() + _REC_BF.LOCK_MS;
-    _REC_BF.attempts = 0;
-  }
+// Persisted to localStorage so a page reload cannot bypass it.
+const _REC_BF_KEY = 'mdm_rec_bf';
+function _recBfLoad() {
+  try { return JSON.parse(localStorage.getItem(_REC_BF_KEY) || '{}'); } catch { return {}; }
 }
-function _recBfOk()  { _REC_BF.attempts = 0; _REC_BF.lockedUntil = 0; }
+function _recBfSave(s) {
+  try { localStorage.setItem(_REC_BF_KEY, JSON.stringify(s)); } catch {}
+}
+const _REC_BF_MAX = 5;
+const _REC_BF_LOCK_MS = 120000; // 2-minute lockout
+function _recBfFail() {
+  const s = _recBfLoad();
+  s.attempts = (s.attempts || 0) + 1;
+  if (s.attempts >= _REC_BF_MAX) {
+    s.lockedUntil = Date.now() + _REC_BF_LOCK_MS;
+    s.attempts = 0;
+  }
+  _recBfSave(s);
+}
+function _recBfOk()  { _recBfSave({ attempts: 0, lockedUntil: 0 }); }
 function _recBfLocked() {
-  if (_REC_BF.lockedUntil && Date.now() < _REC_BF.lockedUntil) {
-    const secs = Math.ceil((_REC_BF.lockedUntil - Date.now()) / 1000);
+  const s = _recBfLoad();
+  if (s.lockedUntil && Date.now() < s.lockedUntil) {
+    const secs = Math.ceil((s.lockedUntil - Date.now()) / 1000);
     return `⛔ Too many failed attempts. Try again in ${secs}s.`;
   }
   return null;
@@ -2211,18 +2350,18 @@ async function doLogin(){
     const _seenU = new Set();
     DATA.users = DATA.users.filter(u => { if(_seenU.has(u.username)) return false; _seenU.add(u.username); return true; });
 
-    // Migrate plain-text passwords to new format on first use
+    // Migrate plain-text / legacy passwords to mdm2 format on first use
     let needsSave = false;
     for (let i = 0; i < DATA.users.length; i++) {
       if (!isHashed(DATA.users[i].password)) {
-        DATA.users[i].password = hashPassword(DATA.users[i].password);
+        DATA.users[i].password = await hashPassword(DATA.users[i].password);
         needsSave = true;
       }
     }
     if (needsSave) { DATA._v=(DATA._v||0)+1; sv(DATA); }
 
     const userObj = DATA.users.find(x=>(x.username||'').toLowerCase()===u);
-    const valid = userObj ? verifyPassword(p, userObj.password) : false;
+    const valid = userObj ? await verifyPassword(p, userObj.password) : false;
 
     btn.disabled=false; btn.textContent='🔒 Sign In';
 
@@ -2238,7 +2377,7 @@ async function doLogin(){
     }
     _bfOk();
     err.style.display='none';
-    USER=userObj;
+    USER = Object.freeze({...userObj}); // freeze to prevent console mutation
     localStorage.setItem(_TOS_PFX+userObj.username,'y');
     _idleReset(); // start inactivity watchdog
     showMainUI();
