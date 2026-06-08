@@ -1386,7 +1386,12 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v7';
+const SW_VERSION  = 'mdm-v8';
+
+// ── MEDIAN CACHE CLEAR — clears webview cache when running inside Median app
+if (typeof median !== 'undefined' && median.webview && median.webview.clearCache) {
+  median.webview.clearCache();
+}
 const SW_FONTS_URL = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
 // Aggressively pre-cache the shell from the main thread as a belt-and-braces
