@@ -943,6 +943,29 @@ async function fbSet(path, data) {
   return res.json();
 }
 
+// Atomic write — only succeeds if the key does not yet exist in Firebase.
+// Uses the If-None-Match: * header which Firebase REST honours: returns 412
+// if the node is already present, making this race-condition-safe.
+async function fbSetIfNotExists(path, data) {
+  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/' + path + '.json';
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'if-none-match': '*' },
+    body: JSON.stringify(data)
+  });
+  if (res.status === 412) {
+    // Node already exists — key is taken
+    const err = new Error('ALREADY_EXISTS');
+    err.code = 412;
+    throw err;
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(()=>'');
+    throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
+  }
+  return res.json();
+}
+
 // ── FIREBASE DATA SYNC ───────────────────────────────────────────────────────
 // Saves the full depot DATA object to Firebase under depots/{key}
 // Strips non-serialisable fields and enforces a debounce so rapid edits
@@ -2298,7 +2321,13 @@ async function signupFinish() {
 
   try {
     // ── DUPLICATE USERNAME CHECK (Firebase global registry) ──────────────────
-    if (isFbConfigured() && navigator.onLine) {
+    if (isFbConfigured()) {
+      if (!navigator.onLine) {
+        err.style.display='block';
+        err.textContent='⚠️ An internet connection is required to create an account.';
+        if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
+        return;
+      }
       if (btn) btn.textContent='⏳ Checking username…';
       try {
         const existing = await fbGet('usernames/' + username);
@@ -2309,8 +2338,11 @@ async function signupFinish() {
           return;
         }
       } catch(uce) {
-        // Firebase unreachable — proceed offline; duplicate will be caught if they sync later
-        console.warn('[MDM] Username check skipped (offline):', uce.message);
+        // Firebase reachable but read failed — don't proceed; surface the error
+        if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
+        err.style.display='block';
+        err.textContent='⚠️ Could not verify username availability. Please try again.';
+        return;
       }
       if (btn) btn.textContent='⏳ Setting up…';
     }
@@ -2342,8 +2374,20 @@ async function signupFinish() {
         createdAt: now,
         trialStart: now
       });
-      // Register username globally so no other depot can claim it
-      await fbSet('usernames/' + username, { installId: newInstallId, createdAt: now });
+      // Atomic write — fails with ALREADY_EXISTS if another device claimed the
+      // username between our fbGet check above and this write (race condition).
+      try {
+        await fbSetIfNotExists('usernames/' + username, { installId: newInstallId, createdAt: now });
+      } catch(race) {
+        if (race.code === 412) {
+          // Another signup claimed the username in the last few milliseconds
+          err.style.display='block';
+          err.textContent='⛔ Username "' + username + '" was just taken. Please choose a different one.';
+          if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
+          return;
+        }
+        console.warn('Firebase username register failed:', race.message);
+      }
     } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
 
     LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 30 };
