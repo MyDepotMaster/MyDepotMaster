@@ -1380,7 +1380,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v9';
+const SW_VERSION  = 'mdm-v10';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1396,7 +1396,7 @@ const SW_VERSION  = 'mdm-v9';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v9';
+  const VER = 'mdm-v10';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -1456,6 +1456,27 @@ if ('serviceWorker' in navigator) {
       .catch(() => {
         // sw.js not found (local file:// access or old path) — no SW, app still works
       });
+
+    // Handle NEW_VERSION message posted by the SW on activate.
+    // This fires when the SW takes over on a tab that was already open,
+    // ensuring Median users get the latest version without a manual refresh.
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (!event.data || event.data.type !== 'NEW_VERSION') return;
+      if (typeof median !== 'undefined') {
+        if (median.webview && median.webview.clearCache) median.webview.clearCache();
+        const vUrl = new URL(location.href);
+        vUrl.searchParams.set('_mv', SW_VERSION);
+        if (median.navigate) {
+          median.navigate({ url: vUrl.toString() });
+        } else {
+          location.replace(vUrl.toString());
+        }
+      } else {
+        // Regular browser fallback
+        const t = document.getElementById('update-toast');
+        if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
+      }
+    });
   });
 }
 

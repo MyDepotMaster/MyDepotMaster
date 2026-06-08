@@ -3,14 +3,20 @@
 // intercept navigation requests and serve the shell when offline.
 //
 // Strategy:
-//   navigate requests  → cache-first (serve shell instantly offline)
+//   navigate requests  → network-first (always try latest; fall back to cache)
 //   Google Fonts       → cache-first (stale-while-revalidate)
 //   Firebase REST      → network-first with cache fallback
 //   everything else    → pass-through (network only)
+//
+// Update flow:
+//   1. New SW installs → skipWaiting() takes over immediately
+//   2. activate purges old caches → clients.claim() takes over all tabs
+//   3. SW posts { type:'NEW_VERSION' } to every open tab
+//   4. index.html listener auto-reloads (or shows a toast — your choice)
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE   = 'mdm-v9';
-const SHELL   = './';          // resolves to index.html at the same path
+const CACHE   = 'mdm-v10';
+const SHELL   = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
 // ── INSTALL: pre-cache the app shell ────────────────────────────────────────
@@ -20,16 +26,22 @@ self.addEventListener('install', e => {
       cache.addAll([SHELL, FONTS_CSS]).catch(() =>
         cache.add(SHELL).catch(() => {}) // fonts may fail offline — that's fine
       )
-    ).then(() => self.skipWaiting())
+    ).then(() => self.skipWaiting()) // take over immediately, don't wait for old tabs to close
   );
 });
 
-// ── ACTIVATE: claim clients and purge old caches ─────────────────────────────
+// ── ACTIVATE: claim clients, purge old caches, notify tabs ──────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      .then(() => {
+        // Tell every open tab that a new version is live → they can reload
+        self.clients.matchAll({ type: 'window' }).then(clients => {
+          clients.forEach(client => client.postMessage({ type: 'NEW_VERSION' }));
+        });
+      })
   );
 });
 
@@ -37,7 +49,6 @@ self.addEventListener('activate', e => {
 function cacheFirst(req) {
   return caches.match(req).then(cached => {
     if (cached) {
-      // Refresh in background
       fetch(req).then(r => {
         if (r && r.ok) caches.open(CACHE).then(c => c.put(req, r));
       }).catch(() => {});
@@ -63,26 +74,19 @@ function networkFirst(req) {
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Navigation — cache-first: return cached shell instantly, refresh in background
+  // Navigation — network-first: always attempt to load the latest shell.
+  // Falls back to cache if offline, so the app still works without a connection.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      caches.match(e.request).then(cached => {
-        const networkFetch = fetch(e.request).then(r => {
+      fetch(e.request)
+        .then(r => {
           if (r && r.ok) {
             const c = r.clone();
             caches.open(CACHE).then(ca => ca.put(e.request, c));
           }
           return r;
-        }).catch(() => null);
-
-        // Serve cached immediately; refresh from network in background
-        if (cached) {
-          networkFetch.catch(() => {});
-          return cached;
-        }
-        // Not in cache yet — fetch from network, fall back to SHELL
-        return networkFetch.then(r => r || caches.match(SHELL));
-      })
+        })
+        .catch(() => caches.match(e.request).then(cached => cached || caches.match(SHELL)))
     );
     return;
   }
@@ -93,7 +97,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Firebase REST — network-first with cache fallback (so reads work briefly offline)
+  // Firebase REST — network-first with cache fallback
   if (url.includes('firebaseio.com') || url.includes('googleapis.com/identitytoolkit') ||
       url.includes('securetoken.googleapis.com') || url.includes('firebaseinstallations')) {
     e.respondWith(networkFirst(e.request));
