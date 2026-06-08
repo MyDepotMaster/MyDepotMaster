@@ -52,6 +52,60 @@
   --shadow-lg:0 8px 32px rgba(0,0,0,.6);
   --glow-green:0 0 20px rgba(0,214,143,.2);
   --glow-blue:0 0 20px rgba(59,130,246,.2);
+  /* Fix 12: overlay variables — inverted correctly in light mode */
+  --overlay-dark-1:rgba(0,0,0,.3);
+  --overlay-dark-2:rgba(0,0,0,.4);
+  --overlay-dark-3:rgba(0,0,0,.7);
+  --overlay-light-1:rgba(255,255,255,.02);
+  --overlay-light-2:rgba(255,255,255,.03);
+  --overlay-light-3:rgba(255,255,255,.04);
+  --overlay-light-4:rgba(255,255,255,.05);
+  --overlay-light-5:rgba(255,255,255,.06);
+  --overlay-light-8:rgba(255,255,255,.08);
+  --overlay-light-10:rgba(255,255,255,.10);
+  --table-th-bg:rgba(0,0,0,.4);
+  --table-td-border:rgba(26,45,71,.5);
+  --table-row-hover:rgba(255,255,255,.02);
+  --fi-bg:rgba(0,0,0,.3);
+  --select-bg:rgba(0,0,0,.3);
+  --movl-bg:rgba(0,0,0,.7);
+}
+/* ── LIGHT MODE ─────────────────────────────────────────────────────────────
+   Override all background / surface / border / text / muted variables.
+   Accent colours (green, amber, red, blue, purple) are slightly deepened for
+   contrast on a pale background. Shadows and glows are lightened.          */
+body.light{
+  --bg:#f0f4f9;
+  --surface:#ffffff;
+  --surface2:#e6edf5;
+  --border:#c5d4e4;
+  --text:#1e3a5f;
+  --muted:#5a7a99;
+  --white:#0a1628;
+  --green:#009e6a;--green2:#007f55;
+  --amber:#c77b00;--red:#c81e1e;--blue:#1d4ed8;--purple:#6d28d9;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.12);
+  --shadow-md:0 4px 16px rgba(0,0,0,.14);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.18);
+  --glow-green:0 0 20px rgba(0,158,106,.15);
+  --glow-blue:0 0 20px rgba(29,78,216,.15);
+  /* Fix 12: inverted overlay vars for light mode */
+  --overlay-dark-1:rgba(0,0,0,.05);
+  --overlay-dark-2:rgba(0,0,0,.07);
+  --overlay-dark-3:rgba(0,0,0,.35);
+  --overlay-light-1:rgba(0,0,0,.02);
+  --overlay-light-2:rgba(0,0,0,.02);
+  --overlay-light-3:rgba(0,0,0,.03);
+  --overlay-light-4:rgba(0,0,0,.04);
+  --overlay-light-5:rgba(0,0,0,.04);
+  --overlay-light-8:rgba(0,0,0,.05);
+  --overlay-light-10:rgba(0,0,0,.06);
+  --table-th-bg:rgba(0,0,0,.06);
+  --table-td-border:rgba(180,200,220,.6);
+  --table-row-hover:rgba(0,0,0,.02);
+  --fi-bg:rgba(255,255,255,.8);
+  --select-bg:rgba(255,255,255,.8);
+  --movl-bg:rgba(0,0,0,.45);
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 #app{max-width:480px;margin:0 auto;height:calc(100vh / var(--app-zoom,1));height:calc(100dvh / var(--app-zoom,1));display:flex;flex-direction:column;position:relative;background:var(--bg);}
@@ -80,9 +134,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* Fields */
 .fl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
 .fw{margin-bottom:14px;}
-.fi{width:100%;background:rgba(0,0,0,.3);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-size:14px;font-family:var(--fb);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none;}
+.fi{width:100%;background:var(--fi-bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-size:14px;font-family:var(--fb);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none;}
 .fi:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,214,143,.1);}
-select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234d6d8f' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;background-color:rgba(0,0,0,.3);}
+select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234d6d8f' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;background-color:var(--select-bg);}
 
 /* Buttons */
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:var(--radius-md);padding:12px 20px;font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:.3px;cursor:pointer;transition:all .15s;width:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
@@ -117,7 +171,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;box-shadow:var(--shadow-sm);}
 .ctitle{font-family:var(--fh);font-size:14px;font-weight:700;color:var(--white);margin-bottom:12px;display:flex;align-items:center;gap:8px;letter-spacing:0.3px;}
 .srow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
-.sbox{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 12px;text-align:center;transition:border-color .2s;}
+.sbox{background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 12px;text-align:center;transition:border-color .2s;}
 .sv{font-family:var(--fh);font-size:22px;font-weight:800;color:var(--green);line-height:1;}
 .sl{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.5px;}
 .sbox.am .sv{color:var(--amber);}.sbox.bl .sv{color:var(--blue);}.sbox.pu .sv{color:var(--purple);}.sbox.rd .sv{color:var(--red);}
@@ -130,10 +184,10 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 /* Table */
 .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
-th{background:rgba(0,0,0,.4);color:var(--muted);font-weight:700;padding:9px 10px;text-align:left;font-size:10px;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;font-family:var(--fb);}
-td{padding:9px 10px;border-bottom:1px solid rgba(26,45,71,.5);color:var(--text);vertical-align:middle;}
+th{background:var(--table-th-bg);color:var(--muted);font-weight:700;padding:9px 10px;text-align:left;font-size:10px;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;font-family:var(--fb);}
+td{padding:9px 10px;border-bottom:1px solid var(--table-td-border);color:var(--text);vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(255,255,255,.02);}
+tr:hover td{background:var(--table-row-hover);}
 .bdg{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;font-family:var(--fb);}
 .bg2{background:rgba(0,214,143,.1);color:var(--green);border:1px solid rgba(0,214,143,.2);}.ba2{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2);}.bb2{background:rgba(59,130,246,.1);color:var(--blue);border:1px solid rgba(59,130,246,.2);}.br2{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);}
 .tag{display:inline-block;background:rgba(26,45,71,.6);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:10px;color:var(--muted);}
@@ -144,7 +198,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .stab.act{background:rgba(59,130,246,.1);color:var(--blue);border-color:rgba(59,130,246,.3);}
 
 /* Modal */
-.movl{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:flex-end;justify-content:center;}
+.movl{position:fixed;inset:0;background:var(--movl-bg);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:flex-end;justify-content:center;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
 .mtitle{font-family:var(--fh);font-size:19px;font-weight:800;color:var(--white);margin-bottom:18px;letter-spacing:-0.3px;}
 .mact{display:flex;gap:10px;margin-top:20px;}
@@ -166,7 +220,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .spin{animation:spin 1s linear infinite;display:inline-flex;}
 @keyframes spin{to{transform:rotate(360deg);}}
 #update-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;border-radius:var(--radius-md);padding:11px 20px;font-size:12px;font-weight:600;display:none;z-index:999;box-shadow:var(--shadow-md);white-space:nowrap;}
-/* Uppercase all text entries */
+/* Filter hide — used by filterTable() */
+.flt-hide{display:none!important;}
 .fi:not([type=password]):not([type=date]):not([type=time]):not([type=number]):not([type=tel]){text-transform:uppercase;}
 select.fi{text-transform:uppercase;}
 select.fi option{text-transform:uppercase;}
@@ -198,12 +253,12 @@ select.fi option{text-transform:uppercase;}
 .land-tag{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:18px;}
 .land-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:20px;padding:5px 13px;font-family:var(--fb);font-size:11px;font-weight:600;color:var(--green);margin-bottom:4px;}
 .land-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 18px 22px;}
-.land-stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-md);padding:14px 8px;text-align:center;}
+.land-stat{background:var(--overlay-light-3);border:1px solid var(--overlay-light-5);border-radius:var(--radius-md);padding:14px 8px;text-align:center;}
 .land-stat-num{font-family:var(--fh);font-size:20px;font-weight:800;color:var(--green);line-height:1;}
 .land-stat-lbl{font-size:9px;color:var(--muted);margin-top:4px;line-height:1.4;text-transform:uppercase;letter-spacing:.6px;}
 .land-section-title{font-family:var(--fh);font-size:10px;font-weight:700;color:rgba(77,109,143,.7);letter-spacing:1.5px;text-transform:uppercase;padding:0 18px;margin-bottom:10px;}
 .land-features{display:flex;flex-direction:column;gap:6px;padding:0 18px 18px;}
-.land-feat{display:flex;align-items:flex-start;gap:13px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);border-radius:var(--radius-md);padding:13px 14px;transition:border-color .2s;}
+.land-feat{display:flex;align-items:flex-start;gap:13px;background:var(--overlay-light-2);border:1px solid var(--overlay-light-4);border-radius:var(--radius-md);padding:13px 14px;transition:border-color .2s;}
 .land-feat:active{border-color:rgba(0,214,143,.25);}
 .land-feat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
 .land-feat-body{flex:1;}
@@ -251,6 +306,8 @@ body.readonly-mode .btn.bg,body.readonly-mode .btn.ba,body.readonly-mode .btn.br
 #trial-banner .tb-text{flex:1;font-size:11px;color:var(--purple);font-weight:600;line-height:1.4;}
 #trial-banner .tb-tag{background:var(--purple);color:#fff;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:800;letter-spacing:.6px;flex-shrink:0;white-space:nowrap;}
 body.trial-mode .content{padding-top:44px;}
+/* Grace periods: both readonly-mode and trial-mode are set together — trial-banner (44px) is shown, not license-banner (52px) */
+body.readonly-mode.trial-mode .content{padding-top:44px;}
 /* Blocked / expired full-screen overlay */
 #blocked-screen{position:fixed;inset:0;background:var(--bg);z-index:900;display:none;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:28px 20px 40px;}
 /* Payment method cards */
@@ -265,7 +322,7 @@ body.trial-mode .content{padding-top:44px;}
 /* Firebase config screen */
 #fb-config-screen{position:fixed;inset:0;background:var(--bg);z-index:1100;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:24px 20px 40px;}
 /* Font size control */
-.fs-ctrl{display:flex;align-items:center;gap:0;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;width:100%;}
+.fs-ctrl{display:flex;align-items:center;gap:0;background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;width:100%;}
 .fs-btn{flex:0 0 48px;height:44px;border:none;background:transparent;color:var(--text);font-size:18px;font-weight:700;cursor:pointer;touch-action:manipulation;transition:.15s;display:flex;align-items:center;justify-content:center;}
 .fs-btn:active{background:var(--surface2);color:var(--green);}
 .fs-btn:disabled{opacity:.3;cursor:not-allowed;}
@@ -316,24 +373,46 @@ body.trial-mode .content{padding-top:44px;}
 .be-word-area:focus{box-shadow:0 0 0 2px var(--green);}
 .be-grid-wrap{overflow:auto;-webkit-overflow-scrolling:touch;}
 .be-grid{border-collapse:collapse;font-size:12px;min-width:100%;}
-.be-grid th.row-hdr{background:rgba(0,0,0,.4);color:var(--muted);font-size:10px;padding:4px 6px;border:1px solid var(--border);min-width:28px;text-align:center;position:sticky;left:0;z-index:2;}
-.be-grid th.col-hdr{background:rgba(0,0,0,.4);color:var(--muted);font-size:10px;padding:4px 8px;border:1px solid var(--border);min-width:90px;text-align:center;position:sticky;top:0;z-index:1;}
+.be-grid th.row-hdr{background:var(--table-th-bg);color:var(--muted);font-size:10px;padding:4px 6px;border:1px solid var(--border);min-width:28px;text-align:center;position:sticky;left:0;z-index:2;}
+.be-grid th.col-hdr{background:var(--table-th-bg);color:var(--muted);font-size:10px;padding:4px 8px;border:1px solid var(--border);min-width:90px;text-align:center;position:sticky;top:0;z-index:1;}
 .be-grid td{border:1px solid var(--border);padding:0;min-width:90px;}
 .be-grid td input{width:100%;border:none;background:transparent;color:var(--text);font-size:12px;padding:5px 7px;outline:none;font-family:var(--fb);}
 .be-grid td input:focus{background:rgba(59,130,246,.06);color:#fff;}
 .be-grid td input.formula-cell{color:var(--green);}
 .be-grid td input.formula-editing{color:var(--amber);}
-.be-grid td.row-hdr-cell{background:rgba(0,0,0,.4);color:var(--muted);font-size:10px;text-align:center;padding:4px 6px;border:1px solid var(--border);min-width:28px;position:sticky;left:0;z-index:1;}
+.be-grid td.row-hdr-cell{background:var(--table-th-bg);color:var(--muted);font-size:10px;text-align:center;padding:4px 6px;border:1px solid var(--border);min-width:28px;position:sticky;left:0;z-index:1;}
 /* Word doc table styles */
 .be-word-area table{border-collapse:collapse;width:100%;margin:8px 0;}
 .be-word-area table td,.be-word-area table th{border:1px solid #aaa;padding:5px 8px;min-width:40px;vertical-align:top;}
 .be-word-area table th{background:#f0f0f0;font-weight:bold;}
 /* Formula bar */
-.be-formula-bar{background:rgba(0,0,0,.3);border-bottom:1px solid var(--border);padding:4px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:28px;}
+.be-formula-bar{background:var(--overlay-dark-1);border-bottom:1px solid var(--border);padding:4px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:28px;}
 .be-formula-bar-label{font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0;}
 .be-formula-bar-input{flex:1;background:transparent;border:none;outline:none;font-size:12px;color:var(--text);font-family:var(--fm);}
 .be-footer{background:var(--surface);border-top:1px solid var(--border);padding:8px 14px;display:flex;gap:8px;flex-shrink:0;}
-/* ── END BOOK EDITOR ────────────────────────────────────────── */
+/* ── THEME TOGGLE BUTTON (Fix 13) ──────────────────────────── */
+.theme-toggle{display:flex;align-items:center;justify-content:space-between;background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 4px 0 14px;height:44px;width:100%;cursor:pointer;transition:.15s;}
+.theme-toggle-label{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
+.theme-toggle-pill{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px;gap:2px;}
+.theme-toggle-opt{padding:4px 10px;border-radius:16px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s;border:none;background:transparent;font-family:var(--fh);}
+.theme-toggle-opt.active{background:var(--green);color:#060d18;}
+/* ── FIX 14: OS default theme via prefers-color-scheme ─────── */
+@media (prefers-color-scheme:light){
+  :root:not([data-theme-set]) body,
+  body[data-theme="auto"]{
+    --bg:#f0f4f9;--surface:#ffffff;--surface2:#e6edf5;--border:#c5d4e4;
+    --text:#1e3a5f;--muted:#5a7a99;--white:#0a1628;
+    --green:#009e6a;--green2:#007f55;--amber:#c77b00;--red:#c81e1e;--blue:#1d4ed8;--purple:#6d28d9;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.12);--shadow-md:0 4px 16px rgba(0,0,0,.14);--shadow-lg:0 8px 32px rgba(0,0,0,.18);
+    --glow-green:0 0 20px rgba(0,158,106,.15);--glow-blue:0 0 20px rgba(29,78,216,.15);
+    --overlay-dark-1:rgba(0,0,0,.05);--overlay-dark-2:rgba(0,0,0,.07);--overlay-dark-3:rgba(0,0,0,.35);
+    --overlay-light-1:rgba(0,0,0,.02);--overlay-light-2:rgba(0,0,0,.02);--overlay-light-3:rgba(0,0,0,.03);
+    --overlay-light-4:rgba(0,0,0,.04);--overlay-light-5:rgba(0,0,0,.04);--overlay-light-8:rgba(0,0,0,.05);
+    --overlay-light-10:rgba(0,0,0,.06);--table-th-bg:rgba(0,0,0,.06);--table-td-border:rgba(180,200,220,.6);
+    --table-row-hover:rgba(0,0,0,.02);--fi-bg:rgba(255,255,255,.8);--select-bg:rgba(255,255,255,.8);--movl-bg:rgba(0,0,0,.45);
+  }
+}
+/* ── END THEME ──────────────────────────────────────────────── */
 </style>
 </head>
 <body>
@@ -899,14 +978,17 @@ async function doFbSync() {
     // Save a clean copy
     const payload = JSON.parse(JSON.stringify(DATA));
     delete payload.gdrive; // don't store oauth tokens in Firebase
-    await fbSet('depots/' + key + '/data', payload);
-    // Update last-synced timestamp
-    await fbSet('depots/' + key + '/meta', {
-      lastSync: Date.now(),
-      depotName: (DATA.depotInfo||{}).name || '',
-      version: DATA._v || 0
-    });
-    DATA._lastFbSync = Date.now();
+    const now = Date.now();
+    // Fix 4: run both writes in parallel — halves round-trip time vs sequential awaits
+    await Promise.all([
+      fbSet('depots/' + key + '/data', payload),
+      fbSet('depots/' + key + '/meta', {
+        lastSync: now,
+        depotName: (DATA.depotInfo||{}).name || '',
+        version: DATA._v || 0
+      })
+    ]);
+    DATA._lastFbSync = now;
     sv(DATA); // persist updated _lastFbSync to both localStorage and IDB
     updPill();
   } catch(e) {
@@ -1246,8 +1328,6 @@ function applyLicenseMode() {
   // checkLicense() always re-fetches from Firebase before applying, so
   // legitimate updates go through applyLicenseMode() which reassigns the variable.
   try { Object.freeze(LICENSE); } catch {}
-
-  // LICENSE is not frozen — it is always set to active by checkLicense.
 }
 
 // Intercept write actions in read-only mode
@@ -1256,8 +1336,8 @@ function applyLicenseMode() {
 // checkLicense() always re-fetches from Firebase first.
 function isReadOnly() {
   const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
-  // Read-only for: suspended, both grace periods, and fully expired states
-  return ['suspended','trial_grace','trial_expired','expired_grace','expired'].includes(eff);
+  // Read-only for: pending approval, suspended, both grace periods, and fully expired states
+  return ['pending_approval','suspended','trial_grace','trial_expired','expired_grace','expired'].includes(eff);
 }
 
 // Role enforcement — always check server-side (in-memory USER object),
@@ -1379,15 +1459,27 @@ async function flushOfflineQueue() {
   const toFlush = [..._offlineQueue];
   _offlineQueue = [];
   _saveOfflineQueue();
-  for (const item of toFlush) {
-    try { await fbSet(item.path, item.data); }
-    catch(e) {
-      // Re-queue on failure
-      _offlineQueue.unshift(item);
-      _saveOfflineQueue();
-      console.warn('[MDM] Sync error.');
-      break; // stop flushing — still offline or error
+
+  const CONCURRENCY = 4;
+  const failed = [];
+
+  for (let i = 0; i < toFlush.length; i += CONCURRENCY) {
+    const batch = toFlush.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(batch.map(item => fbSet(item.path, item.data)));
+    results.forEach((result, idx) => {
+      if (result.status === 'rejected') failed.push(batch[idx]);
+    });
+    // If any item in this batch failed (likely still offline), don't attempt further batches
+    if (failed.length > 0) {
+      failed.push(...toFlush.slice(i + CONCURRENCY)); // preserve unprocessed items too
+      break;
     }
+  }
+
+  if (failed.length > 0) {
+    _offlineQueue = [...failed, ..._offlineQueue];
+    _saveOfflineQueue();
+    console.warn('[MDM] Sync error — ' + failed.length + ' item(s) re-queued.');
   }
 }
 
@@ -1566,10 +1658,26 @@ function cur(){return(DATA&&DATA.currency)||'';}
 function zm(n){const c=cur();return(c?c+' ':'')+Number(n||0).toFixed(2);}
 function zmFull(n){const c=cur()||'—';return c+' '+Number(n||0).toFixed(2);}
 
+// ── AGGREGATE MEMO CACHE (Fix 2) ────────────────────────────────────────────
+// filterPeriod and reduce-based aggregates are called 8+ times per dashboard
+// render. Results are cached by (DATA._v + period + today-string) and reused
+// within the same render pass, then invalidated the next time _v changes.
+const _memo = new Map();
+function _memoKey(...args) { return (DATA._v||0)+'|'+today()+'|'+args.join('|'); }
+function _memoGet(key) { return _memo.has(key) ? _memo.get(key) : undefined; }
+function _memoSet(key, val) {
+  if (_memo.size > 200) _memo.clear(); // cap to avoid unbounded growth
+  _memo.set(key, val);
+  return val;
+}
+
 function filterPeriod(items,period,f='date'){
   if(period==='all')return items;
+  const key=_memoKey('fp',period,f,items.length,(items[0]||{}).id||'');
+  const cached=_memoGet(key);
+  if(cached!==undefined)return cached;
   const now=new Date();
-  return items.filter(item=>{
+  const result=items.filter(item=>{
     const d=new Date(item[f]+'T00:00:00');
     if(period==='daily')return item[f]===today();
     if(period==='weekly'){const s=new Date(now);s.setDate(now.getDate()-7);return d>=s;}
@@ -1577,6 +1685,7 @@ function filterPeriod(items,period,f='date'){
     if(period==='yearly')return d.getFullYear()===now.getFullYear();
     return true;
   });
+  return _memoSet(key, result);
 }
 
 function pBtns(tab){
@@ -1588,19 +1697,33 @@ function setPeriod(tab,p){PERIOD[tab]=p;render();}
 
 function updateData(fn){DATA=fn(DATA);DATA._v=(DATA._v||0)+1;sv(DATA);render();scheduleFbSync();}
 
+// ── RENDER MEMOIZATION ───────────────────────────────────────────────────────
+// Skips a full innerHTML rebuild when tab, data version, and active periods
+// are all identical to the previous render — cuts redundant work on rapid saves.
+let _renderCache = { key: null };
+function _renderCacheKey() {
+  return TAB+'|'+(DATA._v||0)+'|'+JSON.stringify(PERIOD)+'|'+STAB+'|'+MTAB+'|'+GTAB;
+}
+
 // ── ONLINE ──────────────────────────────────────────────────────────────────
 // 'online' handled in SW block above (flushes queue then syncs)
 window.addEventListener('offline',()=>{ONLINE=false;updPill();updateConnStatus();});
 
 // Simple toast notification
+let _toastT1 = null, _toastT2 = null;
 function showToast(msg, duration=3500) {
   let t = document.getElementById('update-toast');
   if (!t) return;
-  const orig = t.textContent;
+  // Cancel any in-progress fade so stale text never flashes
+  if (_toastT1) { clearTimeout(_toastT1); _toastT1 = null; }
+  if (_toastT2) { clearTimeout(_toastT2); _toastT2 = null; }
   t.textContent = msg;
   t.style.display = 'block';
   t.style.opacity = '1';
-  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>{ t.style.display='none'; t.textContent=orig; },400); }, duration);
+  _toastT1 = setTimeout(()=>{
+    t.style.opacity = '0';
+    _toastT2 = setTimeout(()=>{ t.style.display='none'; _toastT1=null; _toastT2=null; }, 400);
+  }, duration);
 }
 
 function updateConnStatus(){
@@ -2079,10 +2202,10 @@ async function signupFinish() {
   const tos = document.getElementById('su-tos')?.checked;
   const err = document.getElementById('su-err3');
 
-  const _suCur=(document.getElementById('su-currency')?.value||'').trim();
+  const suCurrency=(document.getElementById('su-currency')?.value||'').trim().toUpperCase();
   if (!username) { err.style.display='block'; err.textContent='Enter a username.'; return; }
   if (!/^[a-z0-9_]+$/.test(username)) { err.style.display='block'; err.textContent='⚠️ Username can only contain letters, numbers and underscores.'; return; }
-  if (!_suCur) { err.style.display='block'; err.textContent='Please enter a currency (e.g. ZMW, USD).'; return; }
+  if (!suCurrency) { err.style.display='block'; err.textContent='Please enter a currency (e.g. ZMW, USD).'; return; }
   if (pass.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
   if (pass !== pass2) { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
   if (emailRaw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
@@ -2098,12 +2221,12 @@ async function signupFinish() {
     const hashed = await hashPassword(pass);
 
     const fresh = JSON.parse(JSON.stringify(DEFAULT));
-    const suCurrency=(document.getElementById('su-currency')?.value||'').trim().toUpperCase();
     fresh.users = [{ username, password: hashed, role: 'admin', recoveryEmail: emailRaw || '' }];
     fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true, recoveryEmail: emailRaw || '' };
     fresh.currency = suCurrency;
     fresh.commodities=[];
-    fresh.installId = installId;
+    const newInstallId = depotKey(); // use existing ID if already generated, or generate one now
+    fresh.installId = newInstallId;
     fresh.trialStart = DATA.trialStart && DATA.trialStart > 0 ? DATA.trialStart : Date.now(); // never reset trialStart if already set
     fresh._v = 1;
 
@@ -2113,7 +2236,7 @@ async function signupFinish() {
     // Register in Firebase as trial
     const now = Date.now();
     try {
-      await fbSet('licenses/' + installId, {
+      await fbSet('licenses/' + newInstallId, {
         status: 'trial',
         depotName: _signupData.name || 'Unnamed Depot',
         createdAt: now,
@@ -2437,9 +2560,13 @@ function showTab(tab){
   render();
 }
 
+let _renderAttempts = 0; // Fix 6: guard against infinite retry on deterministic errors
 function render(){
   const c=document.getElementById('content');
   if(!c||!USER) return;
+  // Fix 1: skip re-render when nothing visible has changed
+  const cacheKey = _renderCacheKey();
+  if(cacheKey === _renderCache.key) return;
   // Ensure content area is visible (guards against edge-case where it stayed hidden)
   if(c.style.display==='none') c.style.display='block';
   try {
@@ -2449,14 +2576,22 @@ function render(){
     else if(TAB==='staff') c.innerHTML=renderStaff();
     else if(TAB==='books') c.innerHTML=renderBooks();
     else if(TAB==='settings'){c.innerHTML=renderSettings();setTimeout(updateLastSyncDisplay,50);}
+    _renderCache.key = cacheKey; // commit cache on success
+    _renderAttempts = 0;         // reset error counter on clean render
     c.scrollTop=0;
     attachTabListeners();
   } catch(err) {
+    _renderAttempts++;
     console.error('render() error on tab', TAB, err);
+    // Fix 6: after 3 failed attempts on the same tab, stop retrying automatically
+    const canRetry = _renderAttempts < 3;
     c.innerHTML=`<div class="card"><div class="ctitle" style="color:var(--red)">⚠️ Display Error</div>
       <div style="font-size:13px;color:var(--muted);line-height:1.8">Something went wrong loading this page.<br>
       <strong style="color:var(--text)">${err.message||'Unknown error'}</strong></div>
-      <button class="btn bg" style="margin-top:14px" onclick="render()">↻ Retry</button></div>`;
+      ${canRetry
+        ? `<button class="btn bg" style="margin-top:14px" onclick="_renderAttempts=0;_renderCache.key=null;render()">↻ Retry</button>`
+        : `<div style="margin-top:12px;font-size:12px;color:var(--amber)">⚠️ Repeated error — try switching tabs or reloading the app.</div>`
+      }</div>`;
   }
 }
 
@@ -2872,7 +3007,7 @@ function filterTable(tableId, q){
   const tbody=document.querySelector('#'+tableId+' tbody');
   if(!tbody)return;
   tbody.querySelectorAll('tr').forEach(row=>{
-    row.style.display=(!term||row.textContent.toLowerCase().includes(term))?'':'none';
+    row.classList.toggle('flt-hide', !!(term && !row.textContent.toLowerCase().includes(term)));
   });
 }
 
@@ -3800,7 +3935,10 @@ function renderMaizeSummary(){
   const cumCost=allRec.reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
   const cumRev=allIss.reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
   const cumProfit=cumRev-cumCost;
-  const cumStockVal=cumCost; // stock value = total cost of all stock ever received
+  // Stock value = remaining available units × weighted average unit cost
+  // (cumCost/totRec gives avg cost per unit; multiply by units still on hand)
+  const avgUnitCost = totRec > 0 ? cumCost / totRec : 0;
+  const cumStockVal = Math.max(0, totAvail) * avgUnitCost;
   const hasPricing=cumCost>0||cumRev>0;
   const profitColor=cumProfit>=0?'var(--green)':'var(--red)';
   return `
@@ -3831,7 +3969,7 @@ function renderMaizeSummary(){
       <div class="srow">
         <div class="sbox" style="background:#0a1628;grid-column:1/-1">
           <div class="sv" style="font-size:16px;color:var(--blue)">${zm(cumStockVal)}</div>
-          <div class="sl">Cum. Stock Value (All Stock Ever Received)</div>
+          <div class="sl">Current Stock Value (Available Units × Avg Unit Cost)</div>
         </div>
       </div>
     </div>`:`
@@ -5309,6 +5447,18 @@ function renderSettings(){
       </div>
       <button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="resetFontSize()">↺ Reset to Default (100%)</button>
       <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Theme</div>
+        <div class="theme-toggle">
+          <span class="theme-toggle-label">🎨 Appearance</span>
+          <div class="theme-toggle-pill">
+            <button class="theme-toggle-opt${getThemePref()==='dark'?' active':''}" data-theme="dark" onclick="setTheme('dark')">🌙 Dark</button>
+            <button class="theme-toggle-opt${getThemePref()==='auto'?' active':''}" data-theme="auto" onclick="setTheme('auto')">Auto</button>
+            <button class="theme-toggle-opt${getThemePref()==='light'?' active':''}" data-theme="light" onclick="setTheme('light')">☀️ Light</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Auto follows your device's system setting. Manually choose Dark or Light to override.</div>
+      </div>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
         <div class="fl">Currency</div>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="fi" id="currency-input" value="${esc(DATA.currency||'')}" placeholder="e.g. ZMW, USD, KES, K, $" maxlength="10" style="flex:1;text-transform:uppercase"/>
@@ -5679,7 +5829,7 @@ function saveTaskCustomUnit(ri,ti,val){
   sv(DATA);
   scheduleFbSync();
 }
-function changePw(){
+async function changePw(){
   if(!USER){alert('⛔ Not logged in.');return;}
   const np=document.getElementById('pw-new').value;
   const cp=document.getElementById('pw-conf').value;
@@ -5687,7 +5837,7 @@ function changePw(){
   if(!np||np!==cp){msg.innerHTML='<div class="err-box">Passwords do not match.</div>';return;}
   if(np.length < 4){msg.innerHTML='<div class="err-box">Password must be at least 4 characters.</div>';return;}
   const target=document.getElementById('pw-target').value;
-  const hashed = hashPassword(np);
+  const hashed = await hashPassword(np);
   updateData(d=>({...d,users:d.users.map(u=>u.username===target?{...u,password:hashed}:u)}));
   msg.innerHTML='<div class="ok-msg">✅ Password updated!</div>';
   document.getElementById('pw-new').value='';document.getElementById('pw-conf').value='';
@@ -5717,7 +5867,7 @@ function addUser(){
       <button class="btn bo" onclick="closeModal()">Cancel</button>
     </div>`);
 }
-function _confirmAddUser(){
+async function _confirmAddUser(){
   if(!requireAdmin('add users'))return;
   if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
   const username = (document.getElementById('au-user')?.value||'').trim().toLowerCase().replace(/\s+/g,'');
@@ -5733,7 +5883,7 @@ function _confirmAddUser(){
   if(exists){ err.style.display='block'; err.textContent='⛔ Username "'+username+'" is already taken. Choose a different one.'; return; }
   if(pass.length<4){ err.style.display='block'; err.textContent='⚠️ Password must be at least 4 characters.'; return; }
   if(pass!==pass2){ err.style.display='block'; err.textContent='❌ Passwords do not match.'; return; }
-  const hashed=hashPassword(pass);
+  const hashed=await hashPassword(pass);
   updateData(d=>({...d,users:[...(d.users||[]),{username,password:hashed,role}]}));
   closeModal();
   showToast('✅ User "'+username+'" added.');
@@ -5810,7 +5960,18 @@ function clearAll(){
   if(!requireAdmin('clear all data'))return;
   if(!confirm('⚠️ Delete ALL data? This cannot be undone.'))return;
   if(!confirm('LAST WARNING — all inventory, commodities, and staff records will be permanently deleted.'))return;
-  DATA=JSON.parse(JSON.stringify(DEFAULT));sv(DATA);render();
+  // Preserve identity fields so the Firebase license record stays linked
+  // and the trial clock is not inadvertently reset.
+  const keepInstallId  = DATA.installId  || '';
+  const keepTrialStart = DATA.trialStart || 0;
+  const keepUsers      = DATA.users      || [];
+  DATA = JSON.parse(JSON.stringify(DEFAULT));
+  DATA.installId  = keepInstallId;
+  DATA.trialStart = keepTrialStart;
+  DATA.users      = keepUsers;
+  DATA._v = (DATA._v || 0) + 1;
+  sv(DATA);
+  render();
 }
 
 // ── BIOMETRICS (WebAuthn — platform fingerprint only) ────────────────────────
@@ -5902,7 +6063,7 @@ async function bioSetupAndRefresh(){
   try{
     await bioRegister(USER.username);
     showToast('✅ Fingerprint registered!');
-    render(); // re-render settings to show new state
+    _renderCache.key=null; render(); // re-render settings to show new state
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent='👆 Set Up Fingerprint';}
     const txt=e.name==='NotAllowedError'?'Fingerprint scan was cancelled.'
@@ -5917,7 +6078,7 @@ function bioRemoveAndRefresh(){
   if(!confirm(`Remove fingerprint login for "${USER.username}" on this device?`))return;
   bioRemove(USER.username);
   showToast('Fingerprint removed.');
-  render();
+  _renderCache.key=null; render();
 }
 
 // Perform fingerprint login from the login screen
@@ -5949,7 +6110,7 @@ async function startBioLogin(){
     // Migrate plain-text passwords
     let needsSave=false;
     for(let i=0;i<DATA.users.length;i++){
-      if(!isHashed(DATA.users[i].password)){DATA.users[i].password=hashPassword(DATA.users[i].password);needsSave=true;}
+      if(!isHashed(DATA.users[i].password)){DATA.users[i].password=await hashPassword(DATA.users[i].password);needsSave=true;}
     }
     if(needsSave){DATA._v=(DATA._v||0)+1;sv(DATA);}
 
@@ -5957,7 +6118,7 @@ async function startBioLogin(){
     if(!userObj)throw new Error('Account no longer exists. Please sign in with password.');
 
     _bfOk();
-    USER=userObj;
+    USER=Object.freeze({...userObj}); // freeze to prevent console mutation — matches password login
     _idleReset(); // start inactivity watchdog
     showMainUI();
     updPill();
@@ -6027,6 +6188,45 @@ function changeFontSize(delta){
   applyFontSize(cur);
 }
 function resetFontSize(){applyFontSize(FS_DEFAULT);}
+
+// ── THEME (Fix 13 + 14) ───────────────────────────────────────────────────────
+// Values: 'dark' | 'light' | 'auto' (follows OS)
+const THEME_KEY = 'mdm_theme';
+function getThemePref(){ return localStorage.getItem(THEME_KEY) || 'auto'; }
+
+function applyTheme(pref){
+  const body = document.body;
+  localStorage.setItem(THEME_KEY, pref);
+  if(pref === 'auto'){
+    // Remove manual overrides; let the prefers-color-scheme media query take over
+    body.classList.remove('light');
+    body.removeAttribute('data-theme');
+    // Also apply the OS preference right now so there's no flash on toggle
+    const osLight = window.matchMedia('(prefers-color-scheme:light)').matches;
+    if(osLight) body.classList.add('light'); else body.classList.remove('light');
+  } else if(pref === 'light'){
+    body.classList.add('light');
+    body.setAttribute('data-theme','light');
+  } else {
+    body.classList.remove('light');
+    body.setAttribute('data-theme','dark');
+  }
+  // Sync any rendered toggle buttons in Settings
+  document.querySelectorAll('.theme-toggle-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === pref);
+  });
+  // Update theme-color meta
+  const tc = document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.content = body.classList.contains('light') ? '#f0f4f9' : '#0a1628';
+}
+
+// Called from Settings toggle pill
+function setTheme(pref){ applyTheme(pref); }
+
+// Fix 14: Listen for OS theme changes and respect them when set to 'auto'
+window.matchMedia('(prefers-color-scheme:light)').addEventListener('change', e => {
+  if(getThemePref() === 'auto') applyTheme('auto');
+});
 
 // ── CURRENCY SETTING ──────────────────────────────────────────────────────────
 function saveCurrencySetting(){
@@ -6107,22 +6307,158 @@ function attachTabListeners(){
   });
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────────
+// ── ANDROID/BROWSER BACK BUTTON HANDLER (Fix: back closes app instead of navigating) ──
+// The app is a SPA with no URL changes, so Android's back button fires popstate
+// and the browser exits the app. We push a history entry on every meaningful
+// screen transition so the back button steps through our own navigation stack
+// instead of closing the app.
+//
+// Navigation stack (back goes: book-editor → modal → main → login → landing):
+//   level 0  — pushed once on load; popping past this exits (intentional)
+//   level 1  — landing screen
+//   level 2  — login screen
+//   level 3  — main app (tabs)
+//   level 4  — modal open  (only when modal is visible)
+//   level 5  — book editor open
+
+function _pushNav(level, label) {
+  history.pushState({ mdm: level, label }, '', location.href);
+}
+
+function _currentNavLevel() {
+  return (history.state && typeof history.state.mdm === 'number') ? history.state.mdm : 0;
+}
+
+// Ensure there is always a base state so we can push on top of it
+(function _seedHistory() {
+  // Replace the initial entry with our own base (level 0)
+  history.replaceState({ mdm: 0, label: 'base' }, '', location.href);
+})();
+
+window.addEventListener('popstate', function(e) {
+  const level = e.state && typeof e.state.mdm === 'number' ? e.state.mdm : 0;
+
+  // Book editor is open — close it and stay in the app
+  const bookEditor = document.getElementById('book-editor-screen');
+  if (bookEditor && bookEditor.style.display !== 'none') {
+    closeBookEditor();
+    _pushNav(3, 'main'); // re-push so back still works from here
+    return;
+  }
+
+  // Modal is open — close it
+  const modal = document.getElementById('modal-ovl');
+  if (modal && modal.style.display !== 'none') {
+    closeModal();
+    _pushNav(3, 'main');
+    return;
+  }
+
+  // Main UI is visible — go back to login/landing
+  const mainHdr = document.getElementById('main-hdr');
+  if (mainHdr && mainHdr.style.display !== 'none') {
+    // Treat back from main as logout
+    doLogout(); // doLogout calls showLanding which re-pushes
+    return;
+  }
+
+  // Login screen is visible — go back to landing
+  const loginScr = document.getElementById('login-screen');
+  if (loginScr && loginScr.style.display !== 'none') {
+    showLanding();
+    return;
+  }
+
+  // Recovery screen is visible — go back to login
+  const recScr = document.getElementById('recovery-screen');
+  if (recScr && recScr.style.display !== 'none') {
+    hideRecovery();
+    return;
+  }
+
+  // Signup screen is visible — go back to landing
+  const signupScr = document.getElementById('signup-screen');
+  if (signupScr && signupScr.style.display !== 'none') {
+    showLanding();
+    return;
+  }
+
+  // Landing is the root — let the browser go back (exits PWA intentionally)
+  // Don't push anything; allow natural exit
+});
+
+// Patch screen-transition functions to push history states
+const _origShowLanding = showLanding;
+showLanding = function() {
+  _origShowLanding.apply(this, arguments);
+  _pushNav(1, 'landing');
+};
+
+const _origShowLoginScreen = showLoginScreen;
+showLoginScreen = function() {
+  _origShowLoginScreen.apply(this, arguments);
+  _pushNav(2, 'login');
+};
+
+const _origShowMainUI = showMainUI;
+showMainUI = function() {
+  _origShowMainUI.apply(this, arguments);
+  _pushNav(3, 'main');
+};
+
+const _origOpenModal = openModal;
+openModal = function() {
+  _origOpenModal.apply(this, arguments);
+  _pushNav(4, 'modal');
+};
+
+// Book editor: patch openBookEditor to push state
+const _origOpenBookEditor = typeof openBookEditor === 'function' ? openBookEditor : null;
+if (_origOpenBookEditor) {
+  openBookEditor = function() {
+    _origOpenBookEditor.apply(this, arguments);
+    _pushNav(5, 'book-editor');
+  };
+}
+// Also hook the New Doc button path via the book editor display directly
+const _beObserver = new MutationObserver(function(mutations) {
+  mutations.forEach(function(m) {
+    if (m.attributeName === 'style') {
+      const el = document.getElementById('book-editor-screen');
+      if (el && el.style.display !== 'none' && _currentNavLevel() < 5) {
+        _pushNav(5, 'book-editor');
+      }
+    }
+  });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  const be = document.getElementById('book-editor-screen');
+  if (be) _beObserver.observe(be, { attributes: true, attributeFilter: ['style'] });
+});
+// The DOM is already parsed (script runs at end of body), so observe immediately
+(function() {
+  const be = document.getElementById('book-editor-screen');
+  if (be) _beObserver.observe(be, { attributes: true, attributeFilter: ['style'] });
+})();
+// ── END BACK BUTTON HANDLER ──────────────────────────────────────────────────
+
+
 showLanding();
-setTimeout(()=>{
+// Fix 5: use an async IIFE so bioCheckAndShowBtn() is properly awaited.
+// Without await the fingerprint button can flash visible then disappear
+// because the async hw check resolves after the sync code has already run.
+setTimeout(async ()=>{
   try{
     applyFontSize(getFontSize());
+    applyTheme(getThemePref()); // Fix 13+14: apply saved theme (or OS default) on load
     updateConnStatus();
-    bioCheckAndShowBtn(); // show fingerprint button if hw + creds available
-    initData().then(()=>{
-      const di=DATA.depotInfo||{};
-      const parts=[di.name,di.district,di.country].filter(Boolean);
-      const el=document.getElementById('login-depot-sub');
-      if(el&&parts.length>0)el.textContent=parts.join(' · ');
-      showLanding();
-    }).catch(()=>{
-      showLanding();
-    });
+    await bioCheckAndShowBtn(); // await so hw check completes before any UI transitions
+    await initData();
+    const di=DATA.depotInfo||{};
+    const parts=[di.name,di.district,di.country].filter(Boolean);
+    const el=document.getElementById('login-depot-sub');
+    if(el&&parts.length>0)el.textContent=parts.join(' · ');
+    showLanding();
   }catch(e){
     showLanding();
   }
@@ -6542,8 +6878,15 @@ function _beGridBlur(inp, r, c) {
     inp.value = val;
     inp.classList.remove('formula-cell');
   }
-  // Refresh all formula cells
-  _refreshFormulaCells(r, c);
+  // Fix 3: debounce formula refresh — rapid Tab/Enter navigation queues many
+  // blur events; batching them into one 150 ms pass prevents layout thrashing.
+  _scheduleFormulaRefresh();
+}
+
+let _formulaRefreshTimer = null;
+function _scheduleFormulaRefresh() {
+  clearTimeout(_formulaRefreshTimer);
+  _formulaRefreshTimer = setTimeout(_refreshFormulaCells, 150);
 }
 
 function _refreshFormulaCells(changedR, changedC) {
@@ -6609,16 +6952,54 @@ function _beGridKey(e,r,c){
   }
 }
 function beAddRow(){
-  _beGrid.push(Array(_beGrid[0]?.length||BE_COLS).fill(''));
-  const wrap=document.getElementById('be-doc-area').querySelector('.be-grid-wrap');
-  if(wrap)wrap.innerHTML=_renderGrid();
+  const ri = _beGrid.length;
+  const cols = _beGrid[0]?.length || BE_COLS;
+  _beGrid.push(Array(cols).fill(''));
+  const wrap = document.getElementById('be-doc-area').querySelector('.be-grid-wrap');
+  if (!wrap) return;
+  const tbody = wrap.querySelector('tbody');
+  // Fall back to full rebuild if table not yet in DOM
+  if (!tbody) { wrap.innerHTML = _renderGrid(); return; }
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td class="row-hdr-cell">${ri+1}</td>` +
+    Array.from({length:cols},(_,ci)=>
+      `<td><input type="text" value="" data-r="${ri}" data-c="${ci}"
+        class="" onfocus="_beGridFocus(this,${ri},${ci})"
+        onblur="_beGridBlur(this,${ri},${ci})"
+        oninput="_beGridCell(${ri},${ci},this.value)"
+        onkeydown="_beGridKey(event,${ri},${ci})"/></td>`
+    ).join('');
+  tbody.appendChild(tr);
 }
 function beAddCol(){
-  const newLen=((_beGrid[0]?.length||BE_COLS)+1);
-  _beGrid=_beGrid.map(r=>[...r,'']);
-  // Add label
-  if(newLen<=26)BE_COL_LABELS[newLen-1]=String.fromCharCode(64+newLen);
-  document.getElementById('be-doc-area').querySelector('.be-grid-wrap').innerHTML=_renderGrid();
+  const newLen = (_beGrid[0]?.length||BE_COLS) + 1;
+  _beGrid = _beGrid.map(r=>[...r,'']);
+  if(newLen<=26) BE_COL_LABELS[newLen-1] = String.fromCharCode(64+newLen);
+  const wrap = document.getElementById('be-doc-area').querySelector('.be-grid-wrap');
+  if (!wrap) return;
+  const table = wrap.querySelector('.be-grid');
+  // Fall back to full rebuild if table not yet in DOM
+  if (!table) { wrap.innerHTML = _renderGrid(); return; }
+  const ci = newLen - 1;
+  const label = BE_COL_LABELS[ci] || String.fromCharCode(64+newLen);
+  // Add column header
+  const headerRow = table.querySelector('thead tr');
+  if (headerRow) {
+    const th = document.createElement('th');
+    th.className = 'col-hdr';
+    th.textContent = label;
+    headerRow.appendChild(th);
+  }
+  // Append one cell to every data row
+  table.querySelectorAll('tbody tr').forEach((tr,ri)=>{
+    const td = document.createElement('td');
+    td.innerHTML = `<input type="text" value="" data-r="${ri}" data-c="${ci}"
+      onfocus="_beGridFocus(this,${ri},${ci})"
+      onblur="_beGridBlur(this,${ri},${ci})"
+      oninput="_beGridCell(${ri},${ci},this.value)"
+      onkeydown="_beGridKey(event,${ri},${ci})"/>`;
+    tr.appendChild(td);
+  });
 }
 
 // ── SAVE ──────────────────────────────────────────────────
