@@ -1277,159 +1277,50 @@ function copyNum(num) {
 }
 
 // ── SERVICE WORKER — offline-first ──────────────────────────────────────────
-// Strategy:
-//   navigate requests  → cache-first (serve shell instantly offline)
-//   fonts/static       → cache-first (stale-while-revalidate)
-//   Firebase REST      → network-first with offline queue flush on reconnect
-//   everything else    → network-only (pass-through)
-//
-// The SW is injected as a same-origin blob so scope resolution works.
-// On browsers that block blob-scope SWs the app still works via the
-// direct Cache API pre-cache below (manual cache fallback).
-const SW_VERSION = 'mdm-v6';
-// Capture the shell URL at registration time so the SW can cache it
-const SW_SHELL_URL = location.href;
+// sw.js lives in the same folder as index.html on GitHub Pages.
+// Same-origin registration means Android Chrome CAN intercept navigation
+// requests and serve the cached shell when the device is offline.
+// The blob-URL SW trick is removed — it cannot intercept navigate requests
+// on Android Chrome, which is why the app previously failed offline.
+const SW_VERSION  = 'mdm-v7';
 const SW_FONTS_URL = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
-const SW_CODE = `
-const CACHE = '${SW_VERSION}';
-const SHELL = '${SW_SHELL_URL}';
 
-// On install: pre-cache the app shell so it's available offline immediately
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(cache => {
-      return cache.addAll([SHELL]).catch(() => {});
-    }).then(() => self.skipWaiting())
-  );
-});
-
-// On activate: claim all clients and purge old caches
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => clients.claim())
-  );
-});
-
-// Helper: cache-first with background network refresh
-function cacheFirst(req) {
-  return caches.match(req).then(cached => {
-    if (cached) {
-      fetch(req).then(r => { if (r && r.ok) caches.open(CACHE).then(c => c.put(req, r)); }).catch(()=>{});
-      return cached;
-    }
-    return fetch(req).then(r => {
-      if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
-      return r;
-    });
-  });
+// Aggressively pre-cache the shell from the main thread as a belt-and-braces
+// fallback for browsers where the SW hasn't activated yet.
+if ('caches' in window) {
+  caches.open(SW_VERSION).then(cache => {
+    cache.add(location.href).catch(() => {});
+    if (navigator.onLine) cache.add(SW_FONTS_URL).catch(() => {});
+  }).catch(() => {});
 }
 
-// Helper: network-first with cache fallback
-function networkFirst(req) {
-  return fetch(req).then(r => {
-    if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
-    return r;
-  }).catch(() => caches.match(req).then(c => c || caches.match(SHELL)));
-}
-
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-
-  // Navigation requests — cache-first so the app shell loads instantly offline
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      caches.match(e.request).then(cached => {
-        if (cached) {
-          fetch(e.request).then(r => {
-            if (r && r.ok) caches.open(CACHE).then(c => c.put(e.request, r));
-          }).catch(() => {});
-          return cached;
-        }
-        return fetch(e.request).then(r => {
-          if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
-          return r;
-        }).catch(() => caches.match(SHELL));
-      })
-    );
-    return;
-  }
-
-  // Google Fonts — cache-first (rarely change)
-  if (url.includes('fonts.gstatic.com') || url.includes('fonts.googleapis.com')) {
-    e.respondWith(cacheFirst(e.request));
-    return;
-  }
-
-  // Firebase REST calls — network-first; fall back to cache when offline
-  if (url.includes('firebaseio.com') || url.includes('firebase')) {
-    e.respondWith(networkFirst(e.request));
-    return;
-  }
-
-  // Everything else — pass through (don't intercept)
-});
-`;
-
-// Register the SW and aggressively pre-cache the app shell from the main thread.
-// Blob-URL SWs may have limited scope on Android WebViews, so we ALSO cache
-// the shell directly from the main thread — this is the primary offline mechanism.
 if ('serviceWorker' in navigator) {
-  // Pre-cache the shell HTML NOW from main thread — primary offline mechanism
-  // (blob-scope SWs on Android may not intercept navigation, so we cache directly)
-  if ('caches' in window) {
-    caches.open(SW_VERSION).then(cache => {
-      // Save current page HTML directly — most reliable method
-      try {
-        cache.put(location.href, new Response(document.documentElement.outerHTML, {
-          headers: { 'Content-Type': 'text/html; charset=utf-8' }
-        })).catch(() => cache.add(location.href).catch(() => {}));
-      } catch(e) { cache.add(location.href).catch(() => {}); }
-      // Cache fonts too if online
-      if (navigator.onLine) cache.add(SW_FONTS_URL).catch(() => {});
-    }).catch(() => {});
-  }
-
   window.addEventListener('load', () => {
-    // Re-save after full load with latest HTML (catches any post-load changes)
-    if ('caches' in window) {
-      caches.open(SW_VERSION).then(cache => {
-        cache.put(location.href, new Response(document.documentElement.outerHTML, {
-          headers: { 'Content-Type': 'text/html; charset=utf-8' }
-        })).catch(() => cache.add(location.href).catch(() => {}));
-      }).catch(() => {});
-    }
-
-    try {
-      const b = new Blob([SW_CODE], { type: 'text/javascript' });
-      const swUrl = URL.createObjectURL(b);
-      navigator.serviceWorker.register(swUrl)
-        .then(reg => {
-          // Listen for SW updates and show a toast
-          reg.addEventListener('updatefound', () => {
-            const nw = reg.installing;
-            if (!nw) return;
-            nw.addEventListener('statechange', () => {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                const t = document.getElementById('update-toast');
-                if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
-              }
-            });
+    // Register the real same-origin sw.js — this is what makes offline work on Android.
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              const t = document.getElementById('update-toast');
+              if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
+            }
           });
-        })
-        .catch(() => {});
-    } catch(e) {}
+        });
+      })
+      .catch(() => {
+        // sw.js not found (local file:// access or old path) — no SW, app still works
+      });
   });
 }
 
-// Re-save shell to cache whenever we come back online
+// Re-cache shell whenever we come back online (belt-and-braces)
 window.addEventListener('online', () => {
   if ('caches' in window) {
     caches.open(SW_VERSION).then(cache => {
-      cache.put(location.href, new Response(document.documentElement.outerHTML, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      })).catch(() => cache.add(location.href).catch(() => {}));
+      cache.add(location.href).catch(() => {});
       cache.add(SW_FONTS_URL).catch(() => {});
     }).catch(() => {});
   }

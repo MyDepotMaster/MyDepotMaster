@@ -1,64 +1,87 @@
-// ── My Depot Master — Service Worker ────────────────────────────────────────
-// Cache strategy:
-//   App shell (index.html)  → cache-first, background refresh
-//   Google Fonts            → cache-first (static)
-//   Firebase REST           → network-only  (never cache auth/data)
-//   Background Sync         → flushes offline writes when connection returns
-// ─────────────────────────────────────────────────────────────────────────────
+// ── MDM Service Worker — offline-first ──────────────────────────────────────
+// Registered from same origin (not blob URL) so Android Chrome can
+// intercept navigation requests and serve the shell when offline.
+//
+// Strategy:
+//   navigate requests  → cache-first (serve shell instantly offline)
+//   Google Fonts       → cache-first (stale-while-revalidate)
+//   Firebase REST      → network-first with cache fallback
+//   everything else    → pass-through (network only)
+// ────────────────────────────────────────────────────────────────────────────
 
-const CACHE      = 'mdm-v4';
-const SHELL      = './index.html';
-const SYNC_TAG   = 'mdm-offline-sync';
-const FONTS      = [
-  'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap'
-];
+const CACHE   = 'mdm-v7';
+const SHELL   = './';          // resolves to index.html at the same path
+const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
-// ── INSTALL ───────────────────────────────────────────────────────────────────
+// ── INSTALL: pre-cache the app shell ────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE)
-      .then(c => c.addAll([SHELL, ...FONTS]))
-      .then(() => self.skipWaiting())
-      .catch(() => self.skipWaiting())
+    caches.open(CACHE).then(cache =>
+      cache.addAll([SHELL, FONTS_CSS]).catch(() =>
+        cache.add(SHELL).catch(() => {}) // fonts may fail offline — that's fine
+      )
+    ).then(() => self.skipWaiting())
   );
 });
 
-// ── ACTIVATE ──────────────────────────────────────────────────────────────────
+// ── ACTIVATE: claim clients and purge old caches ─────────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
-      ))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
-// ── FETCH ─────────────────────────────────────────────────────────────────────
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function cacheFirst(req) {
+  return caches.match(req).then(cached => {
+    if (cached) {
+      // Refresh in background
+      fetch(req).then(r => {
+        if (r && r.ok) caches.open(CACHE).then(c => c.put(req, r));
+      }).catch(() => {});
+      return cached;
+    }
+    return fetch(req).then(r => {
+      if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
+      return r;
+    });
+  });
+}
+
+function networkFirst(req) {
+  return fetch(req)
+    .then(r => {
+      if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); }
+      return r;
+    })
+    .catch(() => caches.match(req));
+}
+
+// ── FETCH ────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', e => {
-  const { url, method, mode } = e.request;
+  const url = e.request.url;
 
-  // Never intercept non-GET or Firebase requests
-  if (method !== 'GET') return;
-  if (
-    url.includes('firebaseio.com') ||
-    url.includes('firebase') ||
-    url.includes('googleapis.com/identitytoolkit') ||
-    url.includes('securetoken.google.com')
-  ) return;
-
-  // App shell — cache-first, refresh in background
-  if (mode === 'navigate') {
+  // Navigation — cache-first: return cached shell instantly, refresh in background
+  if (e.request.mode === 'navigate') {
     e.respondWith(
-      caches.open(CACHE).then(async cache => {
-        const cached = await cache.match(SHELL);
-        const networkPromise = fetch(e.request)
-          .then(resp => {
-            if (resp && resp.ok) cache.put(SHELL, resp.clone());
-            return resp;
-          })
-          .catch(() => null);
-        return cached || await networkPromise;
+      caches.match(e.request).then(cached => {
+        const networkFetch = fetch(e.request).then(r => {
+          if (r && r.ok) {
+            const c = r.clone();
+            caches.open(CACHE).then(ca => ca.put(e.request, c));
+          }
+          return r;
+        }).catch(() => null);
+
+        // Serve cached immediately; refresh from network in background
+        if (cached) {
+          networkFetch.catch(() => {});
+          return cached;
+        }
+        // Not in cache yet — fetch from network, fall back to SHELL
+        return networkFetch.then(r => r || caches.match(SHELL));
       })
     );
     return;
@@ -66,51 +89,16 @@ self.addEventListener('fetch', e => {
 
   // Google Fonts — cache-first
   if (url.includes('fonts.gstatic.com') || url.includes('fonts.googleapis.com')) {
-    e.respondWith(
-      caches.open(CACHE).then(async cache => {
-        const cached = await cache.match(e.request);
-        if (cached) return cached;
-        const resp = await fetch(e.request);
-        if (resp && resp.ok) cache.put(e.request, resp.clone());
-        return resp;
-      })
-    );
+    e.respondWith(cacheFirst(e.request));
     return;
   }
-  // Everything else — network only
-});
 
-// ── BACKGROUND SYNC ───────────────────────────────────────────────────────────
-self.addEventListener('sync', e => {
-  if (e.tag === SYNC_TAG) {
-    e.waitUntil(
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(clients => {
-          clients.forEach(c => c.postMessage({ type: 'MDM_FLUSH_QUEUE' }));
-        })
-    );
+  // Firebase REST — network-first with cache fallback (so reads work briefly offline)
+  if (url.includes('firebaseio.com') || url.includes('googleapis.com/identitytoolkit') ||
+      url.includes('securetoken.googleapis.com') || url.includes('firebaseinstallations')) {
+    e.respondWith(networkFirst(e.request));
+    return;
   }
-});
 
-// ── PUSH NOTIFICATIONS (stub — ready for future use) ─────────────────────────
-self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : { title: 'My Depot Master', body: 'You have a new notification.' };
-  e.waitUntil(
-    self.registration.showNotification(data.title || 'My Depot Master', {
-      body: data.body || '',
-      icon: './icon-192.png',
-      badge: './icon-192.png',
-      data: data
-    })
-  );
-});
-
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then(clients => {
-      if (clients.length) return clients[0].focus();
-      return self.clients.openWindow('./index.html');
-    })
-  );
+  // Everything else — pass through
 });
