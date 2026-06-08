@@ -1386,7 +1386,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v8';
+const SW_VERSION  = 'mdm-v9';
 
 // ── MEDIAN CACHE CLEAR — clears webview cache when running inside Median app
 if (typeof median !== 'undefined' && median.webview && median.webview.clearCache) {
@@ -1413,6 +1413,10 @@ if ('serviceWorker' in navigator) {
           if (!nw) return;
           nw.addEventListener('statechange', () => {
             if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              // Clear Median webview cache so the new version loads cleanly
+              if (typeof median !== 'undefined' && median.webview && median.webview.clearCache) {
+                median.webview.clearCache();
+              }
               const t = document.getElementById('update-toast');
               if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
             }
@@ -3389,8 +3393,8 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
   closeModal();
 }
 
-function delGenRec(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
-function delGenIss(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
+function delGenRec(id){if(!requireAdmin('delete records'))return;const _r=(DATA.generalInventory||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
+function delGenIss(id){if(!requireAdmin('delete records'))return;const _r=(DATA.generalIssued||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
 
 // ── GENERAL INVENTORY STOCK COUNT ────────────────────────────────────────────
 // Helper: compute system-available for a general inventory item (all-time)
@@ -3463,6 +3467,7 @@ function saveGenStockCount(){
 }
 function delGenStockCount(id){
   if(!requireAdmin('delete stock counts'))return;
+  const _r=(DATA.generalStockCounts||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}
   if(!confirm('Delete this stock count record?'))return;
   updateData(d=>({...d,generalStockCounts:(d.generalStockCounts||[]).filter(x=>x.id!==id)}));
 }
@@ -4172,16 +4177,13 @@ function saveStockCount(){if(isReadOnly()){alert("🔒 This account is in read-o
 }
 
 // ── Delete
-function delMaizeRec(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this receive record?'))return;
-  const cid=CCOM;
+function delMaizeRec(id){if(!requireAdmin('delete records'))return;const cid=CCOM;const _r=((DATA.commodityReceived||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this receive record?'))return;
   updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=(cr[cid]||[]).filter(x=>x.id!==id);return{...d,commodityReceived:cr};});
 }
-function delMaizeIss(id){if(!requireAdmin('delete records'))return;if(!confirm('Delete this issue record?'))return;
-  const cid=CCOM;
+function delMaizeIss(id){if(!requireAdmin('delete records'))return;const cid=CCOM;const _r=((DATA.commodityIssued||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this issue record?'))return;
   updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=(ci[cid]||[]).filter(x=>x.id!==id);return{...d,commodityIssued:ci};});
 }
-function delStockCount(id){if(!requireAdmin('delete stock counts'))return;if(!confirm('Delete this stock count?'))return;
-  const cid=CCOM;
+function delStockCount(id){if(!requireAdmin('delete stock counts'))return;const cid=CCOM;const _r=((DATA.commodityStockCounts||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this stock count?'))return;
   updateData(d=>{const cs={...(d.commodityStockCounts||{})};cs[cid]=(cs[cid]||[]).filter(x=>x.id!==id);return{...d,commodityStockCounts:cs};});
 }
 
@@ -5141,7 +5143,7 @@ function savePayment(){if(isReadOnly()){alert("🔒 This account is in read-only
   STAB='payments';
   closeModal();
 }
-function delPayment(id){if(!requireAdmin('delete payment records'))return;if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
+function delPayment(id){if(!requireAdmin('delete payment records'))return;const _r=(DATA.staffPayments||[]).find(p=>String(p.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
 
 // ── PAYSLIP GENERATOR (Fix 5) ────────────────────────────────────────────────
 function generatePayslip(staffId){
@@ -5210,7 +5212,7 @@ ${s.dateJoined?`<tr><th>Date Joined</th><td>${fmtDate(s.dateJoined)}</td><th>Emp
   showToast('🧾 Payslip downloaded for '+s.name);
 }
 
-function delLog(id){if(!requireAdmin('delete work logs'))return;if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
+function delLog(id){if(!requireAdmin('delete work logs'))return;const _r=(DATA.staffLogs||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
 
 // ── EDIT: Staff Work Log ─────────────────────────────────────────────────────
 function openEditLog(id){
@@ -5341,6 +5343,7 @@ function saveLeaveEntry(){
 }
 function delLeaveEntry(id){
   if(!requireAdmin('delete leave entries'))return;
+  const _r=(DATA.leaveLog||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}
   if(!confirm('Delete this leave entry?'))return;
   updateData(d=>({...d,leaveLog:(d.leaveLog||[]).filter(l=>String(l.id)!==String(id))}));
 }
@@ -7166,6 +7169,7 @@ function deleteBook(id) {
   if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
   const book = (DATA.books||[]).find(b=>b.id===id);
   if (!book) return;
+  if(!isWithin24h(book)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}
   if (!confirm(`Delete "${book.name||'this document'}"? This cannot be undone.`)) return;
   updateData(d=>({...d, books:(d.books||[]).filter(b=>b.id!==id)}));
   if(TAB==='books') render();
