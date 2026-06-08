@@ -907,7 +907,7 @@ async function doFbSync() {
       version: DATA._v || 0
     });
     DATA._lastFbSync = Date.now();
-    try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}
+    sv(DATA); // persist updated _lastFbSync to both localStorage and IDB
     updPill();
   } catch(e) {
     console.warn('[MDM] Data sync error.');
@@ -930,12 +930,17 @@ async function fbRestoreData() {
     // Never skip on a device that has no sync history — that is exactly the
     // new-phone scenario where the cloud copy is the authoritative one.
     const localNeverSynced = !DATA._lastFbSync;
-    if ((val._v || 0) > (DATA._v || 0) || localNeverSynced) {
-      DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
-      // Always keep the earliest trialStart — never let a cloud copy reset the clock
-      if (val.trialStart && DATA.trialStart && DATA.trialStart < val.trialStart) {
-        DATA.trialStart = DATA.trialStart;
-      }
+    const cloudIsNewer = (val._v || 0) > (DATA._v || 0);
+    // Restore only if cloud is strictly newer, OR this device has never synced AND
+    // has no local data worth keeping (users array empty = fresh install).
+    const localIsEmpty = !(DATA.users && DATA.users.length > 0);
+    if (cloudIsNewer || (localNeverSynced && localIsEmpty)) {
+    const localTrialStart = DATA.trialStart || 0;
+    DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+    // Always keep the earliest trialStart — never let a cloud copy reset the clock
+    if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) {
+      DATA.trialStart = localTrialStart;
+    }
       DATA._lastFbSync = Date.now(); // mark this device as now synced
       sv(DATA); // write back to localStorage + IDB
       return true;
