@@ -1003,7 +1003,8 @@ async function fbRestoreData() {
   // Use the stored installId directly — do NOT call depotKey() here because
   // that would generate a brand-new random ID on a device that has never synced,
   // causing the Firebase lookup to fail and blocking login on new phones.
-  const key = DATA.installId;
+  // Also fall back to the separately persisted installId so reinstalls can recover.
+  const key = DATA.installId || _loadPersistedInstallId();
   if (!key || key === 'MDM-????-????-????') return false;
   try {
     const val = await fbGet('depots/' + key + '/data');
@@ -1024,6 +1025,8 @@ async function fbRestoreData() {
       DATA.trialStart = localTrialStart;
     }
       DATA._lastFbSync = Date.now(); // mark this device as now synced
+      // Ensure the installId is pinned in the separate key after restore
+      if (DATA.installId) _persistInstallId(DATA.installId);
       sv(DATA); // write back to localStorage + IDB
       return true;
     }
@@ -1128,12 +1131,28 @@ function genInstallId() {
   }
   return id;
 }
+
+// Separate key that is NEVER cleared by clearAll() or data resets — survives reinstall
+const _INSTALL_ID_KEY = 'mdm_install_id';
+
+function _persistInstallId(id) {
+  try { localStorage.setItem(_INSTALL_ID_KEY, id); } catch {}
+}
+
+function _loadPersistedInstallId() {
+  try { return localStorage.getItem(_INSTALL_ID_KEY) || ''; } catch { return ''; }
+}
+
 function depotKey() {
   if (!DATA.installId) {
-    const id = genInstallId();
+    // Try to recover a previously persisted installId first (survives reinstall)
+    const persisted = _loadPersistedInstallId();
+    const id = persisted || genInstallId();
     updateData(d => ({...d, installId: id}));
     DATA.installId = id;
   }
+  // Always keep the separate key in sync
+  _persistInstallId(DATA.installId);
   return DATA.installId;
 }
 
@@ -2218,6 +2237,25 @@ async function signupFinish() {
   if (btn) { btn.disabled=true; btn.textContent='⏳ Setting up…'; }
 
   try {
+    // ── DUPLICATE USERNAME CHECK (Firebase global registry) ──────────────────
+    if (isFbConfigured() && navigator.onLine) {
+      if (btn) btn.textContent='⏳ Checking username…';
+      try {
+        const existing = await fbGet('usernames/' + username);
+        if (existing && existing.installId) {
+          if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
+          err.style.display='block';
+          err.textContent='⛔ Username "' + username + '" is already taken. Please choose a different one.';
+          return;
+        }
+      } catch(uce) {
+        // Firebase unreachable — proceed offline; duplicate will be caught if they sync later
+        console.warn('[MDM] Username check skipped (offline):', uce.message);
+      }
+      if (btn) btn.textContent='⏳ Setting up…';
+    }
+    // ── END DUPLICATE CHECK ───────────────────────────────────────────────────
+
     const hashed = await hashPassword(pass);
 
     const fresh = JSON.parse(JSON.stringify(DEFAULT));
@@ -2232,6 +2270,8 @@ async function signupFinish() {
 
     DATA = Object.assign(DATA, fresh);
     sv(DATA);
+    // Persist installId separately so it survives reinstall
+    _persistInstallId(newInstallId);
 
     // Register in Firebase as trial
     const now = Date.now();
@@ -2242,6 +2282,8 @@ async function signupFinish() {
         createdAt: now,
         trialStart: now
       });
+      // Register username globally so no other depot can claim it
+      await fbSet('usernames/' + username, { installId: newInstallId, createdAt: now });
     } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
 
     LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 30 };
@@ -2649,6 +2691,7 @@ function renderDash(){
   const _allCIss=(DATA.commodityIssued||{});
   // Dynamic: use first defined commodity for primary dashboard display
   const _coms=DATA.commodities||[];
+  const todayStr=today();
   // Per-commodity stats for dashboard
   const _comStats=_coms.map(comObj=>{
     const cid=comObj.id;
@@ -2668,7 +2711,6 @@ function renderDash(){
   const now=new Date();
   const dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  const todayStr=today();
 
   const todayAllIn=_comStats.reduce((a,c)=>a+c.todayIn,0);
   const todayAllOut=_comStats.reduce((a,c)=>a+c.todayOut,0);
@@ -6454,6 +6496,24 @@ setTimeout(async ()=>{
     updateConnStatus();
     await bioCheckAndShowBtn(); // await so hw check completes before any UI transitions
     await initData();
+
+    // ── REINSTALL RECOVERY ──────────────────────────────────────────────
+    // If local data is empty (fresh install / cleared storage) but a separate
+    // installId key survived, try to pull the depot data from Firebase so the
+    // user can just log in with their existing credentials instead of signing up.
+    const localIsEmpty = !(DATA.users && DATA.users.length > 0);
+    const survivedId = _loadPersistedInstallId();
+    if (localIsEmpty && survivedId && isFbConfigured() && navigator.onLine) {
+      // Temporarily inject the survived installId so fbRestoreData can find it
+      DATA.installId = survivedId;
+      const restored = await fbRestoreData().catch(() => false);
+      if (!restored) {
+        // Not found in cloud — clear the stale id so a fresh signup is possible
+        DATA.installId = '';
+      }
+    }
+    // ── END REINSTALL RECOVERY ──────────────────────────────────────────
+
     const di=DATA.depotInfo||{};
     const parts=[di.name,di.district,di.country].filter(Boolean);
     const el=document.getElementById('login-depot-sub');
