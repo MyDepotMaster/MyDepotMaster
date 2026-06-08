@@ -2596,8 +2596,8 @@ function doLogout(){
 
 // ── AUTO-LOGOUT ON INACTIVITY ────────────────────────────────────────────────
 // Protects against physical access to a logged-in phone left unattended.
-const _IDLE_WARN_MS  = 9  * 60 * 1000; // warn at 9 min
-const _IDLE_LIMIT_MS = 10 * 60 * 1000; // logout at 10 min
+const _IDLE_WARN_MS  = ()=>{ const m=Number((DATA.depotInfo||{}).autoLogoutMinutes||10); return(m-1)*60*1000; }; // warn 1 min before
+const _IDLE_LIMIT_MS = ()=>{ return Number((DATA.depotInfo||{}).autoLogoutMinutes||10)*60*1000; };
 let _idleWarnTimer = null;
 let _idleLogoutTimer = null;
 
@@ -2611,15 +2611,18 @@ function _idleClear() {
 function _idleReset() {
   if (!USER) return; // only active when logged in
   _idleClear();
+  const warnMs = _IDLE_WARN_MS();
+  const limitMs = _IDLE_LIMIT_MS();
+  const minsLeft = Number((DATA.depotInfo||{}).autoLogoutMinutes||10);
   _idleWarnTimer = setTimeout(() => {
     if (!USER) return;
     showToast('⚠️ You will be logged out in 1 minute due to inactivity.', 8000);
-  }, _IDLE_WARN_MS);
+  }, warnMs);
   _idleLogoutTimer = setTimeout(() => {
     if (!USER) return;
     doLogout();
     showToast('🔒 Logged out automatically due to inactivity.');
-  }, _IDLE_LIMIT_MS);
+  }, limitMs);
 }
 
 // Listen for any user activity
@@ -3189,7 +3192,7 @@ function renderGenReceived(){
     <td style="color:var(--amber);text-align:right;font-size:12px">${Number(item.damaged||0).toLocaleString()}</td>
     <td><span class="bdg ${item.condition==='good'?'bg2':'ba2'}" style="font-size:10px">${item.condition||'GOOD'}</span></td>
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
-    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenRec('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delGenRec('${item.id}')">🗑</button></td>`:''}
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenRec('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeRec=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0),0);
   const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
@@ -3252,7 +3255,7 @@ function renderGenIssued(){
     <td style="color:var(--green);text-align:right;font-size:12px">${saleVal!==null?zm(saleVal):'—'}</td>
     <td style="font-size:12px;color:var(--muted)">${esc(item.notes)||'—'}</td>
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
-    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button></td>`:''}
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
   const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
@@ -3488,8 +3491,8 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
   closeModal();
 }
 
-function delGenRec(id){if(!requireAdmin('delete records'))return;const _r=(DATA.generalInventory||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
-function delGenIss(id){if(!requireAdmin('delete records'))return;const _r=(DATA.generalIssued||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
+function delGenRec(id){if(!requireAdmin('delete records'))return;const _r=(DATA.generalInventory||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}if(!confirm('Delete this receive record?'))return;updateData(d=>({...d,generalInventory:d.generalInventory.filter(x=>x.id!==id)}));}
+function delGenIss(id){if(!requireAdmin('delete records'))return;const _r=(DATA.generalIssued||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}if(!confirm('Delete this issue record?'))return;updateData(d=>({...d,generalIssued:d.generalIssued.filter(x=>x.id!==id)}));}
 
 // ── GENERAL INVENTORY STOCK COUNT ────────────────────────────────────────────
 // Helper: compute system-available for a general inventory item (all-time)
@@ -3562,7 +3565,7 @@ function saveGenStockCount(){
 }
 function delGenStockCount(id){
   if(!requireAdmin('delete stock counts'))return;
-  const _r=(DATA.generalStockCounts||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}
+  const _r=(DATA.generalStockCounts||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}
   if(!confirm('Delete this stock count record?'))return;
   updateData(d=>({...d,generalStockCounts:(d.generalStockCounts||[]).filter(x=>x.id!==id)}));
 }
@@ -3670,6 +3673,15 @@ function renderGenItemNamesTab(){
 }
 
 // ── EDIT HELPERS ─────────────────────────────────────────────────────────────
+function _editWindowMs(){
+  // Admin-configurable edit window (Settings → Staff Policy). Default 24 h.
+  const h=Number((DATA.depotInfo||{}).editWindowHours||24);
+  return h*60*60*1000;
+}
+function _editWindowLabel(){
+  const h=Number((DATA.depotInfo||{}).editWindowHours||24);
+  return h<24?h+'h':h===24?'24h':(h/24)+'d';
+}
 function isWithin24h(record){
   // New uid format: "base36timestamp-randomsuffix"
   // Old uid format: numeric float (Date.now()+Math.random())
@@ -3683,14 +3695,14 @@ function isWithin24h(record){
     base=Number(id);
   }
   if(!base||isNaN(base))base=Date.now();
-  return(Date.now()-base)<86400000;
+  return(Date.now()-base)<_editWindowMs();
 }
 
 // ── EDIT: General Received ───────────────────────────────────────────────────
 function openEditGenRec(id){
   const rec=DATA.generalInventory.find(x=>String(x.id)===String(id));
   if(!rec){alert('Record not found.');return;}
-  if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
   const defined=(DATA.inventoryItems||[]);
   const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
   const allNames=[...new Set([...defined,...fromData])].sort();
@@ -3732,7 +3744,7 @@ function saveEditGenRec(id){
 function openEditGenIss(id){
   const iss=DATA.generalIssued.find(x=>String(x.id)===String(id));
   if(!iss){alert('Record not found.');return;}
-  if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
   const defined=(DATA.inventoryItems||[]);
   const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
   const allNames=[...new Set([...defined,...fromData])].sort();
@@ -3900,7 +3912,7 @@ function renderMaizeRec(){
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--green);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     ${USER.role==='admin'?`<td style="color:var(--amber);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumCostMap[item.id]>0?zm(cumCostMap[item.id]):'—'}</td>`:''}
-    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeRec=all.reduce((a,b)=>a+Number(b.received||0),0);
   const allTimeIss=cIss(CCOM).reduce((a,b)=>a+Number(b.issued||0),0);
@@ -3978,7 +3990,7 @@ function renderMaizeIss(){
     <td style="color:var(--blue);text-align:right;font-size:12px">${batchAvail(item.batchName,CCOM).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     ${USER.role==='admin'?`<td style="color:var(--green);text-align:right;font-size:11px;border-left:1px solid var(--border)">${cumRevMap[item.id]>0?zm(cumRevMap[item.id]):'—'}</td>`:''}
-    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
+    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
   const allTimeIss=all.reduce((a,b)=>a+Number(b.issued||0),0);
   const allTimeRec=allRec.reduce((a,b)=>a+Number(b.received||0),0);
@@ -4272,13 +4284,13 @@ function saveStockCount(){if(isReadOnly()){alert("🔒 This account is in read-o
 }
 
 // ── Delete
-function delMaizeRec(id){if(!requireAdmin('delete records'))return;const cid=CCOM;const _r=((DATA.commodityReceived||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this receive record?'))return;
+function delMaizeRec(id){if(!requireAdmin('delete records'))return;const cid=CCOM;const _r=((DATA.commodityReceived||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}if(!confirm('Delete this receive record?'))return;
   updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=(cr[cid]||[]).filter(x=>x.id!==id);return{...d,commodityReceived:cr};});
 }
-function delMaizeIss(id){if(!requireAdmin('delete records'))return;const cid=CCOM;const _r=((DATA.commodityIssued||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this issue record?'))return;
+function delMaizeIss(id){if(!requireAdmin('delete records'))return;const cid=CCOM;const _r=((DATA.commodityIssued||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}if(!confirm('Delete this issue record?'))return;
   updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=(ci[cid]||[]).filter(x=>x.id!==id);return{...d,commodityIssued:ci};});
 }
-function delStockCount(id){if(!requireAdmin('delete stock counts'))return;const cid=CCOM;const _r=((DATA.commodityStockCounts||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this stock count?'))return;
+function delStockCount(id){if(!requireAdmin('delete stock counts'))return;const cid=CCOM;const _r=((DATA.commodityStockCounts||{})[cid]||[]).find(x=>x.id===id);if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}if(!confirm('Delete this stock count?'))return;
   updateData(d=>{const cs={...(d.commodityStockCounts||{})};cs[cid]=(cs[cid]||[]).filter(x=>x.id!==id);return{...d,commodityStockCounts:cs};});
 }
 
@@ -4287,7 +4299,7 @@ function openEditMaizeRec(id){
   const com=getCom(CCOM);
   const rec=cRec(CCOM).find(x=>String(x.id)===String(id));
   if(!rec){alert('Record not found.');return;}
-  if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
   openModal(`
     <div class="mtitle">✏️ Edit ${com.name} Received</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
@@ -4314,7 +4326,7 @@ function openEditMaizeIss(id){
   const com=getCom(CCOM);
   const iss=cIss(CCOM).find(x=>String(x.id)===String(id));
   if(!iss){alert('Record not found.');return;}
-  if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
   const batches=[...new Set(cRec(CCOM).map(x=>x.batchName))];
   const opts=batches.map(b=>`<option value="${b}"${b===iss.batchName?' selected':''}>${b}</option>`).join('');
   openModal(`
@@ -4593,7 +4605,7 @@ function renderStaffLogs(){
       <td style="font-size:11px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${log.timeOut||'—'}<br><span style="color:var(--blue)">${hoursCell}</span></td>
       <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${cum.cumQty.toLocaleString()}<br><span style="font-size:9px;color:var(--muted);font-weight:400">${cum.cumUnit}</span></td>
       <td style="color:var(--purple);font-weight:700;text-align:right">${zm(cum.cumNet)}</td>
-      ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
+      ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
     </tr>`;}).join('');
 
   return `
@@ -5134,7 +5146,7 @@ function openStaffDetail(id){
           <div style="font-size:12px;font-weight:700">${fmtDate(l.date)} <span style="color:var(--muted);font-weight:400;font-size:11px">${l.task}</span></div>
           <div style="font-size:11px;color:var(--muted)">${(()=>{const q=l.qty!=null?l.qty:l.bags;const ul=l.rateUnit&&l.rateUnit!=='bag'?taskRateUnitLabel(l.role||'',l.task||''):'bags';return Number(q||0).toLocaleString()+' '+ul;})()}· ${zm(Number(l.earnings||0)-Number(l.deduction||0))} net</div>
         </div>
-        ${USER.role==='admin'?`<button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`closeModal();setTimeout(()=>openEditLog('${l.id}'),50)`:''}" title="${editable?'Edit':'Edit window closed (>24h)'}">✏️</button>`:''}
+        ${USER.role==='admin'?`<button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`closeModal();setTimeout(()=>openEditLog('${l.id}'),50)`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -5238,7 +5250,7 @@ function savePayment(){if(isReadOnly()){alert("🔒 This account is in read-only
   STAB='payments';
   closeModal();
 }
-function delPayment(id){if(!requireAdmin('delete payment records'))return;const _r=(DATA.staffPayments||[]).find(p=>String(p.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
+function delPayment(id){if(!requireAdmin('delete payment records'))return;const _r=(DATA.staffPayments||[]).find(p=>String(p.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}if(!confirm('Delete this payment record?'))return;updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));}
 
 // ── PAYSLIP GENERATOR (Fix 5) ────────────────────────────────────────────────
 function generatePayslip(staffId){
@@ -5307,13 +5319,13 @@ ${s.dateJoined?`<tr><th>Date Joined</th><td>${fmtDate(s.dateJoined)}</td><th>Emp
   showToast('🧾 Payslip downloaded for '+s.name);
 }
 
-function delLog(id){if(!requireAdmin('delete work logs'))return;const _r=(DATA.staffLogs||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
+function delLog(id){if(!requireAdmin('delete work logs'))return;const _r=(DATA.staffLogs||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}if(!confirm('Delete this work log?'))return;updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));}
 
 // ── EDIT: Staff Work Log ─────────────────────────────────────────────────────
 function openEditLog(id){
   const log=DATA.staffLogs.find(x=>String(x.id)===String(id));
   if(!log){alert('Record not found.');return;}
-  if(!isWithin24h(log)){alert('⏰ Editing is only allowed within 24 hours of entry.');return;}
+  if(!isWithin24h(log)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
   const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
   const staffOpts=activeStaff.map(s=>`<option value="${s.id}"${String(s.id)===String(log.staffId)?' selected':''}>${esc(s.name)} (${esc(s.role)})</option>`).join('');
   const staffRec=DATA.staff.find(s=>String(s.id)===String(log.staffId));
@@ -5400,7 +5412,7 @@ function delStaff(id){if(!requireAdmin('delete staff members'))return;if(!confir
 // ── LEAVE BALANCE (Fix 7) ─────────────────────────────────────────────────────
 function renderLeave(){
   const leaveLog=DATA.leaveLog||[];
-  const stdAnnual=Number((DATA.depotInfo||{}).annualLeaveEntitlement||15);
+  const stdAnnual=Number((DATA.depotInfo||{}).annualLeaveEntitlement||15); // default 15, configurable in Settings → Staff Policy
   const rows=DATA.staff.filter(s=>s.status==='active'||!s.status).map(s=>{
     const sLeave=leaveLog.filter(l=>l.staffId===s.id);
     const annualUsed=sLeave.filter(l=>l.type==='leave').reduce((a,b)=>a+Number(b.days||1),0);
@@ -5438,7 +5450,7 @@ function saveLeaveEntry(){
 }
 function delLeaveEntry(id){
   if(!requireAdmin('delete leave entries'))return;
-  const _r=(DATA.leaveLog||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}
+  const _r=(DATA.leaveLog||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}
   if(!confirm('Delete this leave entry?'))return;
   updateData(d=>({...d,leaveLog:(d.leaveLog||[]).filter(l=>String(l.id)!==String(id))}));
 }
@@ -5623,6 +5635,47 @@ function renderSettings(){
         <div id="shift-hours-msg" style="margin-top:6px"></div>
       </div>`:''}
     </div>
+
+    ${USER.role==='admin'?`
+    <div class="sh">Staff &amp; Records Policy</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Configure leave entitlements, record edit window, and auto-logout timeout.</div>
+
+      <div class="fw">
+        <div class="fl">Annual Leave Entitlement (days per year)</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="fi" id="leave-entitlement-input" type="number" min="1" max="365" step="1"
+            value="${Number((DATA.depotInfo||{}).annualLeaveEntitlement||15)}" style="flex:1" inputmode="numeric"/>
+          <button class="btn bg bsm" style="width:auto" onclick="saveLeaveEntitlement()">Save</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Number of annual leave days each staff member is entitled to per year. Shown in Staff &#x2192; Leave Balances.</div>
+        <div id="leave-entitlement-msg" style="margin-top:6px"></div>
+      </div>
+
+      <div class="fw" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Record Edit Window</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="fi" id="edit-window-input" style="flex:1">
+            ${[6,12,24,48,72].map(h=>`<option value="${h}"${Number((DATA.depotInfo||{}).editWindowHours||24)===h?' selected':''}>${h<24?h+'h':(h/24)+' day'+(h>24?'s':'')}</option>`).join('')}
+          </select>
+          <button class="btn bg bsm" style="width:auto" onclick="saveEditWindow()">Save</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">How long after entry an Admin can edit or delete a record. After this window, records are permanent.</div>
+        <div id="edit-window-msg" style="margin-top:6px"></div>
+      </div>
+
+      <div class="fw" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Auto-Logout After Inactivity</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="fi" id="auto-logout-input" style="flex:1">
+            ${[5,10,15,20,30,60].map(m=>`<option value="${m}"${Number((DATA.depotInfo||{}).autoLogoutMinutes||10)===m?' selected':''}>${m} minute${m!==1?'s':''}</option>`).join('')}
+          </select>
+          <button class="btn bg bsm" style="width:auto" onclick="saveAutoLogout()">Save</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">App logs out after this period of inactivity. A 1-minute warning is shown first.</div>
+        <div id="auto-logout-msg" style="margin-top:6px"></div>
+      </div>
+    </div>`:''}
 
     ${_renderBioSection()}
 
@@ -6391,6 +6444,39 @@ function saveShiftHours(){
   if(!val||val<1||val>24){if(msg)msg.innerHTML='<div class="err-box">Enter a value between 1 and 24.</div>';return;}
   updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),standardShiftHours:val}}));
   if(msg)msg.innerHTML='<div class="ok-msg">✅ Standard shift set to '+val+' hours.</div>';
+  setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+
+function saveLeaveEntitlement(){
+  if(!requireAdmin('change leave entitlement'))return;
+  const val=Number(document.getElementById('leave-entitlement-input')?.value||15);
+  const msg=document.getElementById('leave-entitlement-msg');
+  if(!val||val<1||val>365){if(msg)msg.innerHTML='<div class="err-box">Enter a value between 1 and 365.</div>';return;}
+  updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),annualLeaveEntitlement:val}}));
+  if(msg)msg.innerHTML='<div class="ok-msg">✅ Annual leave entitlement set to '+val+' days.</div>';
+  setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+
+function saveEditWindow(){
+  if(!requireAdmin('change edit window'))return;
+  const val=Number(document.getElementById('edit-window-input')?.value||24);
+  const msg=document.getElementById('edit-window-msg');
+  const valid=[6,12,24,48,72];
+  if(!valid.includes(val)){if(msg)msg.innerHTML='<div class="err-box">Invalid selection.</div>';return;}
+  updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),editWindowHours:val}}));
+  const label=val<24?val+'h':(val/24)+' day'+(val>24?'s':'');
+  if(msg)msg.innerHTML='<div class="ok-msg">✅ Edit window set to '+label+'.</div>';
+  setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+
+function saveAutoLogout(){
+  if(!requireAdmin('change auto-logout setting'))return;
+  const val=Number(document.getElementById('auto-logout-input')?.value||10);
+  const msg=document.getElementById('auto-logout-msg');
+  const valid=[5,10,15,20,30,60];
+  if(!valid.includes(val)){if(msg)msg.innerHTML='<div class="err-box">Invalid selection.</div>';return;}
+  updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),autoLogoutMinutes:val}}));
+  if(msg)msg.innerHTML='<div class="ok-msg">✅ Auto-logout set to '+val+' minutes.</div>';
   setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
 }
 
@@ -7264,7 +7350,7 @@ function deleteBook(id) {
   if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
   const book = (DATA.books||[]).find(b=>b.id===id);
   if (!book) return;
-  if(!isWithin24h(book)){alert('🔒 This record is older than 24 hours and cannot be deleted.');return;}
+  if(!isWithin24h(book)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}
   if (!confirm(`Delete "${book.name||'this document'}"? This cannot be undone.`)) return;
   updateData(d=>({...d, books:(d.books||[]).filter(b=>b.id!==id)}));
   if(TAB==='books') render();
