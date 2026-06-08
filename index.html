@@ -1388,10 +1388,36 @@ function copyNum(num) {
 // on Android Chrome, which is why the app previously failed offline.
 const SW_VERSION  = 'mdm-v9';
 
-// ── MEDIAN CACHE CLEAR — clears webview cache when running inside Median app
-if (typeof median !== 'undefined' && median.webview && median.webview.clearCache) {
-  median.webview.clearCache();
-}
+// ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
+// Problem: Median's webview caches the HTML shell itself, so when a new version
+// is deployed the old page loads from cache and never sees the new code.
+// Fix: On every load, tell Median to clear its webview cache AND hard-reload
+// via a versioned URL so the new HTML is always fetched from the network.
+(function medianUpdateCheck() {
+  if (typeof median === 'undefined') return;
+
+  // Step 1: Clear the webview cache unconditionally on every load
+  if (median.webview && median.webview.clearCache) {
+    median.webview.clearCache();
+  }
+
+  // Step 2: Check if the URL already has our version stamp
+  const VER = 'mdm-v9';
+  const url = new URL(location.href);
+  const currentVer = url.searchParams.get('_mv');
+
+  if (currentVer !== VER) {
+    // Stamp the URL with the current version and hard-reload
+    // This forces Median to fetch fresh HTML from the server
+    url.searchParams.set('_mv', VER);
+    // Use median.navigate if available (preferred — bypasses webview back stack)
+    if (median.navigate) {
+      median.navigate({ url: url.toString() });
+    } else {
+      location.replace(url.toString());
+    }
+  }
+})();
 const SW_FONTS_URL = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
 // Aggressively pre-cache the shell from the main thread as a belt-and-braces
@@ -1413,12 +1439,22 @@ if ('serviceWorker' in navigator) {
           if (!nw) return;
           nw.addEventListener('statechange', () => {
             if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              // Clear Median webview cache so the new version loads cleanly
-              if (typeof median !== 'undefined' && median.webview && median.webview.clearCache) {
-                median.webview.clearCache();
+              // New SW installed — force reload to activate it
+              if (typeof median !== 'undefined') {
+                // Inside Median webview: clear cache and reload immediately (no toast needed)
+                if (median.webview && median.webview.clearCache) median.webview.clearCache();
+                const vUrl = new URL(location.href);
+                vUrl.searchParams.set('_mv', SW_VERSION);
+                if (median.navigate) {
+                  median.navigate({ url: vUrl.toString() });
+                } else {
+                  location.replace(vUrl.toString());
+                }
+              } else {
+                // Regular browser: show the update toast
+                const t = document.getElementById('update-toast');
+                if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
               }
-              const t = document.getElementById('update-toast');
-              if (t) { t.style.display = 'block'; t.onclick = () => location.reload(); }
             }
           });
         });
