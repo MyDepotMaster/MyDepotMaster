@@ -944,22 +944,27 @@ async function fbSet(path, data) {
   return res.json();
 }
 
-// Atomic write — only succeeds if the key does not yet exist in Firebase.
-// Uses the If-None-Match: * header which Firebase REST honours: returns 412
-// if the node is already present, making this race-condition-safe.
+// Write only if the key does not yet exist in Firebase.
+// Firebase Realtime DB REST does not honour If-None-Match, so we use a
+// read-then-write: check first, throw ALREADY_EXISTS if taken, then write.
 async function fbSetIfNotExists(path, data) {
-  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/' + path + '.json';
-  const res = await fetch(url, {
+  const base = FB_CONFIG.databaseURL.replace(/\/+$/, '');
+  // Re-read to catch any race since the earlier duplicate check
+  const checkRes = await fetch(base + '/' + path + '.json');
+  if (checkRes.ok) {
+    const existing = await checkRes.json();
+    if (existing !== null && existing !== undefined) {
+      const e = new Error('ALREADY_EXISTS');
+      e.code = 412;
+      throw e;
+    }
+  }
+  // Write
+  const res = await fetch(base + '/' + path + '.json', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'if-none-match': '*' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });
-  if (res.status === 412) {
-    // Node already exists — key is taken
-    const err = new Error('ALREADY_EXISTS');
-    err.code = 412;
-    throw err;
-  }
   if (!res.ok) {
     const body = await res.text().catch(()=>'');
     throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
@@ -2390,7 +2395,7 @@ async function signupFinish() {
       if (btn) btn.textContent='⏳ Checking username…';
       try {
         const existing = await fbGet('usernames/' + username);
-        if (existing && existing.installId) {
+        if (existing !== null && existing !== undefined) {
           if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
           err.style.display='block';
           err.textContent='⛔ Username "' + username + '" is already taken. Please choose a different one.';
