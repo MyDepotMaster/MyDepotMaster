@@ -2379,13 +2379,14 @@ async function signupFinish() {
 
   try {
     // ── DUPLICATE USERNAME CHECK (Firebase global registry) ──────────────────
+    // Username uniqueness is enforced globally via Firebase — always required
+    if (!navigator.onLine) {
+      err.style.display='block';
+      err.textContent='⚠️ An internet connection is required to create an account.';
+      if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
+      return;
+    }
     if (isFbConfigured()) {
-      if (!navigator.onLine) {
-        err.style.display='block';
-        err.textContent='⚠️ An internet connection is required to create an account.';
-        if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
-        return;
-      }
       if (btn) btn.textContent='⏳ Checking username…';
       try {
         const existing = await fbGet('usernames/' + username);
