@@ -2455,47 +2455,45 @@ async function signupFinish() {
 
     const hashed = await hashPassword(pass);
 
+    const newInstallId = 'mdm_' + Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10);
+    const now = Date.now();
+
+    // ── REGISTER USERNAME IN FIREBASE FIRST ──────────────────────────────────
+    // Must succeed before we save anything locally. This is the definitive
+    // duplicate guard — if it throws ALREADY_EXISTS the signup is aborted.
+    if (isFbConfigured()) {
+      try {
+        await fbSetIfNotExists('usernames/' + username, { installId: newInstallId, createdAt: now });
+      } catch(race) {
+        if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
+        err.style.display='block';
+        err.textContent='⛔ Username "' + username + '" is already taken. Please choose a different one.';
+        return; // hard stop — nothing saved locally
+      }
+      // Register license
+      try {
+        await fbSet('licenses/' + newInstallId, {
+          status: 'trial',
+          depotName: _signupData.name || 'Unnamed Depot',
+          createdAt: now,
+          trialStart: now
+        });
+      } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
+    }
+    // ── SAVE LOCALLY ONLY AFTER FIREBASE CONFIRMED ───────────────────────────
+
     const fresh = JSON.parse(JSON.stringify(DEFAULT));
     fresh.users = [{ username, password: hashed, role: 'admin', recoveryEmail: emailRaw || '' }];
     fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true, recoveryEmail: emailRaw || '' };
     fresh.currency = suCurrency;
     fresh.commodities=[];
-    // Always generate a brand-new installId for a new account so it gets its
-    // own Firebase depot slot — even if another account already exists on this device.
-    const newInstallId = 'mdm_' + Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10);
     fresh.installId = newInstallId;
-    fresh.trialStart = Date.now(); // fresh trial for each new account
+    fresh.trialStart = now;
     fresh._v = 1;
 
-    DATA = Object.assign({}, fresh); // full replace, not merge, so old account data is cleared
+    DATA = Object.assign({}, fresh);
     sv(DATA);
-    // Persist installId separately so it survives reinstall
     _persistInstallId(newInstallId);
-
-    // Register in Firebase as trial
-    const now = Date.now();
-    try {
-      await fbSet('licenses/' + newInstallId, {
-        status: 'trial',
-        depotName: _signupData.name || 'Unnamed Depot',
-        createdAt: now,
-        trialStart: now
-      });
-      // Atomic write — fails with ALREADY_EXISTS if another device claimed the
-      // username between our fbGet check above and this write (race condition).
-      try {
-        await fbSetIfNotExists('usernames/' + username, { installId: newInstallId, createdAt: now });
-      } catch(race) {
-        if (race.code === 412) {
-          // Another signup claimed the username in the last few milliseconds
-          err.style.display='block';
-          err.textContent='⛔ Username "' + username + '" was just taken. Please choose a different one.';
-          if (btn) { btn.disabled=false; btn.textContent='✅ Create Company & Sign In'; }
-          return;
-        }
-        console.warn('Firebase username register failed:', race.message);
-      }
-    } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
 
     LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart: now, activeUntil: 0, trialDaysLeft: 30 };
     saveCachedLicense(LICENSE);
