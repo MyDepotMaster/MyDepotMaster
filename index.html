@@ -2647,28 +2647,30 @@ async function doLogin(){
     //   - Fresh device / no prior data   → discovers and restores the correct depot
     //   - Same depot, different user     → version-gates; only overwrites if newer
     //   - Different depot on same device → loads the correct depot for this login
+    let _loginTargetInstallId = null; // hoisted so cross-depot guard below can read it
     if (navigator.onLine && isFbConfigured()) {
       btn.textContent = '☁ Restoring data…';
       try {
-        let targetInstallId = null;
         // Step 1: resolve installId for the typed username via the global index
         try {
           const usernameRecord = await fbGet('usernames/' + u);
           if (usernameRecord && usernameRecord.installId) {
-            targetInstallId = usernameRecord.installId;
+            _loginTargetInstallId = usernameRecord.installId;
           }
         } catch(e) { console.warn('Username index lookup failed:', e); }
 
         // Step 2: restore from Firebase using the resolved installId
-        if (targetInstallId) {
-          // Temporarily override installId so fbRestoreData fetches the right depot
+        if (_loginTargetInstallId) {
           const prevId = DATA.installId;
-          DATA.installId = targetInstallId;
-          _persistInstallId(targetInstallId);
-          const restored = await fbRestoreData();
-          // If restore skipped (version equal) but depot has changed, force-load it
-          if (!restored && targetInstallId !== prevId) {
-            const val = await fbGet('depots/' + targetInstallId + '/data');
+          const switchingDepot = _loginTargetInstallId !== prevId;
+          // Always override installId so fbRestoreData fetches the right depot
+          DATA.installId = _loginTargetInstallId;
+          _persistInstallId(_loginTargetInstallId);
+          // When switching to a different depot, force a direct fetch so the
+          // version gate in fbRestoreData (which compares against the OLD depot's
+          // _v) cannot cause us to stay on the wrong depot's data.
+          if (switchingDepot) {
+            const val = await fbGet('depots/' + _loginTargetInstallId + '/data');
             if (val && val._v) {
               const localTrialStart = DATA.trialStart || 0;
               DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
@@ -2679,6 +2681,9 @@ async function doLogin(){
               if (DATA.installId) _persistInstallId(DATA.installId);
               sv(DATA);
             }
+          } else {
+            // Same depot — normal version-gated restore is fine
+            await fbRestoreData();
           }
         } else {
           // Username not in index — fall back to any locally persisted installId
@@ -2723,6 +2728,21 @@ async function doLogin(){
       }
       return;
     }
+    // ── Cross-depot guard ─────────────────────────────────────────────────────
+    // If Firebase resolved a specific installId for this username but after
+    // the restore DATA still belongs to a different depot (the user was added
+    // as a sub-user in another owner's depot rather than signing up
+    // independently), block login and explain clearly.
+    if (_loginTargetInstallId && DATA.installId &&
+        DATA.installId !== _loginTargetInstallId) {
+      btn.disabled=false; btn.textContent='\uD83D\uDD12 Sign In';
+      err.style.display='block';
+      err.innerHTML = '\u26A0\uFE0F Account conflict: <strong>' + esc(u) +
+        '</strong> exists as a sub-user on a different depot. To access that depot, ' +
+        'log in on the device where it was created, or contact your depot admin.';
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     _bfOk();
     err.style.display='none';
     USER = Object.freeze({...userObj}); // freeze to prevent console mutation
