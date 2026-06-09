@@ -1934,11 +1934,9 @@ function showLanding() {
   _hideAllOverlays();
   _hideMainUI();
   document.getElementById('landing-screen').style.display = 'flex';
-  // Hide signup button on registered devices — one-time setup only
+  // Always show signup button — multiple accounts allowed on one device
   const getStartedBtn = document.querySelector('#landing-screen button[onclick="startSignUp()"]');
-  if (getStartedBtn) {
-    getStartedBtn.style.display = (DATA.depotInfo && DATA.depotInfo.setupDone) ? 'none' : '';
-  }
+  if (getStartedBtn) getStartedBtn.style.display = '';
 }
 
 function showLoginScreen() {
@@ -2415,12 +2413,14 @@ async function signupFinish() {
     fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true, recoveryEmail: emailRaw || '' };
     fresh.currency = suCurrency;
     fresh.commodities=[];
-    const newInstallId = depotKey(); // use existing ID if already generated, or generate one now
+    // Always generate a brand-new installId for a new account so it gets its
+    // own Firebase depot slot — even if another account already exists on this device.
+    const newInstallId = 'mdm_' + Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10);
     fresh.installId = newInstallId;
-    fresh.trialStart = DATA.trialStart && DATA.trialStart > 0 ? DATA.trialStart : Date.now(); // never reset trialStart if already set
+    fresh.trialStart = Date.now(); // fresh trial for each new account
     fresh._v = 1;
 
-    DATA = Object.assign(DATA, fresh);
+    DATA = Object.assign({}, fresh); // full replace, not merge, so old account data is cleared
     sv(DATA);
     // Persist installId separately so it survives reinstall
     _persistInstallId(newInstallId);
