@@ -1467,7 +1467,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v16';
+const SW_VERSION  = 'mdm-v17';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1483,7 +1483,7 @@ const SW_VERSION  = 'mdm-v16';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v16';
+  const VER = 'mdm-v17';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -2638,30 +2638,51 @@ async function doLogin(){
     await initData();
 
     // ── Pre-login cloud restore ───────────────────────────────────────────────
-    // Always restore from Firebase before checking credentials so the app works
-    // on any fresh device, reinstall, or direct file open (content://downloads).
+    // Runs on every login attempt so any account from any depot can sign in on
+    // any device — no device binding, no single-device locks.
     //
-    // Strategy:
-    //   1. Returning device (has installId) — fbRestoreData() version-gates and
-    //      only overwrites local data if the cloud copy is strictly newer.
-    //   2. Brand-new device (no installId) — look up the typed username in the
-    //      Firebase usernames/ index to discover installId, then restore.
-    //      This is the only path that works with no prior localStorage at all.
+    // Always look up the typed username in the Firebase usernames/ index first.
+    // That record contains the installId for their depot regardless of what data
+    // is currently loaded on this device. This means:
+    //   - Fresh device / no prior data   → discovers and restores the correct depot
+    //   - Same depot, different user     → version-gates; only overwrites if newer
+    //   - Different depot on same device → loads the correct depot for this login
     if (navigator.onLine && isFbConfigured()) {
       btn.textContent = '☁ Restoring data…';
       try {
-        const hasInstallId = !!(DATA.installId || _loadPersistedInstallId());
-        if (hasInstallId) {
-          // Returning device — standard version-gated restore
-          await fbRestoreData();
-        } else {
-          // Brand-new device — discover installId from the username index
+        let targetInstallId = null;
+        // Step 1: resolve installId for the typed username via the global index
+        try {
           const usernameRecord = await fbGet('usernames/' + u);
           if (usernameRecord && usernameRecord.installId) {
-            DATA.installId = usernameRecord.installId;
-            _persistInstallId(usernameRecord.installId);
-            await fbRestoreData();
+            targetInstallId = usernameRecord.installId;
           }
+        } catch(e) { console.warn('Username index lookup failed:', e); }
+
+        // Step 2: restore from Firebase using the resolved installId
+        if (targetInstallId) {
+          // Temporarily override installId so fbRestoreData fetches the right depot
+          const prevId = DATA.installId;
+          DATA.installId = targetInstallId;
+          _persistInstallId(targetInstallId);
+          const restored = await fbRestoreData();
+          // If restore skipped (version equal) but depot has changed, force-load it
+          if (!restored && targetInstallId !== prevId) {
+            const val = await fbGet('depots/' + targetInstallId + '/data');
+            if (val && val._v) {
+              const localTrialStart = DATA.trialStart || 0;
+              DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+              if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) {
+                DATA.trialStart = localTrialStart;
+              }
+              DATA._lastFbSync = Date.now();
+              if (DATA.installId) _persistInstallId(DATA.installId);
+              sv(DATA);
+            }
+          }
+        } else {
+          // Username not in index — fall back to any locally persisted installId
+          await fbRestoreData();
         }
       } catch(e) { console.warn('Pre-login restore failed:', e); }
       btn.disabled = true; btn.textContent = '🔐 Signing in…';
