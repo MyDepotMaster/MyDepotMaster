@@ -597,6 +597,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
     <div class="login-title">My Depot Master</div>
     <div class="login-sub"><span id="login-depot-sub">My Depot Master</span><br><span id="conn-status" style="color:var(--amber)">● Checking connection…</span></div>
     <div class="login-card">
+      <div id="account-switcher" style="display:none;margin-bottom:18px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:14px"></div>
       <div class="err-box" id="login-err" style="display:none"></div>
       <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none" spellcheck="false" style="text-transform:none"/></div>
       <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password" autocapitalize="none" autocorrect="off" autocomplete="current-password" spellcheck="false"/></div>
@@ -964,6 +965,17 @@ async function fbSetIfNotExists(path, data) {
     throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
   }
   return res.json();
+}
+
+// Delete a Firebase node by path. Used to free usernames when accounts are removed.
+async function fbDelete(path) {
+  const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/' + path + '.json';
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok) {
+    const body = await res.text().catch(()=>'');
+    throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
+  }
+  return true;
 }
 
 // ── FIREBASE DATA SYNC ───────────────────────────────────────────────────────
@@ -1390,6 +1402,53 @@ function requireAdmin(action) {
   return true;
 }
 
+// Shows a password confirmation modal and calls cb() only if the current
+// admin password is correct. Used for destructive / sensitive operations.
+function requireAdminPassword(action, cb) {
+  if (!requireAdmin(action)) return;
+  openModal(`
+    <div class="mtitle">🔐 Confirm Admin Password</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7;text-align:center">
+      Enter your admin password to <b>${esc(action)}</b>.
+    </div>
+    <div class="fw">
+      <div class="fl">Admin Password</div>
+      <input class="fi" id="admpw-input" type="password" placeholder="Enter your password"
+        autocomplete="current-password" autocapitalize="none" spellcheck="false"/>
+    </div>
+    <div class="err-box" id="admpw-err" style="display:none"></div>
+    <div class="mact">
+      <button class="btn bo" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" id="admpw-btn" onclick="_confirmAdminPw()">✅ Confirm</button>
+    </div>`);
+  // stash the callback on the modal so _confirmAdminPw can reach it
+  document.getElementById('admpw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') _confirmAdminPw();
+  });
+  document.getElementById('admpw-input').focus();
+  window._adminPwCb = cb;
+}
+async function _confirmAdminPw() {
+  const pw = (document.getElementById('admpw-input')?.value || '');
+  const err = document.getElementById('admpw-err');
+  const btn = document.getElementById('admpw-btn');
+  if (!pw) { err.style.display='block'; err.textContent='⚠️ Enter your password.'; return; }
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Checking…'; }
+  const adminUser = (DATA.users||[]).find(u => u.role==='admin');
+  const ok = adminUser ? await verifyPassword(pw, adminUser.password) : false;
+  if (!ok) {
+    if (btn) { btn.disabled=false; btn.textContent='✅ Confirm'; }
+    err.style.display='block'; err.textContent='❌ Incorrect password. Try again.';
+    document.getElementById('admpw-input').value='';
+    document.getElementById('admpw-input').focus();
+    return;
+  }
+  closeModal();
+  const cb = window._adminPwCb;
+  window._adminPwCb = null;
+  if (typeof cb === 'function') cb();
+}
+
 // Copy phone number to clipboard
 function copyNum(num) {
   navigator.clipboard.writeText(num).then(()=>alert('✅ Number copied!')).catch(()=>{
@@ -1403,7 +1462,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v10';
+const SW_VERSION  = 'mdm-v11';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1419,7 +1478,7 @@ const SW_VERSION  = 'mdm-v10';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v10';
+  const VER = 'mdm-v11';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -1887,6 +1946,7 @@ function showLoginScreen() {
   _hideMainUI();
   document.getElementById('login-screen').style.display = 'flex';
   updateConnStatus();
+  _renderAccountSwitcher(); // populate multi-account chips
 }
 
 function showLandingLogin() {
@@ -2544,6 +2604,7 @@ async function doLogin(){
     err.style.display='none';
     USER = Object.freeze({...userObj}); // freeze to prevent console mutation
     localStorage.setItem(_TOS_PFX+userObj.username,'y');
+    _savedUsersAdd(userObj.username); // remember this username on this device
     _idleReset(); // start inactivity watchdog
     showMainUI();
     updPill();
@@ -2591,6 +2652,7 @@ function doLogout(){
   const tosBox=document.getElementById('tos-box');
   if(tosCheck)tosCheck.checked=false;
   if(tosBox){tosBox.style.borderColor='';tosBox.style.background='';}
+  _renderAccountSwitcher(); // refresh switcher chips on the login screen
   showLanding();
 }
 
@@ -3700,9 +3762,15 @@ function isWithin24h(record){
 
 // ── EDIT: General Received ───────────────────────────────────────────────────
 function openEditGenRec(id){
+  if(!requireAdmin('edit records'))return;
   const rec=DATA.generalInventory.find(x=>String(x.id)===String(id));
   if(!rec){alert('Record not found.');return;}
   if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
+  requireAdminPassword('edit this record', ()=>_doOpenEditGenRec(id));
+}
+function _doOpenEditGenRec(id){
+  const rec=DATA.generalInventory.find(x=>String(x.id)===String(id));
+  if(!rec){alert('Record not found.');return;}
   const defined=(DATA.inventoryItems||[]);
   const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
   const allNames=[...new Set([...defined,...fromData])].sort();
@@ -3742,9 +3810,15 @@ function saveEditGenRec(id){
 
 // ── EDIT: General Issued ─────────────────────────────────────────────────────
 function openEditGenIss(id){
+  if(!requireAdmin('edit records'))return;
   const iss=DATA.generalIssued.find(x=>String(x.id)===String(id));
   if(!iss){alert('Record not found.');return;}
   if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
+  requireAdminPassword('edit this record', ()=>_doOpenEditGenIss(id));
+}
+function _doOpenEditGenIss(id){
+  const iss=DATA.generalIssued.find(x=>String(x.id)===String(id));
+  if(!iss){alert('Record not found.');return;}
   const defined=(DATA.inventoryItems||[]);
   const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
   const allNames=[...new Set([...defined,...fromData])].sort();
@@ -4296,10 +4370,17 @@ function delStockCount(id){if(!requireAdmin('delete stock counts'))return;const 
 
 // ── Edit Receive
 function openEditMaizeRec(id){
+  if(!requireAdmin('edit records'))return;
   const com=getCom(CCOM);
   const rec=cRec(CCOM).find(x=>String(x.id)===String(id));
   if(!rec){alert('Record not found.');return;}
   if(!isWithin24h(rec)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
+  requireAdminPassword('edit this record', ()=>_doOpenEditMaizeRec(id));
+}
+function _doOpenEditMaizeRec(id){
+  const com=getCom(CCOM);
+  const rec=cRec(CCOM).find(x=>String(x.id)===String(id));
+  if(!rec){alert('Record not found.');return;}
   openModal(`
     <div class="mtitle">✏️ Edit ${com.name} Received</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
@@ -4323,10 +4404,17 @@ function saveEditMaizeRec(id){
 
 // ── Edit Issue
 function openEditMaizeIss(id){
+  if(!requireAdmin('edit records'))return;
   const com=getCom(CCOM);
   const iss=cIss(CCOM).find(x=>String(x.id)===String(id));
   if(!iss){alert('Record not found.');return;}
   if(!isWithin24h(iss)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
+  requireAdminPassword('edit this record', ()=>_doOpenEditMaizeIss(id));
+}
+function _doOpenEditMaizeIss(id){
+  const com=getCom(CCOM);
+  const iss=cIss(CCOM).find(x=>String(x.id)===String(id));
+  if(!iss){alert('Record not found.');return;}
   const batches=[...new Set(cRec(CCOM).map(x=>x.batchName))];
   const opts=batches.map(b=>`<option value="${b}"${b===iss.batchName?' selected':''}>${b}</option>`).join('');
   openModal(`
@@ -4372,7 +4460,6 @@ function renderManageCommoditiesModal(){
         <div><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11px;color:var(--muted)">Unit: ${esc(c.unit)} · ID: ${esc(c.id)}</div></div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        ${hasData?`<button class="btn ba bsm" style="padding:4px 9px;font-size:11px" onclick="bulkClearCommodity('${c.id}')" title="Delete all records for this commodity">🗑 Clear All</button>`:''}
         <button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>
       </div>
     </div>`}).join('');
@@ -4384,21 +4471,6 @@ function renderManageCommoditiesModal(){
     <div class="fw"><div class="fl">Icon (emoji)</div><input class="fi" id="nc-icon" placeholder="🌾" maxlength="4" style="font-size:22px;text-align:center"/></div>
     <div class="fw"><div class="fl">Unit (singular)</div><input class="fi" id="nc-unit" placeholder="bags, tonnes, litres…"/></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Close</button><button class="btn bg" onclick="addCommodity()">+ Add</button></div>`);
-}
-function bulkClearCommodity(cid){
-  if(!requireAdmin('clear commodity records'))return;
-  if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
-  const com=getCom(cid);
-  const total=cRec(cid).length+cIss(cid).length+cSC(cid).length;
-  if(!confirm(`Delete ALL ${total} records for "${com.name}"?\n\nThis removes all received, issued, and stock count records. This cannot be undone.`))return;
-  updateData(d=>{
-    const cr={...(d.commodityReceived||{})};cr[cid]=[];
-    const ci={...(d.commodityIssued||{})};ci[cid]=[];
-    const cs={...(d.commodityStockCounts||{})};cs[cid]=[];
-    return{...d,commodityReceived:cr,commodityIssued:ci,commodityStockCounts:cs};
-  });
-  showToast(`✅ All records cleared for "${com.name}".`);
-  renderManageCommoditiesModal();
 }
 function addCommodity(){
   if(!requireAdmin('add commodities'))return;
@@ -4418,10 +4490,12 @@ function deleteCommodity(cid){
   const com=getCom(cid);
   const hasData=(cRec(cid).length+cIss(cid).length+cSC(cid).length)>0;
   if(hasData){alert(`Cannot delete "${com.name}" — it has existing records. Delete all its records first.`);return;}
-  if(!confirm(`Delete commodity "${com.name}"? This cannot be undone.`))return;
-  if(CCOM===cid) CCOM=(DATA.commodities||[]).filter(c=>c.id!==cid)[0]?.id||'';
-  updateData(d=>({...d,commodities:(d.commodities||[]).filter(c=>c.id!==cid)}));
-  renderManageCommoditiesModal();
+  requireAdminPassword('delete this commodity', ()=>{
+    if(!confirm(`Delete commodity "${com.name}"? This cannot be undone.`))return;
+    if(CCOM===cid) CCOM=(DATA.commodities||[]).filter(c=>c.id!==cid)[0]?.id||'';
+    updateData(d=>({...d,commodities:(d.commodities||[]).filter(c=>c.id!==cid)}));
+    renderManageCommoditiesModal();
+  });
 }
 
 
@@ -4462,10 +4536,12 @@ function addInvItemModal(){
 function removeInvItemModal(idx){
   if(!requireAdmin('remove inventory items'))return;
   const items=[...(DATA.inventoryItems||[])];
-  if(!confirm(`Remove "${items[idx]}" from item list?`))return;
-  items.splice(idx,1);
-  updateData(d=>({...d,inventoryItems:items}));
-  renderManageInventoryModal();
+  requireAdminPassword('remove this inventory item', ()=>{
+    if(!confirm(`Remove "${items[idx]}" from item list?`))return;
+    items.splice(idx,1);
+    updateData(d=>({...d,inventoryItems:items}));
+    renderManageInventoryModal();
+  });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -5323,9 +5399,15 @@ function delLog(id){if(!requireAdmin('delete work logs'))return;const _r=(DATA.s
 
 // ── EDIT: Staff Work Log ─────────────────────────────────────────────────────
 function openEditLog(id){
+  if(!requireAdmin('edit records'))return;
   const log=DATA.staffLogs.find(x=>String(x.id)===String(id));
   if(!log){alert('Record not found.');return;}
   if(!isWithin24h(log)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
+  requireAdminPassword('edit this record', ()=>_doOpenEditLog(id));
+}
+function _doOpenEditLog(id){
+  const log=DATA.staffLogs.find(x=>String(x.id)===String(id));
+  if(!log){alert('Record not found.');return;}
   const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
   const staffOpts=activeStaff.map(s=>`<option value="${s.id}"${String(s.id)===String(log.staffId)?' selected':''}>${esc(s.name)} (${esc(s.role)})</option>`).join('');
   const staffRec=DATA.staff.find(s=>String(s.id)===String(log.staffId));
@@ -5956,9 +6038,11 @@ function removeRole(ri){
   if(!role)return;
   const inUse=DATA.staff.some(s=>s.role===role.name);
   if(inUse){alert(`⚠️ Cannot remove "${role.name}" — it is assigned to existing staff members. Re-assign or remove those staff first.`);return;}
-  if(!confirm(`Remove role "${role.name}" and all its tasks?`))return;
-  updateData(d=>({...d,staffRoles:d.staffRoles.filter((_,i)=>i!==ri)}));
-  refreshRolesEditor();
+  requireAdminPassword('delete this role', ()=>{
+    if(!confirm(`Remove role "${role.name}" and all its tasks?`))return;
+    updateData(d=>({...d,staffRoles:d.staffRoles.filter((_,i)=>i!==ri)}));
+    refreshRolesEditor();
+  });
 }
 
 function addTask(ri){
@@ -5985,13 +6069,15 @@ function removeTask(ri,ti){
   const role=(DATA.staffRoles||[])[ri];
   const task=(role?.tasks||[])[ti];
   if(!task)return;
-  if(!confirm(`Remove task "${task.name}" from role "${role.name}"?`))return;
-  updateData(d=>{
-    const roles=JSON.parse(JSON.stringify(d.staffRoles||[]));
-    roles[ri].tasks=roles[ri].tasks.filter((_,i)=>i!==ti);
-    return{...d,staffRoles:roles};
+  requireAdminPassword('delete this task', ()=>{
+    if(!confirm(`Remove task "${task.name}" from role "${role.name}"?`))return;
+    updateData(d=>{
+      const roles=JSON.parse(JSON.stringify(d.staffRoles||[]));
+      roles[ri].tasks=roles[ri].tasks.filter((_,i)=>i!==ti);
+      return{...d,staffRoles:roles};
+    });
+    refreshRolesEditor();
   });
-  refreshRolesEditor();
 }
 
 function saveTaskRate(ri,ti,val){
@@ -6076,12 +6162,60 @@ async function _confirmAddUser(){
   err.style.display='none';
   if(!username){ err.style.display='block'; err.textContent='⚠️ Enter a username.'; return; }
   if(!/^[a-z0-9_]+$/.test(username)){ err.style.display='block'; err.textContent='⚠️ Username can only contain letters, numbers and underscores.'; return; }
-  // Duplicate check — case-insensitive
+  // Local duplicate check — case-insensitive within this depot
   const exists=(DATA.users||[]).some(u=>(u.username||'').toLowerCase()===username);
   if(exists){ err.style.display='block'; err.textContent='⛔ Username "'+username+'" is already taken. Choose a different one.'; return; }
   if(pass.length<4){ err.style.display='block'; err.textContent='⚠️ Password must be at least 4 characters.'; return; }
   if(pass!==pass2){ err.style.display='block'; err.textContent='❌ Passwords do not match.'; return; }
+
+  // ── GLOBAL FIREBASE DUPLICATE CHECK ────────────────────────────────────────
+  // Usernames are registered globally across all depots in Firebase usernames/.
+  // A sub-user added here must not collide with an admin username from another depot.
+  const addBtn = document.querySelector('#modal-body button.bg');
+  if(isFbConfigured()){
+    if(!navigator.onLine){
+      err.style.display='block';
+      err.textContent='⚠️ An internet connection is required to verify username availability.';
+      return;
+    }
+    if(addBtn){ addBtn.disabled=true; addBtn.textContent='⏳ Checking username…'; }
+    try{
+      const existing = await fbGet('usernames/' + username);
+      if(existing && existing.installId){
+        err.style.display='block';
+        err.textContent='⛔ Username "'+username+'" is already taken globally. Choose a different one.';
+        if(addBtn){ addBtn.disabled=false; addBtn.textContent='✅ Add User'; }
+        return;
+      }
+    } catch(uce){
+      err.style.display='block';
+      err.textContent='⚠️ Could not verify username availability. Please try again.';
+      if(addBtn){ addBtn.disabled=false; addBtn.textContent='✅ Add User'; }
+      return;
+    }
+    if(addBtn){ addBtn.disabled=true; addBtn.textContent='⏳ Adding user…'; }
+  }
+  // ── END GLOBAL CHECK ────────────────────────────────────────────────────────
+
   const hashed=await hashPassword(pass);
+
+  // Register the username globally in Firebase (atomic — guards against race conditions)
+  if(isFbConfigured()){
+    try{
+      await fbSetIfNotExists('usernames/' + username, { installId: depotKey(), createdAt: Date.now() });
+    } catch(race){
+      if(race.code===412){
+        err.style.display='block';
+        err.textContent='⛔ Username "'+username+'" was just taken by another account. Choose a different one.';
+        if(addBtn){ addBtn.disabled=false; addBtn.textContent='✅ Add User'; }
+        return;
+      }
+      // Non-critical: log but don't block — local uniqueness is already guaranteed
+      console.warn('Firebase username register failed for sub-user:', race.message);
+    }
+    if(addBtn){ addBtn.disabled=false; addBtn.textContent='✅ Add User'; }
+  }
+
   updateData(d=>({...d,users:[...(d.users||[]),{username,password:hashed,role}]}));
   closeModal();
   showToast('✅ User "'+username+'" added.');
@@ -6089,9 +6223,16 @@ async function _confirmAddUser(){
 function removeUser(username){
   if(!requireAdmin('remove users'))return;
   if(username===USER.username){alert('⛔ You cannot remove your own account.');return;}
-  if(!confirm(`Remove user "${username}"?`))return;
-  bioRemove(username); // clean up any fingerprint credential for this user
-  updateData(d=>({...d,users:d.users.filter(u=>u.username!==username)}));
+  requireAdminPassword('remove this user account', ()=>{
+    if(!confirm(`Remove user "${username}"?`))return;
+    bioRemove(username);
+    _savedUsersRemove(username);
+    updateData(d=>({...d,users:d.users.filter(u=>u.username!==username)}));
+    if(isFbConfigured()){
+      fbDelete('usernames/' + username.toLowerCase())
+        .catch(e=>console.warn('Firebase username delete failed:', e.message));
+    }
+  });
 }
 function addInvItem(){
   if(!requireAdmin('manage inventory items'))return;
@@ -6156,28 +6297,31 @@ function handleImportFile(input){
 }
 function clearAll(){
   if(!requireAdmin('clear all data'))return;
-  if(!confirm('⚠️ Delete ALL data? This cannot be undone.'))return;
-  if(!confirm('LAST WARNING — all inventory, commodities, and staff records will be permanently deleted.'))return;
-  // Preserve identity fields so the Firebase license record stays linked
-  // and the trial clock is not inadvertently reset.
-  const keepInstallId  = DATA.installId  || '';
-  const keepTrialStart = DATA.trialStart || 0;
-  const keepUsers      = DATA.users      || [];
-  DATA = JSON.parse(JSON.stringify(DEFAULT));
-  DATA.installId  = keepInstallId;
-  DATA.trialStart = keepTrialStart;
-  DATA.users      = keepUsers;
-  DATA._v = (DATA._v || 0) + 1;
-  sv(DATA);
-  render();
+  requireAdminPassword('clear all data', ()=>{
+    if(!confirm('⚠️ Delete ALL data? This cannot be undone.'))return;
+    if(!confirm('LAST WARNING — all inventory, commodities, and staff records will be permanently deleted.'))return;
+    // Preserve identity fields so the Firebase license record stays linked
+    // and the trial clock is not inadvertently reset.
+    const keepInstallId  = DATA.installId  || '';
+    const keepTrialStart = DATA.trialStart || 0;
+    const keepUsers      = DATA.users      || [];
+    DATA = JSON.parse(JSON.stringify(DEFAULT));
+    DATA.installId  = keepInstallId;
+    DATA.trialStart = keepTrialStart;
+    DATA.users      = keepUsers;
+    DATA._v = (DATA._v || 0) + 1;
+    sv(DATA);
+    render();
+  });
 }
 
 // ── BIOMETRICS (WebAuthn — platform fingerprint only) ────────────────────────
 // Credentials stored ONLY in localStorage. Never sent to Firebase or any server.
 // Works on HTTPS (Firebase Hosting, GitHub Pages). Silently disabled on file://.
-const _BIO_PFX  = 'mdm_bio_';   // mdm_bio_{username} → credentialId (base64url)
-const _BIO_MAP  = 'mdm_bio_map'; // {credId: username} reverse lookup
-const _TOS_PFX  = 'mdm_tos_';   // mdm_tos_{username} → 'y'  (TOS previously accepted)
+const _BIO_PFX        = 'mdm_bio_';         // mdm_bio_{username} → credentialId (base64url)
+const _BIO_MAP        = 'mdm_bio_map';      // {credId: username} reverse lookup
+const _TOS_PFX        = 'mdm_tos_';         // mdm_tos_{username} → 'y'  (TOS previously accepted)
+const _SAVED_USERS_KEY = 'mdm_saved_users'; // JSON array of lowercase usernames seen on this device
 
 function _b64ToU8(b64){
   const s=atob(b64.replace(/-/g,'+').replace(/_/g,'/'));
@@ -6191,6 +6335,71 @@ function _u8ToB64(buf){
 }
 function _bioGetMap(){try{return JSON.parse(localStorage.getItem(_BIO_MAP)||'{}');}catch(e){return {};}}
 function _bioSaveMap(m){localStorage.setItem(_BIO_MAP,JSON.stringify(m));}
+
+// ── SAVED USERS (multi-account switcher) ─────────────────────────────────────
+// Persists a list of usernames that have successfully logged in on this device.
+// Used to render account chips on the login screen for fast switching.
+
+function _savedUsersGet(){
+  try{ return JSON.parse(localStorage.getItem(_SAVED_USERS_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+function _savedUsersSet(arr){
+  try{ localStorage.setItem(_SAVED_USERS_KEY, JSON.stringify([...new Set(arr.map(u=>u.toLowerCase()).filter(Boolean))])); }
+  catch(e){}
+}
+function _savedUsersAdd(username){
+  const list = _savedUsersGet();
+  const u = (username||'').toLowerCase();
+  if(u && !list.includes(u)){ list.push(u); _savedUsersSet(list); }
+}
+function _savedUsersRemove(username){
+  const u = (username||'').toLowerCase();
+  _savedUsersSet(_savedUsersGet().filter(x=>x!==u));
+}
+
+function _renderAccountSwitcher(){
+  const list = _savedUsersGet();
+  const el = document.getElementById('account-switcher');
+  if(!el) return;
+  if(list.length < 2){ el.style.display='none'; return; }
+  el.style.display='';
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-align:center;letter-spacing:0.5px">SWITCH ACCOUNT</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      ${list.map(u=>`
+        <button onclick="_switchToUser('${esc(u)}')"
+          title="Sign in as ${esc(u)}"
+          style="display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface2);
+                 border:1.5px solid var(--border);border-radius:12px;padding:8px 12px;cursor:pointer;
+                 min-width:60px;touch-action:manipulation;transition:border-color .15s"
+          onmouseenter="this.style.borderColor='var(--green)'" onmouseleave="this.style.borderColor='var(--border)'">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--green);display:flex;
+                      align-items:center;justify-content:center;font-weight:700;font-size:15px;
+                      color:var(--bg);text-transform:uppercase;flex-shrink:0">${esc(u.charAt(0))}</div>
+          <div style="font-size:11px;color:var(--text);font-weight:600;max-width:70px;
+                      overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u)}</div>
+        </button>`).join('')}
+    </div>`;
+}
+function _switchToUser(username){
+  const el = document.getElementById('l-user');
+  const pw = document.getElementById('l-pass');
+  if(el){ el.value = username; }
+  if(pw){ pw.value=''; pw.focus(); }
+  // Pre-tick TOS if this user has already accepted it
+  const tosCheck = document.getElementById('tos-check');
+  const tosBox   = document.getElementById('tos-box');
+  if(tosCheck){
+    const accepted = localStorage.getItem(_TOS_PFX+username.toLowerCase())==='y';
+    tosCheck.checked = accepted;
+    if(tosBox){
+      tosBox.style.borderColor = accepted ? 'var(--green)' : '';
+      tosBox.style.background  = accepted ? '#001a10' : '';
+    }
+  }
+  document.getElementById('login-err').style.display='none';
+}
 
 function bioIsRegistered(username){
   return !!localStorage.getItem(_BIO_PFX+(username||'').toLowerCase());
@@ -7351,9 +7560,11 @@ function deleteBook(id) {
   const book = (DATA.books||[]).find(b=>b.id===id);
   if (!book) return;
   if(!isWithin24h(book)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}
-  if (!confirm(`Delete "${book.name||'this document'}"? This cannot be undone.`)) return;
-  updateData(d=>({...d, books:(d.books||[]).filter(b=>b.id!==id)}));
-  if(TAB==='books') render();
+  requireAdminPassword('delete this document', ()=>{
+    if (!confirm(`Delete "${book.name||'this document'}"? This cannot be undone.`)) return;
+    updateData(d=>({...d, books:(d.books||[]).filter(b=>b.id!==id)}));
+    if(TAB==='books') render();
+  });
 }
 
 // ══ END BOOKS ═════════════════════════════════════════════
