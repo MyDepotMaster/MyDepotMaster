@@ -599,7 +599,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
     <div class="login-card">
       <div id="account-switcher" style="display:none;margin-bottom:18px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:14px"></div>
       <div class="err-box" id="login-err" style="display:none"></div>
-      <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="off" autocapitalize="none" spellcheck="false" style="text-transform:none"/></div>
+      <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none"/></div>
       <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password" autocapitalize="none" autocorrect="off" autocomplete="current-password" spellcheck="false"/></div>
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px" id="tos-box">
         <input type="checkbox" id="tos-check" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
@@ -1467,7 +1467,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v11';
+const SW_VERSION  = 'mdm-v12';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1483,7 +1483,7 @@ const SW_VERSION  = 'mdm-v11';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v11';
+  const VER = 'mdm-v12';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
