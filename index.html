@@ -2316,7 +2316,9 @@ function renderSignupStep() {
       <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.7">Set up the admin username and password for your company. Once signed in, you can add additional users via <strong style="color:var(--text)">Settings → User Accounts → Add User</strong>.</div>
       <div id="su-err3" class="err-box" style="display:none"></div>
       <div class="fw"><div class="fl">Admin Username <span style="color:var(--red)">*</span></div>
-        <input class="fi" id="su-user" placeholder="E.G. manager" autocapitalize="none" autocomplete="off" style="text-transform:none" value="${esc(_signupData.username||'')}"/></div>
+        <input class="fi" id="su-user" placeholder="E.G. manager" autocapitalize="none" autocomplete="off" style="text-transform:none" value="${esc(_signupData.username||'')}" oninput="suCheckUsername(this.value)"/>
+        <div id="su-user-status" style="font-size:11px;margin-top:5px;min-height:16px"></div>
+      </div>
       <div class="fw"><div class="fl">Password <span style="color:var(--red)">*</span></div>
         <input class="fi" type="password" id="su-pass" placeholder="Create a password" autocomplete="new-password"/></div>
       <div class="fw"><div class="fl">Confirm Password <span style="color:var(--red)">*</span></div>
@@ -2359,6 +2361,44 @@ function signupStep1Next() {
   renderSignupStep();
 }
 
+let _suUsernameTimer = null;
+let _suUsernameOk = false;
+
+async function suCheckUsername(raw) {
+  const val = (raw||'').trim().toLowerCase();
+  const status = document.getElementById('su-user-status');
+  const btn = document.querySelector('#signup-inner button[onclick="signupFinish()"]');
+  _suUsernameOk = false;
+  if (btn) btn.disabled = true;
+
+  if (!val) { if(status) status.textContent=''; return; }
+  if (!/^[a-z0-9_]+$/.test(val)) {
+    if(status){ status.style.color='var(--red)'; status.textContent='⚠️ Letters, numbers and underscores only.'; }
+    return;
+  }
+  if(status){ status.style.color='var(--muted)'; status.textContent='⏳ Checking availability…'; }
+
+  clearTimeout(_suUsernameTimer);
+  _suUsernameTimer = setTimeout(async () => {
+    try {
+      const existing = await fbGet('usernames/' + val);
+      if (existing !== null && existing !== undefined) {
+        if(status){ status.style.color='var(--red)'; status.textContent='⛔ Username "'+val+'" is already taken.'; }
+        _suUsernameOk = false;
+      } else {
+        if(status){ status.style.color='var(--green)'; status.textContent='✅ Username is available!'; }
+        _suUsernameOk = true;
+        if (btn) btn.disabled = false;
+      }
+    } catch(e) {
+      // Network/Firebase error — allow submit but server will re-check
+      if(status){ status.style.color='var(--muted)'; status.textContent='⚠️ Could not verify — will check on submit.'; }
+      _suUsernameOk = true;
+      if (btn) btn.disabled = false;
+    }
+  }, 600);
+}
+
 async function signupFinish() {
   const username = (document.getElementById('su-user')?.value||'').trim().toLowerCase();
   const pass = document.getElementById('su-pass')?.value||'';
@@ -2370,6 +2410,7 @@ async function signupFinish() {
   const suCurrency=(document.getElementById('su-currency')?.value||'').trim().toUpperCase();
   if (!username) { err.style.display='block'; err.textContent='Enter a username.'; return; }
   if (!/^[a-z0-9_]+$/.test(username)) { err.style.display='block'; err.textContent='⚠️ Username can only contain letters, numbers and underscores.'; return; }
+  if (!_suUsernameOk) { err.style.display='block'; err.textContent='⚠️ Please wait for username availability check to complete.'; return; }
   if (!suCurrency) { err.style.display='block'; err.textContent='Please enter a currency (e.g. ZMW, USD).'; return; }
   if (pass.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
   if (pass !== pass2) { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
