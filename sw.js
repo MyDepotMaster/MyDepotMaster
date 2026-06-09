@@ -20,20 +20,34 @@
 //   To guarantee Median users always get the latest version:
 //   - index.html stamps every URL with ?_mv=<VERSION> and forces a reload
 //     if the stamp is missing or outdated (medianUpdateCheck IIFE).
-//   - The SW strips _mv from cache keys so ?_mv=mdm-v13 and the bare URL
+//   - The SW strips _mv from cache keys so ?_mv=mdm-v16 and the bare URL
 //     resolve to the same cached entry — no double-fetching.
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// v13 changes (2026-06-09):
+// v16 changes (2026-06-09):
+//   - Pre-login restore now always runs (not only when DATA.users is empty).
+//   - On brand-new device/fresh install with no installId: looks up the typed
+//     username in Firebase usernames/ index to discover the installId, then
+//     does a full depot restore — fixes login from content://downloads/ URLs.
+//
+// v15 changes (2026-06-09):
+//   - Removed Depot Key as a recovery method entirely.
+//   - Recovery is now PIN and email only.
+//   - Fresh-install no-data screen directs user to go online/contact support.
+//   - Removed depot key mention from login error message.
+//
+// v14 changes (2026-06-09):
 //   - Pre-login cloud restore: if DATA.users is empty on fresh install,
 //     fbRestoreData() is called before the username lookup so existing
 //     accounts are found without needing the recovery flow.
 //   - Better login error message when no local data exists on device.
 //   - "Restore from Cloud" option added to recovery screen using Depot Key.
+
+
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v13';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v16';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 

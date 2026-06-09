@@ -1467,7 +1467,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v13';
+const SW_VERSION  = 'mdm-v16';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1483,7 +1483,7 @@ const SW_VERSION  = 'mdm-v13';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v13';
+  const VER = 'mdm-v16';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -1972,42 +1972,7 @@ function hideRecovery() {
   showLoginScreen();
 }
 
-async function doDepotKeyRestore() {
-  const inp = document.getElementById('rec-dk-input');
-  const errEl = document.getElementById('rec-dk-err');
-  const btn = document.querySelector('[onclick="doDepotKeyRestore()"]');
-  if (!inp || !errEl) return;
 
-  const key = (inp.value || '').trim().toUpperCase();
-  if (!key) { errEl.style.display='block'; errEl.textContent='Please enter your Depot Key.'; return; }
-  if (!navigator.onLine) { errEl.style.display='block'; errEl.textContent='You must be online to restore from the cloud.'; return; }
-  if (!isFbConfigured()) { errEl.style.display='block'; errEl.textContent='Cloud sync is not configured in this build.'; return; }
-
-  errEl.style.display='none';
-  if (btn) { btn.disabled=true; btn.textContent='⏳ Restoring…'; }
-
-  try {
-    const val = await fbGet('depots/' + key + '/data');
-    if (!val || !val._v || !(val.users && val.users.length > 0)) {
-      errEl.style.display='block';
-      errEl.textContent='No data found for that Depot Key. Please check and try again.';
-      if (btn) { btn.disabled=false; btn.textContent='☁ Restore My Account'; }
-      return;
-    }
-    // Restore data using the entered key
-    DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
-    DATA.installId = key;
-    DATA._lastFbSync = Date.now();
-    _persistInstallId(key);
-    sv(DATA);
-    hideRecovery();
-    showToast('✅ Account restored! Please sign in.');
-  } catch(e) {
-    errEl.style.display='block';
-    errEl.textContent='Restore failed: ' + (e.message || 'Network error. Please try again.');
-    if (btn) { btn.disabled=false; btn.textContent='☁ Restore My Account'; }
-  }
-}
 
 function _recReset() {
   const s2 = document.getElementById('rec-s2');
@@ -2022,6 +1987,26 @@ function _recAutoLoad() {
   const s2 = document.getElementById('rec-s2');
   if (!s2) return;
 
+  const noLocalData = !(DATA.users && DATA.users.length > 0);
+
+  // No local data — auto-restore via installId was attempted at login but failed.
+  // Recovery requires PIN or email, both of which need local data to verify against.
+  // Direct the user to contact support; there is no self-service path without credentials.
+  if (noLocalData) {
+    s2.innerHTML = `
+      <div class="rec-option rec-opt-amber" style="margin-bottom:14px">
+        <div class="rec-opt-label" style="color:var(--amber)">⚠️ No Local Data Found</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">
+          Your account data could not be loaded on this device.<br><br>
+          Make sure you are <strong style="color:var(--text)">connected to the internet</strong> and
+          try signing in again — the app will attempt to restore your data automatically.<br><br>
+          If the problem persists, contact the <strong style="color:var(--text)">MDM Developer</strong> for assistance.
+        </div>
+      </div>
+      <button class="btn bo" style="margin-top:4px" onclick="hideRecovery()">← Back to Sign In</button>`;
+    return;
+  }
+
   const admins = (DATA.users || []).filter(u => u.role === 'admin');
   const hasPin = !!(DATA.recoveryPin);
   // Check for recovery email on admin user(s) or depotInfo
@@ -2030,27 +2015,12 @@ function _recAutoLoad() {
   const hasEmail = !!adminEmail;
 
   if (admins.length === 0) {
-    // If no local data at all, offer a Depot Key cloud restore
-    const noLocalData = !(DATA.users && DATA.users.length > 0);
     s2.innerHTML = `
-      <div class="rec-option rec-opt-amber" style="margin-bottom:14px">
-        <div class="rec-opt-label" style="color:var(--amber)">⚠️ No Local Data Found</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.7">
-          ${noLocalData
-            ? 'This appears to be a fresh install. If you have an existing account, enter your <strong style="color:var(--text)">Depot Key</strong> to restore your data from the cloud.'
-            : 'No admin account exists in this company. Please contact your system administrator.'}
-        </div>
+      <div class="rec-option rec-opt-amber">
+        <div class="rec-opt-label" style="color:var(--amber)">⚠️ No Admin Account Found</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">No admin account exists in this company. Please contact your system administrator.</div>
       </div>
-      ${noLocalData && isFbConfigured() ? `
-      <div class="rec-option rec-opt-green" style="margin-bottom:14px">
-        <div class="rec-opt-label" style="color:var(--green)">☁ Restore from Cloud</div>
-        <div class="err-box" id="rec-dk-err" style="display:none;margin-bottom:10px"></div>
-        <div class="fw"><div class="fl">Depot Key</div>
-          <input class="fi" id="rec-dk-input" placeholder="e.g. MDM-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" style="font-family:var(--fm);letter-spacing:1px"/>
-        </div>
-        <button class="btn bg" onclick="doDepotKeyRestore()">☁ Restore My Account</button>
-      </div>` : ''}
-      <button class="btn bo" style="margin-top:4px" onclick="hideRecovery()">← Back to Sign In</button>`;
+      <button class="btn bo" style="margin-top:8px" onclick="hideRecovery()">← Back to Sign In</button>`;
     return;
   }
 
@@ -2667,13 +2637,33 @@ async function doLogin(){
   try {
     await initData();
 
-    // ── Pre-login cloud restore (fixes fresh-install login failure) ──────────
-    // On a new device/reinstall, localStorage and IDB are empty so DATA.users=[]
-    // and login always fails. Pull from Firebase BEFORE the user lookup so the
-    // account list is available even on first run.
-    if ((!DATA.users || DATA.users.length === 0) && navigator.onLine && isFbConfigured()) {
+    // ── Pre-login cloud restore ───────────────────────────────────────────────
+    // Always restore from Firebase before checking credentials so the app works
+    // on any fresh device, reinstall, or direct file open (content://downloads).
+    //
+    // Strategy:
+    //   1. Returning device (has installId) — fbRestoreData() version-gates and
+    //      only overwrites local data if the cloud copy is strictly newer.
+    //   2. Brand-new device (no installId) — look up the typed username in the
+    //      Firebase usernames/ index to discover installId, then restore.
+    //      This is the only path that works with no prior localStorage at all.
+    if (navigator.onLine && isFbConfigured()) {
       btn.textContent = '☁ Restoring data…';
-      try { await fbRestoreData(); } catch(e) { console.warn('Pre-login restore failed:', e); }
+      try {
+        const hasInstallId = !!(DATA.installId || _loadPersistedInstallId());
+        if (hasInstallId) {
+          // Returning device — standard version-gated restore
+          await fbRestoreData();
+        } else {
+          // Brand-new device — discover installId from the username index
+          const usernameRecord = await fbGet('usernames/' + u);
+          if (usernameRecord && usernameRecord.installId) {
+            DATA.installId = usernameRecord.installId;
+            _persistInstallId(usernameRecord.installId);
+            await fbRestoreData();
+          }
+        }
+      } catch(e) { console.warn('Pre-login restore failed:', e); }
       btn.disabled = true; btn.textContent = '🔐 Signing in…';
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -2704,7 +2694,7 @@ async function doLogin(){
       const _rem = _BF_MAX - (_s.attempts || 0);
       err.style.display='block';
       if (!DATA.users || DATA.users.length === 0) {
-        err.innerHTML = '❌ No account data found on this device. Use <strong>Forgot password? Recover account →</strong> below to restore your data with your Depot Key.';
+        err.innerHTML = '❌ No account data found on this device. Make sure you are online and try again — the app will restore your data automatically.';
       } else {
         err.innerHTML = _rem > 0
           ? `❌ Invalid username or password. ${_rem} attempt${_rem!==1?'s':''} left before 60-second lockout.`
