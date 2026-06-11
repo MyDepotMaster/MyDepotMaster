@@ -20,10 +20,40 @@
 //   To guarantee Median users always get the latest version:
 //   - index.html stamps every URL with ?_mv=<VERSION> and forces a reload
 //     if the stamp is missing or outdated (medianUpdateCheck IIFE).
-//   - The SW strips _mv from cache keys so ?_mv=mdm-v17 and the bare URL
+//   - The SW strips _mv from cache keys so ?_mv=mdm-v20 and the bare URL
 //     resolve to the same cached entry — no double-fetching.
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
+//
+// v21 changes (2026-06-11):
+//   - Fix 23: Supplier picker added to General and Commodity receive forms.
+//     supplierId + supplierName stored on every receive record; Supplier
+//     Performance tab now auto-links without manual name matching.
+//   - Fix 24: Vehicle / Transport Log added as new 🚛 Transport subtab inside
+//     the Commodity tab. Fields: date, vehicle, driver, route, trip type,
+//     cost, notes. Includes CSV export.
+//   - Fix 25: Batch/lot traceability on commodity issues. Issue form shows
+//     Source Receive Record dropdown (filtered by batch, shows date/qty/supplier).
+//     sourceReceiveId stored on issue records. 🔍 Trace button on issue rows
+//     opens a modal showing the full issue → receive chain with supplier details.
+//
+// v20 changes (2026-06-10):
+//   - Fix 19: Credit/debt tracking on issue and receive records.
+//     Issue form now captures payment status (paid/partial/credit) and
+//     partial amount paid. Outstanding credit card shows all open debts.
+//     Receive form captures supplier payment status (paid/partial/credit).
+//   - Fix 20: Consolidated Profit & Loss view added as new P&L subtab
+//     in the General tab. Shows revenue, COGS, gross profit, staff costs,
+//     and net profit for the selected period, with a full COGS breakdown.
+//
+// v19 changes (2026-06-10):
+//   - (index-4 release — see index.html changelog)
+//
+// v18 changes (2026-06-09):
+//   - fbRestoreData now merges users instead of overwriting: cloud is
+//     authoritative for users it knows, but local-only users (sub-users added
+//     while offline or before sync caught up) are never dropped. Fixes chongo1
+//     and mwansa being wiped when cloud restore runs with a higher _v.
 //
 // v17 changes (2026-06-09):
 //   - Any account from any depot can now log in on any device (no device binding).
@@ -54,7 +84,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v17';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v21';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
