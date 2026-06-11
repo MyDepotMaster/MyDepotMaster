@@ -25,6 +25,21 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v24 changes (2026-06-11):
+//   - Two-Stage Shift Log: "Log Work" button split into ⏵ Clock In and
+//     ✏️ Manual. Clock In (Stage 1) saves an open shift with status:'open',
+//     timeInTs, staff, role, task, date, time-in. Clock Out (Stage 2)
+//     completes the shift: adds time-out, qty, earnings, deductions, notes,
+//     sets status:'completed' + timeOutTs. Open shifts show a pulsing
+//     🟢 ACTIVE badge and inline ⏹ Clock Out button in the logs table.
+//     Active-shifts banner at top of logs lists all open shifts.
+//     Duplicate open-shift guard blocks double clock-in with redirect to
+//     Clock Out. Edit-window calculation now anchors to timeOutTs instead
+//     of uid creation time for completed staff logs. Migration on load tags
+//     all legacy logs as status:'completed' with timeOutTs from uid timestamp.
+//   - Hotfix: missing `function openLogForm(){` declaration (eaten by str_replace
+//     anchor) caused a parse-time SyntaxError → blank dark screen on load.
+//
 // v23 changes (2026-06-11):
 //   - PC/tablet nav moved from left sidebar to bottom tab bar.
 //     Tabs display icon + label side-by-side (row layout), 64px tall,
@@ -92,7 +107,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v23';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v24';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 

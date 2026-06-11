@@ -266,6 +266,11 @@ tr:last-child td{border-bottom:none;}
 tr:hover td{background:var(--table-row-hover);}
 .bdg{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;font-family:var(--fb);}
 .bg2{background:rgba(0,214,143,.1);color:var(--green);border:1px solid rgba(0,214,143,.2);}.ba2{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2);}.bb2{background:rgba(59,130,246,.1);color:var(--blue);border:1px solid rgba(59,130,246,.2);}.br2{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);}
+/* Two-Stage Shift: ACTIVE badge */
+.bdg-active{background:rgba(0,214,143,.15);color:var(--green);border:1.5px solid rgba(0,214,143,.5);animation:pulse-active 2s ease-in-out infinite;}
+@keyframes pulse-active{0%,100%{opacity:1;}50%{opacity:.6;}}
+.clockout-btn{background:none;border:1.5px solid var(--amber);border-radius:8px;color:var(--amber);cursor:pointer;padding:3px 9px;font-size:11px;font-weight:700;white-space:nowrap;touch-action:manipulation;font-family:var(--fb);}
+body.light .clockout-btn{border-color:var(--amber);color:var(--amber);}
 .tag{display:inline-block;background:rgba(26,45,71,.6);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:10px;color:var(--muted);}
 
 /* Subtabs */
@@ -1993,7 +1998,7 @@ const DEFAULT={
   maizeStockCounts:[],   // {id,batchName,date,physicalCount,notes}
   generalStockCounts:[], // {id,itemName,date,time,physicalCount,notes}
   staff:[],             // {id,name,role,phone}
-  staffLogs:[],         // {id,staffId,date,task,bags,earnings,deduction,deductionReason,timeIn,timeOut}
+  staffLogs:[],         // {id,staffId,date,task,bags,earnings,deduction,deductionReason,timeIn,timeOut,status,timeInTs,timeOutTs}
   staffPayments:[],     // {id,staffId,date,amount,notes}
   leaveLog:[],          // {id,staffId,type,date,days,note}
   staffRoles:[],
@@ -2127,6 +2132,7 @@ async function initData(){
 }
 
 let DATA=ld(); // immediate sync load from localStorage
+migrateShiftLogStatus();  // Two-Stage Shift Log: tag legacy logs as completed
 let USER=null;
 let TAB='dashboard';
 let ONLINE=navigator.onLine;
@@ -2141,6 +2147,32 @@ let BTAB='set';  // budget subtab: set|report
 
 function uid(){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
 function nowTime(){return new Date().toTimeString().slice(0,5);} // HH:MM
+
+// ── SHIFT LOG MIGRATION (Two-Stage Shift Log) ─────────────────────────────────
+// On load: tag all existing completed work logs with status:'completed' if not set.
+// Also sets timeOutTs to Date.now() for old logs that lack it (safe: they'll be editable for
+// one more window then lock as normal — far better than using uid creation time).
+function migrateShiftLogStatus(){
+  if(!DATA||!DATA.staffLogs)return;
+  let changed=false;
+  DATA.staffLogs=DATA.staffLogs.map(l=>{
+    if(!l.status){
+      // All pre-existing logs are completed (they have full data)
+      const patch={status:'completed'};
+      // If no timeOutTs, derive from uid timestamp so the edit window is still correct
+      if(!l.timeOutTs){
+        const id=String(l.id||'');
+        let base=id.includes('-')?parseInt(id.split('-')[0],36):Number(id);
+        if(!base||isNaN(base))base=Date.now();
+        patch.timeOutTs=base;
+      }
+      changed=true;
+      return{...l,...patch};
+    }
+    return l;
+  });
+  if(changed){try{localStorage.setItem(LK,JSON.stringify(DATA));}catch{}}
+}
 // ── AUDIT LOG (Fix 26) ────────────────────────────────────────────────────────
 // logAuditEvent(action, entity, detail, before?)
 // action: 'CREATE'|'EDIT'|'DELETE'  entity: human-readable area  detail: short description
@@ -3589,7 +3621,7 @@ function renderDash(){
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
       <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" class="qa-btn-green" style="background:var(--surface);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">${_comStats[0]?_comStats[0].icon:'📦'}</span>Commodity In</button>
       <button onclick="showTab('general');setTimeout(()=>openGenRecForm(),80)" class="qa-btn-amber" style="background:var(--surface);border:1.5px solid var(--amber);border-radius:12px;padding:12px 6px;color:var(--amber);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">📦</span>Receive</button>
-      <button onclick="showTab('staff');setTimeout(()=>openLogForm(),80)" class="qa-btn-blue" style="background:var(--surface);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Log Work</button>
+      <button onclick="showTab('staff');setTimeout(()=>openClockInForm(),80)" class="qa-btn-blue" style="background:var(--surface);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Clock In</button>
       <button onclick="openPrintSummary()" class="qa-btn-purple" style="background:var(--surface);border:1.5px solid var(--purple);border-radius:12px;padding:12px 6px;color:var(--purple);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">🖨️</span>Print Summary</button>
     </div>
 
@@ -4551,6 +4583,11 @@ function _editWindowLabel(){
   return h<24?h+'h':h===24?'24h':(h/24)+'d';
 }
 function isWithin24h(record){
+  // For completed staff logs, use timeOutTs (clock-out timestamp) as the edit window anchor.
+  // This way the 24h window starts when the shift was clocked out, not when it was created.
+  if(record&&record.timeOutTs&&(record.status==='completed'||record.entryType==='work')){
+    return(Date.now()-record.timeOutTs)<_editWindowMs();
+  }
   // New uid format: "base36timestamp-randomsuffix"
   // Old uid format: numeric float (Date.now()+Math.random())
   const id=String(record.id||'');
@@ -5753,7 +5790,8 @@ function renderStaff(){
       <div class="sh" style="margin:0">Staff</div>
       <div style="display:flex;gap:8px">
         ${USER.role==='admin'?`<button class="btn bo bsm" id="btn-add-staff">+ Add Staff</button>`:''}
-        <button class="btn bg bsm" id="btn-log-work">+ Log Work</button>
+        <button class="btn bg bsm" id="btn-clock-in">⏵ Clock In</button>
+        <button class="btn bo bsm" id="btn-log-work">✏️ Manual</button>
         <button class="btn ba bsm" id="btn-pay-staff">💳 Pay</button>
         <button class="btn bo bsm" onclick="exportCurrentTabCSV()" title="Export current view as PDF">⬇️ PDF</button>
       </div>
@@ -5773,8 +5811,10 @@ function renderStaff(){
 function renderStaffLogs(){
   const logs=filterPeriod(DATA.staffLogs, PERIOD.staff, 'date', 'staff');
   const staffById=Object.fromEntries(DATA.staff.map(s=>[s.id,s]));
-  const totQty=logs.reduce((a,b)=>a+Number(b.qty!=null?b.qty:b.bags||0),0);
-  const totNet=logs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+  const totQty=logs.filter(l=>l.status!=='open').reduce((a,b)=>a+Number(b.qty!=null?b.qty:b.bags||0),0);
+  const totNet=logs.filter(l=>l.status!=='open').reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+  // Open shifts across ALL time (not period-filtered)
+  const allOpenShifts=(DATA.staffLogs||[]).filter(l=>l.status==='open'&&(!l.entryType||l.entryType==='work'));
 
   // Build cumulative totals per staff across ALL logs (career running total up to each entry)
   const allSorted=DATA.staffLogs.slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
@@ -5809,6 +5849,7 @@ function renderStaffLogs(){
     const net=Number(log.earnings||0)-Number(log.deduction||0);
     const cum=cumMap[log.id]||{cumBags:0,cumNet:0};
     const editable=isWithin24h(log);
+    const isOpen=log.status==='open';
     // Hours worked calculation
     const stdHrs=Number((DATA.depotInfo||{}).standardShiftHours||8);
     let hoursCell='—';
@@ -5821,23 +5862,30 @@ function renderStaffLogs(){
       const ot=mins/60>stdHrs;
       hoursCell=`${hrs}h${ot?` <span style="color:var(--amber);font-size:9px">OT</span>`:''}`;
     }
-    return `<tr>
-      <td style="white-space:nowrap"><div style='font-size:12px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:10px;color:var(--muted)'>${log.time||'—'}</div></td>
+    return `<tr${isOpen?' style="background:rgba(0,214,143,.03)"':''}>
+      <td style="white-space:nowrap"><div style='font-size:12px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:10px;color:var(--muted)'>${log.time||'—'}</div>${isOpen?`<span class="bdg bdg-active" style="margin-top:3px;display:inline-block">🟢 ACTIVE</span>`:''}
+      ${isOpen&&USER.role==='admin'?`<div style="margin-top:4px"><button class="clockout-btn" onclick="openClockOutForm('${log.id}')">⏹ Clock Out</button></div>`:''}</td>
       <td style="font-weight:700">${s?.name||'—'}</td>
       <td><span class="tag">${esc(log.role)}</span></td>
       <td style="font-size:12px;color:var(--muted)">${log.task||'—'}</td>
-      <td style="text-align:right">${(()=>{const q=log.qty!=null?log.qty:log.bags;const ul=taskRateUnitLabel(log.role||'',log.task||'')||'bag';return Number(q||0).toLocaleString()+'<br><span style="font-size:9px;color:var(--muted)">'+ul+'</span>';})()}</td>
-      <td style="color:var(--green);font-weight:600;text-align:right">${zm(log.earnings)}</td>
-      <td style="color:${Number(log.deduction||0)>0?'var(--red)':'var(--muted)'};text-align:right">-${zm(log.deduction||0)}</td>
-      <td style="color:var(--green);font-weight:700;text-align:right">${zm(net)}</td>
-      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${log.timeOut||'—'}<br><span style="color:var(--blue)">${hoursCell}</span></td>
-      <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${cum.cumQty.toLocaleString()}<br><span style="font-size:9px;color:var(--muted);font-weight:400">${cum.cumUnit}</span></td>
-      <td style="color:var(--purple);font-weight:700;text-align:right">${zm(cum.cumNet)}</td>
+      <td style="text-align:right">${(()=>{const q=log.qty!=null?log.qty:log.bags;const ul=taskRateUnitLabel(log.role||'',log.task||'')||'bag';return isOpen?'<span style="color:var(--muted);font-size:11px">—</span>':Number(q||0).toLocaleString()+'<br><span style="font-size:9px;color:var(--muted)">'+ul+'</span>';})()}</td>
+      <td style="color:var(--green);font-weight:600;text-align:right">${isOpen?'—':zm(log.earnings)}</td>
+      <td style="color:${Number(log.deduction||0)>0?'var(--red)':'var(--muted)'};text-align:right">${isOpen?'—':'-'+zm(log.deduction||0)}</td>
+      <td style="color:var(--green);font-weight:700;text-align:right">${isOpen?'—':zm(net)}</td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${isOpen?'<span style="color:var(--green)">…</span>':log.timeOut||'—'}<br><span style="color:var(--blue)">${isOpen?'':hoursCell}</span></td>
+      <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${isOpen?'—':cum.cumQty.toLocaleString()}<br><span style="font-size:9px;color:var(--muted);font-weight:400">${cum.cumUnit}</span></td>
+      <td style="color:var(--purple);font-weight:700;text-align:right">${isOpen?'—':zm(cum.cumNet)}</td>
       ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
     </tr>`;}).join('');
 
   return `
     <div class="prow">${pBtns('staff')}</div>
+    ${allOpenShifts.length>0?`<div class="banner b-on" style="margin-bottom:12px;cursor:pointer" onclick="document.getElementById('staff-log-search').value='';filterStaffLogTable('')">
+      <span style="font-size:20px">🟢</span>
+      <div class="btxt"><div class="btit" style="color:var(--green)">${allOpenShifts.length} Active Shift${allOpenShifts.length!==1?'s':''}</div>
+      <div style="font-size:11px;color:var(--muted)">${allOpenShifts.map(l=>{const s=staffById[l.staffId];return`${s?.name||'?'} (${l.timeIn||'—'})`;}).join(' · ')}</div></div>
+      ${USER.role==='admin'&&allOpenShifts.length===1?`<button class="clockout-btn" onclick="openClockOutForm('${allOpenShifts[0].id}')">⏹ Clock Out</button>`:''}
+    </div>`:''}
     <div class="srow">
       <div class="sbox"><div class="sv">${totQty.toLocaleString()}</div><div class="sl">Total Qty (Period)</div></div>
       <div class="sbox bl"><div class="sv">${cur()} ${totNet.toFixed(0)}</div><div class="sl">Net (Period)</div></div>
@@ -5984,6 +6032,215 @@ function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only m
   const payload={id:uid(),name,role:document.getElementById('sf-role').value,contractType:document.getElementById('sf-contract').value||'permanent',dateJoined:joined,phone:document.getElementById('sf-phone').value,employeeId:(document.getElementById('sf-empid').value||'').trim(),emergencyContactName:uc(document.getElementById('sf-ecname').value),emergencyContactPhone:(document.getElementById('sf-ecphone').value||'').trim(),notes:uc(document.getElementById('sf-notes').value),status:'active'};
   updateData(d=>({...d,staff:[...d.staff,payload]}));
   closeModal();
+}
+
+// ── TWO-STAGE SHIFT LOG ───────────────────────────────────────────────────────
+
+// Helper: find open shift for a staff member
+function _openShiftFor(staffId){
+  return (DATA.staffLogs||[]).find(l=>String(l.staffId)===String(staffId)&&l.status==='open'&&(!l.entryType||l.entryType==='work'));
+}
+
+// Stage 1 — Clock In
+function openClockInForm(preStaffId){
+  if(DATA.staff.length===0){alert('Register staff members first.');return;}
+  if((DATA.staffRoles||[]).length===0){alert('No roles defined. Go to Staff > Roles & Rates to add roles first.');return;}
+  const activeStaff=DATA.staff.filter(s=>!s.status||s.status==='active');
+  if(activeStaff.length===0){alert('No active staff. Check roster for suspended/expelled staff.');return;}
+  const opts=activeStaff.map(s=>`<option value="${esc(s.id)}"${String(s.id)===String(preStaffId||'')?' selected':''}>${esc(s.name)} (${esc(s.role)})</option>`).join('');
+  openModal(`
+    <div class="mtitle">⏵ Clock In ${!ONLINE?'<span style="font-size:14px;color:var(--amber)">· Offline</span>':''}</div>
+    <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="ci-staff" onchange="onClockInStaffChange()">${opts}</select></div>
+    <div id="ci-open-warn" style="display:none"></div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="ci-date" value="${today()}"/></div>
+    <div class="fw"><div class="fl">Time In</div><input class="fi" type="time" id="ci-time-in" value="${nowTime()}"/></div>
+    <div class="fw" id="ci-role-wrap"><div class="fl">Role</div><div class="fi" id="ci-role-display" style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="ci-role"/></div>
+    <div class="fw"><div class="fl">Task</div><select class="fi" id="ci-task"><option>—</option></select></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveClockIn()">⏵ Clock In</button></div>`);
+  onClockInStaffChange();
+}
+
+function onClockInStaffChange(){
+  const sid=document.getElementById('ci-staff')?.value;
+  const s=DATA.staff.find(x=>String(x.id)===String(sid));
+  const warnEl=document.getElementById('ci-open-warn');
+  // Check for existing open shift
+  const existing=_openShiftFor(sid);
+  if(existing&&warnEl){
+    warnEl.style.display='';
+    warnEl.innerHTML=`<div class="warn" style="margin-bottom:12px">⚠️ <strong>${esc(s?.name||'This staff member')}</strong> already has an open shift (clocked in ${existing.date}, ${existing.timeIn||'—'}). <button type="button" onclick="closeModal();setTimeout(()=>openClockOutForm('${existing.id}'),50)" style="background:none;border:1px solid var(--amber);border-radius:6px;color:var(--amber);cursor:pointer;padding:2px 8px;font-size:11px;font-weight:700;margin-left:6px">⏹ Clock Out Now</button></div>`;
+  } else if(warnEl){
+    warnEl.style.display='none';warnEl.innerHTML='';
+  }
+  if(s){
+    const display=document.getElementById('ci-role-display');
+    const hidden=document.getElementById('ci-role');
+    if(display)display.textContent=s.role.toUpperCase();
+    if(hidden)hidden.value=s.role;
+    const taskEl=document.getElementById('ci-task');
+    if(taskEl){
+      const tasks=tasksForRole(s.role);
+      taskEl.innerHTML=tasks.length>0?tasks.map(t=>{
+        const u=t.rateUnit||'bag';const ul=u==='custom'?(t.customUnit||'unit'):u;
+        return`<option value="${esc(t.name)}">${esc(t.name)} — K${Number(t.rate||0).toFixed(2)}/${ul}</option>`;
+      }).join(''):'<option>No tasks defined</option>';
+    }
+  }
+}
+
+function saveClockIn(){
+  if(isReadOnly()){alert('🔒 This account is in read-only mode. Contact your administrator.');return;}
+  const sid=document.getElementById('ci-staff').value;
+  const date=document.getElementById('ci-date').value;
+  const timeIn=document.getElementById('ci-time-in').value;
+  const role=document.getElementById('ci-role').value;
+  const task=document.getElementById('ci-task').value;
+  if(!sid){alert('Select a staff member.');return;}
+  // Item 6: block duplicate open shifts
+  const existing=_openShiftFor(sid);
+  if(existing){
+    const s=DATA.staff.find(x=>String(x.id)===String(sid));
+    if(!confirm(`${s?.name||'This staff'} already has an open shift.\nClose that form and go to Clock Out instead?\n\nCancel to stay here, OK to go to Clock Out.`))return;
+    closeModal();setTimeout(()=>openClockOutForm(existing.id),50);return;
+  }
+  const timeInTs=Date.now();
+  const payload={id:uid(),staffId:sid,date,role,task,timeIn,timeInTs,status:'open',
+    bags:0,qty:0,earnings:0,deduction:0,deductionReason:'',timeOut:'',
+    time:nowTime(),entryType:'work'};
+  updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
+  logAuditEvent('CREATE','Work Log (Clock In)',`Staff ID:${sid} · Task:${task} · TimeIn:${timeIn}`);
+  closeModal();
+  showToast('⏵ Clocked in successfully.');
+}
+
+// Stage 2 — Clock Out
+function openClockOutForm(logId){
+  if(!requireAdmin('clock out staff'))return;
+  const log=DATA.staffLogs.find(x=>String(x.id)===String(logId));
+  if(!log){alert('Shift record not found.');return;}
+  if(log.status!=='open'){alert('This shift is already completed.');return;}
+  const s=DATA.staff.find(x=>String(x.id)===String(log.staffId));
+  const staffRole=s?.role||log.role||'';
+  const tasks=tasksForRole(staffRole);
+  const taskOpts=tasks.length>0?tasks.map(t=>{
+    const u=t.rateUnit||'bag';const ul=u==='custom'?(t.customUnit||'unit'):u;
+    return`<option value="${esc(t.name)}"${t.name===log.task?' selected':''}>${esc(t.name)} — K${Number(t.rate||0).toFixed(2)}/${ul}</option>`;
+  }).join(''):`<option value="${esc(log.task||'')}">${esc(log.task||'—')}</option>`;
+  const qtyLbl=qtyLabelForTask(staffRole,log.task||'');
+  openModal(`
+    <div class="mtitle">⏹ Clock Out ${!ONLINE?'<span style="font-size:14px;color:var(--amber)">· Offline</span>':''}</div>
+    <div class="hint" style="margin-bottom:14px">👤 <strong>${esc(s?.name||'—')}</strong> &nbsp;·&nbsp; Clocked in: <strong>${log.date} ${log.timeIn||'—'}</strong></div>
+    <div class="twobox">
+      <div class="fw"><div class="fl">Time In</div><input class="fi" type="time" id="co-time-in" value="${log.timeIn||''}" oninput="calcCoGross()"/></div>
+      <div class="fw"><div class="fl">Time Out</div><input class="fi" type="time" id="co-time-out" value="${nowTime()}" oninput="calcCoGross()"/></div>
+    </div>
+    <div id="co-hours-hint" style="margin-bottom:8px"></div>
+    <div class="fw" id="co-ot-wrap" style="display:none"><div class="fl">⚡ Overtime Multiplier <span style="color:var(--amber)">(OT detected)</span></div><select class="fi" id="co-ot-mult" onchange="calcCoGross()"><option value="1">× 1.0 — No extra OT pay</option><option value="1.25">× 1.25 — Time &amp; quarter</option><option value="1.5" selected>× 1.5 — Time &amp; a half</option><option value="2">× 2.0 — Double time</option></select></div>
+    <div class="fw"><div class="fl">Task</div><select class="fi" id="co-task" onchange="calcCoGross()">${taskOpts}</select></div>
+    <div class="fw"><div class="fl" id="co-qty-label">${qtyLbl}</div><input class="fi" type="number" id="co-qty" value="0" placeholder="0" inputmode="decimal" step="0.01" oninput="calcCoGross()"/></div>
+    <div id="co-gross-hint"></div>
+    <div class="fw"><div class="fl" style="display:flex;justify-content:space-between;align-items:center">Deductions <button type="button" onclick="addCoDeductionLine()" style="background:none;border:1px solid var(--green);border-radius:6px;color:var(--green);cursor:pointer;padding:1px 8px;font-size:11px;font-weight:700">+ Add</button></div>
+      <div id="co-deductions">
+        <div class="ded-line" style="display:grid;grid-template-columns:1fr 110px 28px;gap:6px;margin-bottom:6px">
+          <select class="fi ded-reason" style="padding:8px 10px;font-size:12px"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option>${r}</option>`).join('')}</select>
+          <input class="fi ded-amount" type="number" placeholder="0.00" value="0" inputmode="decimal" step="0.01" oninput="calcCoGross()" style="padding:8px 10px;font-size:13px"/>
+          <button type="button" onclick="removeCoDeductionLine(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:17px;padding:0">🗑</button>
+        </div>
+      </div>
+    </div>
+    <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="co-notes" placeholder="Any shift notes…"/></div>
+    <div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="co-date" value="${log.date}"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveClockOut('${logId}')">⏹ Complete Shift</button></div>`);
+  // Store role in hidden element for calcCoGross
+  const m=document.querySelector('.modal');if(m)m.dataset.coRole=staffRole;
+  calcCoGross();
+}
+
+function _coRole(){
+  const m=document.querySelector('.modal');return m?.dataset.coRole||'';
+}
+function calcCoGross(){
+  const role=_coRole();
+  const task=document.getElementById('co-task')?.value;
+  const qty=document.getElementById('co-qty')?.value;
+  const ded=_totalCoDeductionAmount();
+  const hint=document.getElementById('co-gross-hint');
+  const lbl=document.getElementById('co-qty-label');
+  if(lbl&&role&&task)lbl.textContent=qtyLabelForTask(role,task);
+  // Hours hint
+  _calcHoursHint('co-time-in','co-time-out','co-hours-hint');
+  // Re-check OT wrap id
+  const otWrap=document.getElementById('co-ot-wrap');
+  const inV=document.getElementById('co-time-in')?.value;
+  const outV=document.getElementById('co-time-out')?.value;
+  if(inV&&outV){
+    const [ih,im]=inV.split(':').map(Number);const[oh,om]=outV.split(':').map(Number);
+    let mins=(oh*60+om)-(ih*60+im);if(mins<0)mins+=1440;
+    const stdHrs=Number((DATA.depotInfo||{}).standardShiftHours||8);
+    if(otWrap)otWrap.style.display=mins/60>stdHrs?'':'none';
+  }
+  const otMult=Number(document.getElementById('co-ot-mult')?.value||1);
+  if(qty&&hint){
+    const g=getEarnings(qty,role,task)*otMult;const net=Math.max(0,g-ded);
+    const ul=role&&task?taskRateUnitLabel(role,task):'unit';
+    const rate=role&&task?(()=>{const ro=DATA.staffRoles.find(r=>r.name===role);const to=(ro?.tasks||[]).find(t=>t.name===task);return Number(to?.rate||0);})():0;
+    hint.innerHTML=`<div class="hint">${Number(qty).toLocaleString()} ${ul}${Number(qty)!==1?'s':''} × K${rate.toFixed(2)}/${ul}${otMult>1?` × ${otMult} OT`:''} = <strong>K${g.toFixed(2)} gross</strong> &nbsp;|&nbsp; Deductions: K${ded.toFixed(2)} &nbsp;|&nbsp; Net: <strong>K${net.toFixed(2)}</strong></div>`;
+  }
+}
+function _totalCoDeductionAmount(){
+  let t=0;document.querySelectorAll('#co-deductions .ded-amount').forEach(el=>{t+=Number(el.value||0);});return t;
+}
+function addCoDeductionLine(){
+  const c=document.getElementById('co-deductions');if(!c)return;
+  const line=document.createElement('div');line.className='ded-line';
+  line.style='display:grid;grid-template-columns:1fr 110px 28px;gap:6px;margin-bottom:6px';
+  line.innerHTML=`<select class="fi ded-reason" style="padding:8px 10px;font-size:12px"><option value="">None</option>${DATA.deductionReasons.map(r=>`<option>${r}</option>`).join('')}</select><input class="fi ded-amount" type="number" placeholder="0.00" value="0" inputmode="decimal" step="0.01" oninput="calcCoGross()" style="padding:8px 10px;font-size:13px"/><button type="button" onclick="removeCoDeductionLine(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:17px;padding:0">🗑</button>`;
+  c.appendChild(line);
+}
+function removeCoDeductionLine(btn){
+  const line=btn.closest('.ded-line');const c=document.getElementById('co-deductions');
+  if(c&&c.querySelectorAll('.ded-line').length>1)line.remove();
+  else{line.querySelector('.ded-amount').value=0;line.querySelector('.ded-reason').value='';}
+  calcCoGross();
+}
+
+function saveClockOut(logId){
+  if(isReadOnly()){alert('🔒 This account is in read-only mode.');return;}
+  const log=DATA.staffLogs.find(x=>String(x.id)===String(logId));
+  if(!log){alert('Shift record not found.');return;}
+  const role=_coRole()||log.role||'';
+  const task=document.getElementById('co-task').value;
+  const qty=Number(document.getElementById('co-qty').value||0);
+  const timeIn=document.getElementById('co-time-in').value;
+  const timeOut=document.getElementById('co-time-out').value;
+  const date=document.getElementById('co-date').value;
+  const notes=document.getElementById('co-notes')?.value||'';
+  if(!timeOut){alert('Enter a Time Out to complete the shift.');return;}
+  const otMult=Number(document.getElementById('co-ot-mult')?.value||1);
+  const deductions=[];
+  document.querySelectorAll('#co-deductions .ded-line').forEach(row=>{
+    const reason=row.querySelector('.ded-reason')?.value||'';
+    const amount=Number(row.querySelector('.ded-amount')?.value||0);
+    if(amount>0||reason)deductions.push({reason,amount});
+  });
+  const ded=deductions.reduce((a,b)=>a+b.amount,0);
+  const earningsBase=getEarnings(qty,role,task);
+  const earnings=earningsBase*otMult;
+  const net=Math.max(0,earnings-ded);
+  const ru=taskRateUnit(role,task);
+  const bagsVal=ru==='bag'?qty:0;
+  if(!confirm(`Complete Shift:\n${task} · ${qty} × K${(earningsBase/(qty||1)).toFixed(2)}${otMult>1?` × ${otMult} OT`:''}= K${earnings.toFixed(2)} gross\nDeductions: K${ded.toFixed(2)}\nNet: K${net.toFixed(2)}\n\nProceed?`))return;
+  const timeOutTs=Date.now();
+  updateData(d=>({...d,staffLogs:d.staffLogs.map(l=>String(l.id)===String(logId)?{
+    ...l,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,
+    overtimeMultiplier:otMult>1?otMult:undefined,
+    deduction:ded,deductions,deductionReason:deductions.map(d=>d.reason).filter(Boolean).join('; '),
+    timeIn,timeOut,timeOutTs,date,notes,
+    status:'completed'
+  }:l)}));
+  logAuditEvent('EDIT','Work Log (Clock Out)',`ID:${logId} · Task:${task} · TimeOut:${timeOut} · Net:${net.toFixed(2)}`);
+  closeModal();
+  showToast('✅ Shift completed.');
 }
 
 function openLogForm(){
@@ -6153,7 +6410,7 @@ function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mod
     // Absence/leave entry
     const absenceNote=uc(document.getElementById('lf-absence-note')?.value||'');
     const logId=uid();
-    const payload={id:logId,staffId:sid,date,entryType,absenceNote,time:nowTime()};
+    const payload={id:logId,staffId:sid,date,entryType,absenceNote,time:nowTime(),status:'completed',timeOutTs:Date.now()};
     // Fix 12: also mirror leave/sick entries to leaveLog so balance auto-deducts
     const leaveTypes={leave:'leave',sick:'sick',absent:'absent'};
     const leaveType=leaveTypes[entryType]||entryType;
@@ -6180,7 +6437,9 @@ function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mod
   // Confirmation step (fix 13)
   if(!confirm(`Confirm Log Entry:\n${task} · ${qty} × K${(earningsBase/qty||0).toFixed(2)}${otMult>1?` × ${otMult} OT`:''}= K${earnings.toFixed(2)} gross\nDeductions: K${ded.toFixed(2)}\nNet: K${net.toFixed(2)}\n\nProceed?`))return;
   const bagsVal=ru==='bag'?qty:0;
-  const payload={id:uid(),staffId:sid,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,overtimeMultiplier:otMult>1?otMult:undefined,deduction:ded,deductions,deductionReason:deductions.map(d=>d.reason).filter(Boolean).join('; '),timeIn,timeOut,date,time:nowTime(),entryType:'work'};
+  const timeInTs=Date.now();
+  const timeOutTs=Date.now();
+  const payload={id:uid(),staffId:sid,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,overtimeMultiplier:otMult>1?otMult:undefined,deduction:ded,deductions,deductionReason:deductions.map(d=>d.reason).filter(Boolean).join('; '),timeIn,timeOut,timeInTs,timeOutTs,status:'completed',date,time:nowTime(),entryType:'work'};
   updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
   logAuditEvent('CREATE','Work Log',`Staff ID:${sid} · Task:${task} · Earnings:${earnings.toFixed(2)}`);
   closeModal();
@@ -6733,7 +6992,9 @@ function saveEditLog(id){
   const ded=Number(document.getElementById('elg-ded').value||0);
   const bagsVal=ru==='bag'?qty:0;
   const before=DATA.staffLogs.find(l=>String(l.id)===String(id));
-  updateData(d=>({...d,staffLogs:d.staffLogs.map(l=>String(l.id)===String(id)?{...l,staffId:sid,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,deduction:ded,deductionReason:document.getElementById('elg-dr').value,timeIn:document.getElementById('elg-in').value,timeOut:document.getElementById('elg-out').value,date:document.getElementById('elg-date').value}:l)}));
+  // Preserve timeOutTs (edit window anchor); if missing set to now for legacy records
+  const timeOutTs=before?.timeOutTs||Date.now();
+  updateData(d=>({...d,staffLogs:d.staffLogs.map(l=>String(l.id)===String(id)?{...l,staffId:sid,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,deduction:ded,deductionReason:document.getElementById('elg-dr').value,timeIn:document.getElementById('elg-in').value,timeOut:document.getElementById('elg-out').value,date:document.getElementById('elg-date').value,timeOutTs,status:'completed'}:l)}));
   logAuditEvent('EDIT','Work Log',`ID:${id} · Staff:${sid} · Task:${task} · Qty:${qty}`,before);
   closeModal();
 }
@@ -8109,9 +8370,11 @@ function attachTabListeners(){
   });
   // Staff
   const addStaff=document.getElementById('btn-add-staff');
+  const clockIn=document.getElementById('btn-clock-in');
   const logWork=document.getElementById('btn-log-work');
   const payStaff=document.getElementById('btn-pay-staff');
   if(addStaff)addStaff.addEventListener('click',openStaffForm);
+  if(clockIn)clockIn.addEventListener('click',openClockInForm);
   if(logWork)logWork.addEventListener('click',openLogForm);
   if(payStaff)payStaff.addEventListener('click',openPayForm);
   ['logs','roster','earnings','payments','leave','stafflist','rolesrates'].forEach(t=>{
