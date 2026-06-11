@@ -7764,19 +7764,14 @@ function attachTabListeners(){
   });
 }
 
-// ── ANDROID/BROWSER BACK BUTTON HANDLER (Fix: back closes app instead of navigating) ──
-// The app is a SPA with no URL changes, so Android's back button fires popstate
-// and the browser exits the app. We push a history entry on every meaningful
-// screen transition so the back button steps through our own navigation stack
-// instead of closing the app.
+// ── ANDROID/BROWSER BACK BUTTON HANDLER ─────────────────────────────────────
+// Intercepts popstate so the back button navigates within the app instead of
+// closing it. On landing (the root screen) a double-tap-to-exit guard fires:
+// first back shows a toast; second back within 2 s exits.
 //
-// Navigation stack (back goes: book-editor → modal → main → login → landing):
-//   level 0  — pushed once on load; popping past this exits (intentional)
-//   level 1  — landing screen
-//   level 2  — login screen
-//   level 3  — main app (tabs)
-//   level 4  — modal open  (only when modal is visible)
-//   level 5  — book editor open
+// Navigation stack: book-editor(5) → modal(4) → main(3) → login(2) → landing(1)
+// Level 0 is the seed entry — we always re-push level 1 when on landing so
+// popping never reaches the browser's own history.
 
 function _pushNav(level, label) {
   history.pushState({ mdm: level, label }, '', location.href);
@@ -7786,20 +7781,25 @@ function _currentNavLevel() {
   return (history.state && typeof history.state.mdm === 'number') ? history.state.mdm : 0;
 }
 
-// Ensure there is always a base state so we can push on top of it
+// Seed the history stack with level 0 + level 1 so there is always an entry
+// above the browser's own history that we can pop to without exiting.
 (function _seedHistory() {
-  // Replace the initial entry with our own base (level 0)
   history.replaceState({ mdm: 0, label: 'base' }, '', location.href);
+  history.pushState({ mdm: 1, label: 'landing' }, '', location.href);
 })();
 
-window.addEventListener('popstate', function(e) {
-  const level = e.state && typeof e.state.mdm === 'number' ? e.state.mdm : 0;
+let _backToExitTimer = null; // double-tap-to-exit state
 
-  // Book editor is open — close it and stay in the app
+window.addEventListener('popstate', function(e) {
+  // Always re-push at least level 1 so we never fall below our own stack
+  // (prevents the browser from popping into its own history and exiting).
+  _pushNav(1, 'landing');
+
+  // Book editor is open — close it
   const bookEditor = document.getElementById('book-editor-screen');
   if (bookEditor && bookEditor.style.display !== 'none') {
     closeBookEditor();
-    _pushNav(3, 'main'); // re-push so back still works from here
+    _pushNav(3, 'main');
     return;
   }
 
@@ -7811,37 +7811,44 @@ window.addEventListener('popstate', function(e) {
     return;
   }
 
-  // Main UI is visible — go back to login/landing
+  // Main UI is visible — show logout confirmation
   const mainHdr = document.getElementById('main-hdr');
   if (mainHdr && mainHdr.style.display !== 'none') {
-    // Treat back from main as logout
-    doLogout(); // shows confirmation modal; _doLogoutNow calls showLanding which re-pushes
+    doLogout();
     return;
   }
 
-  // Login screen is visible — go back to landing
+  // Login screen — go back to landing
   const loginScr = document.getElementById('login-screen');
   if (loginScr && loginScr.style.display !== 'none') {
     showLanding();
     return;
   }
 
-  // Recovery screen is visible — go back to login
+  // Recovery screen — go back to login
   const recScr = document.getElementById('recovery-screen');
   if (recScr && recScr.style.display !== 'none') {
     hideRecovery();
     return;
   }
 
-  // Signup screen is visible — go back to landing
+  // Signup screen — go back to landing
   const signupScr = document.getElementById('signup-screen');
   if (signupScr && signupScr.style.display !== 'none') {
     showLanding();
     return;
   }
 
-  // Landing is the root — let the browser go back (exits PWA intentionally)
-  // Don't push anything; allow natural exit
+  // Landing screen — double-tap to exit guard
+  if (_backToExitTimer) {
+    // Second back within 2 s — actually exit
+    clearTimeout(_backToExitTimer);
+    _backToExitTimer = null;
+    history.go(-2); // go back past our seeded entries to truly exit
+    return;
+  }
+  _backToExitTimer = setTimeout(() => { _backToExitTimer = null; }, 2000);
+  showToast('Press back again to exit');
 });
 
 // Patch screen-transition functions to push history states
