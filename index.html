@@ -8746,12 +8746,12 @@ function exportCurrentTabCSV(){
     if(STAB==='roster'||STAB==='stafflist')return exportCSV_StaffRoster();
     return exportCSV_StaffLogs();
   }
-}
   if(TAB==='contacts'){
     const rows=[_csvRow(['Type','Name','Phone','Email','Address','Balance','Notes'])];
     (DATA.contacts||[]).forEach(c=>rows.push(_csvRow([c.type||'',c.name||'',c.phone||'',c.email||'',c.address||'',c.balance||0,c.notes||''])));
     return _csvDownload(rows,_csvFilename('Contacts'));
   }
+}
 // ══════════════════════════════════════════════════════════
 function renderContacts(){
   const all=(DATA.contacts||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
