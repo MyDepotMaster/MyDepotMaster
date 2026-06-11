@@ -20,10 +20,19 @@
 //   To guarantee Median users always get the latest version:
 //   - index.html stamps every URL with ?_mv=<VERSION> and forces a reload
 //     if the stamp is missing or outdated (medianUpdateCheck IIFE).
-//   - The SW strips _mv from cache keys so ?_mv=mdm-v20 and the bare URL
+//   - The SW strips _mv from cache keys so ?_mv=mdm-v22 and the bare URL
 //     resolve to the same cached entry — no double-fetching.
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
+//
+// v22 changes (2026-06-11):
+//   - Light theme purified: all hardcoded dark hex backgrounds (#0a1628,
+//     #001a2e, #002b1f, #081428, #0d1a40, #1a0d2e, #0d2a00, #2a1500,
+//     #3d1515) replaced with CSS variables (var(--surface),
+//     var(--overlay-dark-1), rgba tints). Screen gradients now use
+//     var(--surface2). fs-mini, gsearch-overlay, pay-row, unp-row,
+//     role badges, activity icons, error boxes and all JS-rendered cards
+//     are theme-aware. Quick-action buttons get body.light tint classes.
 //
 // v21 changes (2026-06-11):
 //   - Fix 23: Supplier picker added to General and Commodity receive forms.
@@ -52,35 +61,25 @@
 // v18 changes (2026-06-09):
 //   - fbRestoreData now merges users instead of overwriting: cloud is
 //     authoritative for users it knows, but local-only users (sub-users added
-//     while offline or before sync caught up) are never dropped. Fixes chongo1
-//     and mwansa being wiped when cloud restore runs with a higher _v.
+//     while offline or before sync caught up) are never dropped.
 //
 // v17 changes (2026-06-09):
 //   - Any account from any depot can now log in on any device (no device binding).
 //   - Pre-login restore always looks up username in Firebase usernames/ index first
 //     to resolve the correct depot installId, then restores that depot's data.
-//     If the depot on the device differs from the one being logged into, the correct
-//     depot data is force-loaded from Firebase before credentials are checked.
 //
 // v16 changes (2026-06-09):
 //   - Pre-login restore now always runs (not only when DATA.users is empty).
-//   - On brand-new device/fresh install with no installId: looks up the typed
-//     username in Firebase usernames/ index to discover the installId, then
-//     does a full depot restore — fixes login from content://downloads/ URLs.
+//   - On brand-new device/fresh install: looks up username in Firebase
+//     usernames/ index to discover installId, then does a full depot restore.
 //
 // v15 changes (2026-06-09):
 //   - Removed Depot Key as a recovery method entirely.
 //   - Recovery is now PIN and email only.
-//   - Fresh-install no-data screen directs user to go online/contact support.
-//   - Removed depot key mention from login error message.
 //
 // v14 changes (2026-06-09):
-//   - Pre-login cloud restore: if DATA.users is empty on fresh install,
-//     fbRestoreData() is called before the username lookup so existing
-//     accounts are found without needing the recovery flow.
+//   - Pre-login cloud restore when DATA.users is empty on fresh install.
 //   - Better login error message when no local data exists on device.
-//   - "Restore from Cloud" option added to recovery screen using Depot Key.
-
 
 // ────────────────────────────────────────────────────────────────────────────
 

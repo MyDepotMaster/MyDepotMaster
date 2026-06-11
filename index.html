@@ -64,47 +64,48 @@
   --select-bg:rgba(0,0,0,.3);
   --movl-bg:rgba(0,0,0,.7);
 }
-/* ── LIGHT MODE ─────────────────────────────────────────────────────────────
-   Override all background / surface / border / text / muted variables.
-   Accent colours (green, amber, red, blue, purple) are slightly deepened for
-   contrast on a pale background. Shadows and glows are lightened.          */
+/* ── LIGHT MODE — Pure & Clean ───────────────────────────────
+   Solid whites, true blacks, zero glass effects.
+   Maximum readability for all users in bright environments.   */
 body.light{
-  --bg:#f0f4f9;
+  --bg:#f5f5f5;
   --surface:#ffffff;
-  --surface2:#e6edf5;
-  --border:#c5d4e4;
-  --text:#1e3a5f;
-  --muted:#5a7a99;
-  --white:#0a1628;
-  --green:#009e6a;--green2:#007f55;
-  --amber:#c77b00;--red:#c81e1e;--blue:#1d4ed8;--purple:#6d28d9;
-  --shadow-sm:0 1px 3px rgba(0,0,0,.12);
-  --shadow-md:0 4px 16px rgba(0,0,0,.14);
-  --shadow-lg:0 8px 32px rgba(0,0,0,.18);
-  --glow-green:0 0 20px rgba(0,158,106,.15);
-  --glow-blue:0 0 20px rgba(29,78,216,.15);
-  /* Fix 12: inverted overlay vars for light mode */
-  --overlay-dark-1:rgba(0,0,0,.05);
-  --overlay-dark-2:rgba(0,0,0,.07);
-  --overlay-dark-3:rgba(0,0,0,.35);
-  --overlay-light-1:rgba(0,0,0,.02);
-  --overlay-light-2:rgba(0,0,0,.02);
-  --overlay-light-3:rgba(0,0,0,.03);
-  --overlay-light-4:rgba(0,0,0,.04);
-  --overlay-light-5:rgba(0,0,0,.04);
-  --overlay-light-8:rgba(0,0,0,.05);
-  --overlay-light-10:rgba(0,0,0,.06);
-  --table-th-bg:rgba(0,0,0,.06);
-  --table-td-border:rgba(180,200,220,.6);
-  --table-row-hover:rgba(0,0,0,.02);
-  --fi-bg:rgba(255,255,255,.8);
-  --select-bg:rgba(255,255,255,.8);
-  --movl-bg:rgba(0,0,0,.45);
+  --surface2:#f0f0f0;
+  --border:#d0d0d0;
+  --text:#111111;
+  --muted:#666666;
+  --white:#000000;
+  --green:#007a50;--green2:#005f3e;
+  --amber:#b35a00;--red:#b91c1c;--blue:#1a40b8;--purple:#5b21b6;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.10);
+  --shadow-md:0 3px 10px rgba(0,0,0,.12);
+  --shadow-lg:0 6px 24px rgba(0,0,0,.15);
+  --glow-green:none;
+  --glow-blue:none;
+  --overlay-dark-1:#ebebeb;
+  --overlay-dark-2:#e4e4e4;
+  --overlay-dark-3:rgba(0,0,0,.40);
+  --overlay-light-1:#fafafa;
+  --overlay-light-2:#f8f8f8;
+  --overlay-light-3:#f5f5f5;
+  --overlay-light-4:#f2f2f2;
+  --overlay-light-5:#efefef;
+  --overlay-light-8:#eaeaea;
+  --overlay-light-10:#e6e6e6;
+  --table-th-bg:#eeeeee;
+  --table-td-border:#dddddd;
+  --table-row-hover:#f9f9f9;
+  --fi-bg:#ffffff;
+  --select-bg:#ffffff;
+  --movl-bg:rgba(0,0,0,.50);
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-#app{max-width:480px;margin:0 auto;height:calc(100vh / var(--app-zoom,1));height:calc(100dvh / var(--app-zoom,1));display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
-/* Landscape: full-width + shrink nav */
+/* ── BASE: Mobile portrait (default) ──────────────────────── */
+#app{max-width:480px;margin:0 auto;height:calc(100vh / var(--app-zoom,1));height:calc(100dvh / var(--app-zoom,1));display:flex;flex-direction:column;position:relative;background:var(--bg);}
+#main-area{display:contents;}
+
+/* ── Mobile landscape (short viewport, e.g. phone rotated) ── */
 @media (orientation:landscape) and (max-height:500px){
   #app{height:100dvh;max-width:100%;width:100%;}
   #login-screen,.modal,#license-banner,#trial-banner,#book-editor-screen{max-width:100%;}
@@ -113,13 +114,111 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .content{padding:10px 14px;}
   .hdr{padding:7px 14px;}
 }
+
+/* ── Tablet / PC landscape (wide + tall viewport) ───────────
+   Triggers for any screen wider than 600px in landscape or
+   any screen wider than 768px regardless of orientation.     */
+@media (min-width:600px) and (orientation:landscape),
+       (min-width:768px) {
+  html,body{overflow:hidden;}
+  #app{
+    max-width:100%;
+    width:100%;
+    height:100dvh;
+    height:100vh;
+    flex-direction:row;        /* sidebar nav on left, content on right */
+    overflow:hidden;
+  }
+  /* Sidebar navigation */
+  .nav{
+    flex-direction:column;
+    width:72px;
+    min-height:100%;
+    height:100%;
+    border-top:none;
+    border-right:1px solid var(--border);
+    border-bottom:none;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    padding-top:env(safe-area-inset-top,0px);
+    justify-content:flex-start;
+    padding-top:12px;
+    gap:2px;
+    overflow-y:auto;
+    flex-shrink:0;
+  }
+  .nb{
+    width:100%;
+    flex-direction:column;
+    padding:10px 4px;
+    border-top:none;
+    border-left:3px solid transparent;
+    font-size:9px;
+    min-height:60px;
+    border-radius:0;
+  }
+  .nb.act{
+    border-left-color:var(--green);
+    border-top-color:transparent;
+    background:rgba(0,214,143,.06);
+  }
+  /* Main area (header + content) fills remaining width */
+  #main-area{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    overflow:hidden;
+    height:100%;
+  }
+  .content{
+    flex:1;
+    overflow-y:auto;
+    padding:20px 24px;
+  }
+  .hdr{padding:12px 24px;}
+  /* Modals and overlays go full-height, centered */
+  .movl{align-items:center;}
+  .modal{
+    border-radius:var(--radius-xl);
+    max-width:560px;
+    max-height:90vh;
+  }
+  #login-screen{max-width:100%;}
+  #license-banner,#trial-banner{max-width:100%;}
+  /* Wider stat grids on large screens */
+  .srow{grid-template-columns:repeat(4,1fr);}
+}
+
+/* ── Extra-wide PC (≥1200px): more breathing room ─────────── */
+@media (min-width:1200px){
+  .nav{width:88px;}
+  .nb{font-size:10px;}
+  .content{padding:24px 32px;}
+  .hdr{padding:14px 32px;}
+  .modal{max-width:640px;}
+}
+
+/* ── Small phones ──────────────────────────────────────────── */
 @media (max-width:320px){
   .nb span{display:none;}
   .nb{padding:10px 2px;}
 }
 
+/* ── LIGHT MODE — strip all glass/blur effects ─────────────── */
+body.light .hdr,
+body.light .nav{backdrop-filter:none;-webkit-backdrop-filter:none;}
+body.light .movl{backdrop-filter:none;-webkit-backdrop-filter:none;}
+body.light .card{box-shadow:0 1px 3px rgba(0,0,0,.08);}
+body.light .login-card{box-shadow:0 2px 12px rgba(0,0,0,.10);}
+body.light .modal{box-shadow:0 6px 24px rgba(0,0,0,.18);}
+/* Quick-action button tints in light mode */
+body.light .qa-btn-green{background:rgba(0,122,80,.08)!important;}
+body.light .qa-btn-amber{background:rgba(179,90,0,.08)!important;}
+body.light .qa-btn-blue{background:rgba(26,64,184,.08)!important;}
+body.light .qa-btn-purple{background:rgba(91,33,182,.08)!important;}
+
 /* Login */
-#login-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));background:radial-gradient(ellipse at 50% 0%,#0d1f3c 0%,var(--bg) 70%);z-index:999;}
+#login-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));background:radial-gradient(ellipse at 50% 0%,var(--surface2) 0%,var(--bg) 70%);z-index:999;}
 .login-logo{width:72px;height:72px;background:linear-gradient(135deg,var(--green),var(--green2));border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-family:var(--fh);font-size:22px;font-weight:800;color:#060d18;box-shadow:var(--glow-green),0 4px 20px rgba(0,0,0,.4);letter-spacing:-0.5px;}
 .login-title{font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:4px;letter-spacing:-0.5px;}
 .login-sub{color:var(--muted);font-size:12px;margin-bottom:24px;text-align:center;line-height:1.7;}
@@ -217,7 +316,7 @@ tr:hover td{background:var(--table-row-hover);}
 /* Global Search */
 #gsearch-fab{position:fixed;bottom:72px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--green);border:none;color:var(--bg);font-size:22px;cursor:pointer;z-index:700;box-shadow:0 4px 18px rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;touch-action:manipulation;transition:transform .15s;}
 #gsearch-fab:active{transform:scale(.92);}
-#gsearch-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:800;display:none;flex-direction:column;padding:16px 16px 0;}
+#gsearch-overlay{position:fixed;inset:0;background:var(--movl-bg);backdrop-filter:blur(6px);z-index:800;display:none;flex-direction:column;padding:16px 16px 0;}
 #gsearch-box{background:var(--surface);border:1.5px solid var(--green);border-radius:12px;padding:11px 14px;font-size:15px;color:var(--text);width:100%;box-sizing:border-box;margin-bottom:12px;outline:none;}
 #gsearch-results{flex:1;overflow-y:auto;padding-bottom:24px;}
 .gsr-section{font-family:var(--fh);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;padding:10px 0 6px;}
@@ -236,8 +335,8 @@ tr:hover td{background:var(--table-row-hover);}
 select.fi{text-transform:uppercase;}
 select.fi option{text-transform:uppercase;}
 /* Payment */
-.pay-row{background:linear-gradient(90deg,rgba(0,43,31,.5),transparent);border-left:2px solid var(--green);}
-.unp-row{background:linear-gradient(90deg,rgba(61,42,0,.5),transparent);border-left:2px solid var(--amber);}
+.pay-row{background:linear-gradient(90deg,rgba(0,43,31,.25),transparent);border-left:2px solid var(--green);}
+.unp-row{background:linear-gradient(90deg,rgba(61,42,0,.25),transparent);border-left:2px solid var(--amber);}
 .cum-cell{border-left:1px solid var(--border);font-size:11px;}
 .editbtn{background:none;border:1px solid rgba(59,130,246,.3);border-radius:6px;color:var(--blue);cursor:pointer;padding:3px 8px;font-size:11px;font-weight:700;touch-action:manipulation;white-space:nowrap;font-family:var(--fb);}
 .editbtn:active{background:var(--blue);color:#fff;}
@@ -254,7 +353,7 @@ select.fi option{text-transform:uppercase;}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes pulse-glow{0%,100%{box-shadow:0 0 24px rgba(0,214,143,.2),0 4px 20px rgba(0,0,0,.5)}50%{box-shadow:0 0 48px rgba(0,214,143,.4),0 4px 20px rgba(0,0,0,.5)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-#landing-screen{position:absolute;inset:0;display:flex;flex-direction:column;background:radial-gradient(ellipse at 30% 0%,#0a1e3d 0%,var(--bg) 60%);z-index:998;overflow-y:auto;}
+#landing-screen{position:absolute;inset:0;display:flex;flex-direction:column;background:radial-gradient(ellipse at 30% 0%,var(--surface2) 0%,var(--bg) 60%);z-index:998;overflow-y:auto;}
 .land-hero{padding:44px 24px 24px;text-align:center;position:relative;}
 .land-hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:280px;height:280px;background:radial-gradient(ellipse,rgba(0,214,143,.08) 0%,transparent 70%);pointer-events:none;}
 .land-logo{width:80px;height:80px;background:linear-gradient(135deg,var(--green),var(--green2));border-radius:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-family:var(--fh);font-size:26px;font-weight:800;color:#060d18;animation:pulse-glow 3s ease-in-out infinite,float 5s ease-in-out infinite;letter-spacing:-1px;}
@@ -275,7 +374,7 @@ select.fi option{text-transform:uppercase;}
 .land-feat-title{font-family:var(--fh);font-size:14px;font-weight:700;color:var(--white);margin-bottom:2px;}
 .land-feat-desc{font-size:11px;color:var(--muted);line-height:1.6;}
 .land-cta{padding:0 18px 44px;display:flex;flex-direction:column;gap:10px;}
-.land-pricing{background:linear-gradient(135deg,rgba(0,30,22,.8),rgba(10,25,45,.8));border:1px solid rgba(0,214,143,.2);border-radius:var(--radius-xl);padding:20px;margin-bottom:2px;text-align:center;position:relative;overflow:hidden;}
+.land-pricing{background:var(--surface);border:1px solid rgba(0,214,143,.2);border-radius:var(--radius-xl);padding:20px;margin-bottom:2px;text-align:center;position:relative;overflow:hidden;}
 .land-pricing::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(0,214,143,.08),transparent 70%);pointer-events:none;}
 .land-pricing-badge{display:inline-block;background:linear-gradient(90deg,var(--amber),#d97706);color:#060d18;font-family:var(--fh);font-size:10px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:20px;margin-bottom:10px;}
 .land-pricing-price{font-family:var(--fh);font-size:36px;font-weight:800;color:var(--green);margin-bottom:2px;line-height:1;}
@@ -286,7 +385,7 @@ select.fi option{text-transform:uppercase;}
 .land-divider::before,.land-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.05);}
 .land-divider span{font-size:10px;color:var(--muted);}
 /* Recovery screen */
-#recovery-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:28px 24px 40px;padding-top:max(28px,env(safe-area-inset-top,28px));background:radial-gradient(ellipse at 50% 0%,#0d1f3c 0%,var(--bg) 70%);z-index:999;overflow-y:auto;}
+#recovery-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:28px 24px 40px;padding-top:max(28px,env(safe-area-inset-top,28px));background:radial-gradient(ellipse at 50% 0%,var(--surface2) 0%,var(--bg) 70%);z-index:999;overflow-y:auto;}
 .rec-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:22px;width:100%;max-width:360px;box-shadow:var(--shadow-md);}
 .rec-logo{width:60px;height:60px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:26px;}
 .rec-title{font-family:var(--fh);font-size:24px;font-weight:800;color:var(--white);margin-bottom:4px;text-align:center;letter-spacing:-0.5px;}
@@ -296,7 +395,7 @@ select.fi option{text-transform:uppercase;}
 .rec-opt-blue{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);}
 .rec-opt-amber{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);}
 .rec-opt-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;color:var(--muted);}
-#signup-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 24px 40px;background:radial-gradient(ellipse at 50% 0%,#0d1f3c 0%,var(--bg) 70%);z-index:999;overflow-y:auto;}
+#signup-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 24px 40px;background:radial-gradient(ellipse at 50% 0%,var(--surface2) 0%,var(--bg) 70%);z-index:999;overflow-y:auto;}
 .signup-step{width:100%;max-width:380px;}
 .signup-back{background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:6px;touch-action:manipulation;}
 .signup-back:active{color:var(--text);}
@@ -345,7 +444,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 .bio-divider{display:none;align-items:center;gap:10px;margin-top:8px;font-size:11px;color:var(--muted);}
 .bio-divider::before,.bio-divider::after{content:'';flex:1;height:1px;background:var(--border);}
 /* Compact zoom pill — header & landing */
-.fs-mini{display:flex;align-items:center;background:rgba(8,15,28,.8);border:1px solid var(--border);border-radius:7px;overflow:hidden;flex-shrink:0;}
+.fs-mini{display:flex;align-items:center;background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:7px;overflow:hidden;flex-shrink:0;}
 .fs-mini-btn{width:27px;height:25px;border:none;background:transparent;color:var(--muted);font-family:var(--fh);font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;transition:.12s;-webkit-tap-highlight-color:transparent;}
 .fs-mini-btn:active{background:var(--surface2);color:var(--green);}
 .fs-mini-btn:disabled{opacity:.25;cursor:not-allowed;}
@@ -617,7 +716,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <div class="err-box" id="login-err" style="display:none"></div>
       <div class="fw"><div class="fl">Username</div><input class="fi" id="l-user" placeholder="Enter username" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none"/></div>
       <div class="fw"><div class="fl">Password</div><input class="fi" id="l-pass" type="password" placeholder="Enter password" autocapitalize="none" autocorrect="off" autocomplete="current-password" spellcheck="false"/></div>
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px" id="tos-box">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px" id="tos-box">
         <input type="checkbox" id="tos-check" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
         <div style="font-size:12px;color:var(--muted);line-height:1.8">
           <label for="tos-check" style="cursor:pointer">I have read and agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span><label for="tos-check" style="cursor:pointer">. I understand this is a general-purpose tool and all data I enter is my responsibility.</label>
@@ -649,27 +748,6 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
     </div>
   </div>
 
-  <!-- MAIN UI -->
-  <div class="hdr" id="main-hdr" style="display:none">
-    <div>
-      <div class="htitle">My Depot Master</div>
-      <div class="hsub" id="hdr-sub">Loading…</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div class="fs-mini">
-        <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
-        <div class="fs-mini-sep"></div>
-        <div class="fs-mini-lbl fs-lbl-all">100%</div>
-        <div class="fs-mini-sep"></div>
-        <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
-      </div>
-      <button class="spill sp-on" id="sync-pill" style="cursor:pointer">✅ Synced</button>
-      <button class="btn bo bsm" id="logout-btn" style="width:auto;padding:6px 12px">⏏ Out</button>
-    </div>
-  </div>
-
-  <div class="content" id="content" style="display:none"></div>
-
   <div class="nav" id="nav" style="display:none">
     <button class="nb act" id="nb-dash" data-tab="dashboard">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Dashboard</span>
@@ -693,6 +771,30 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span>
     </button>
   </div>
+
+  <!-- MAIN UI -->
+  <div id="main-area">
+  <div class="hdr" id="main-hdr" style="display:none">
+    <div>
+      <div class="htitle">My Depot Master</div>
+      <div class="hsub" id="hdr-sub">Loading…</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="fs-mini">
+        <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
+        <div class="fs-mini-sep"></div>
+        <div class="fs-mini-lbl fs-lbl-all">100%</div>
+        <div class="fs-mini-sep"></div>
+        <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
+      </div>
+      <button class="spill sp-on" id="sync-pill" style="cursor:pointer">✅ Synced</button>
+      <button class="btn bo bsm" id="logout-btn" style="width:auto;padding:6px 12px">⏏ Out</button>
+    </div>
+  </div>
+
+  <div class="content" id="content" style="display:none"></div>
+  </div><!-- /#main-area -->
+
 </div>
 
 <!-- Modal -->
@@ -1149,14 +1251,14 @@ async function testFirebaseConnection() {
       out.style.background = '#003d2e'; out.style.color = 'var(--green)';
       out.textContent = '✅ Connected! Firebase rules are working correctly.';
     } else if (res.status === 401 || res.status === 403) {
-      out.style.background = '#3d1515'; out.style.color = '#ff8080';
+      out.style.background = 'rgba(220,38,38,.12)'; out.style.color = '#ff8080';
       out.textContent = '❌ Permission denied (HTTP ' + res.status + '). Check your Firebase Security Rules.';
     } else {
-      out.style.background = '#3d1515'; out.style.color = '#ff8080';
+      out.style.background = 'rgba(220,38,38,.12)'; out.style.color = '#ff8080';
       out.textContent = '❌ Failed — HTTP ' + res.status + '\n' + body.slice(0, 200);
     }
   } catch(e) {
-    out.style.background = '#3d1515'; out.style.color = '#ff8080';
+    out.style.background = 'rgba(220,38,38,.12)'; out.style.color = '#ff8080';
     out.textContent = '❌ Network error: ' + e.message;
   }
   if (btn) { btn.disabled = false; btn.textContent = '🔌 Test Connection'; }
@@ -2344,7 +2446,7 @@ function startSignUp() {
       <div style="text-align:center;margin-bottom:6px;font-size:36px">⚠️</div>
       <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white);text-align:center;margin-bottom:6px">Before You Continue</div>
       <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.6">Please read this carefully before creating your account.</div>
-      <div style="background:#0a1628;border:1.5px solid #f59e0b55;border-radius:12px;padding:16px 14px;margin-bottom:18px">
+      <div style="background:var(--surface);border:1.5px solid #f59e0b55;border-radius:12px;padding:16px 14px;margin-bottom:18px">
         <div style="font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:.06em;margin-bottom:10px">🔒 PERMANENT COMPANY DETAILS</div>
         <div style="font-size:13px;color:#c8d8e8;line-height:1.8">The following details <strong style="color:var(--white)">cannot be changed</strong> after your account is created. They form your unique company identity and license identifier:</div>
         <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
@@ -2443,7 +2545,7 @@ function renderSignupStep() {
         <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.6">Currency code or symbol used across all financial figures.</div>
       </div>
       <div style="background:rgba(0,214,143,.06);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--green);line-height:1.7">💡 Add your commodities (e.g. Maize, Wheat, Rice) after sign-in via <strong>Settings → Commodities</strong>.</div>
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;background:#0a1628;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px">
         <input type="checkbox" id="su-tos" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
         <div style="font-size:12px;color:var(--muted);line-height:1.8">
           <label for="su-tos" style="cursor:pointer">I agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span>
@@ -3222,7 +3324,7 @@ function renderDash(){
   });
 
   const warnBlock=warnings.length===0?'':`
-    <div style="background:linear-gradient(135deg,#3d1515,#2a1000);border:1.5px solid var(--red);border-radius:14px;padding:14px 16px;margin-bottom:14px">
+    <div style="background:var(--surface);border:1.5px solid var(--red);border-radius:14px;padding:14px 16px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
         <span style="font-size:20px">⚠️</span>
         <span style="font-family:var(--fh);font-size:17px;font-weight:800;color:#ff8080">${warnings.length} ALERT${warnings.length>1?'S':''} REQUIRE ATTENTION</span>
@@ -3248,7 +3350,7 @@ function renderDash(){
     const available=bal-reserved;
     const balColor=bal<=0?'var(--red)':bal<5?'var(--amber)':'var(--green)';
     const pct=rec>0?Math.min(100,Math.round((iss/rec)*100)):0;
-    const pBar=rec>0?`<div style="background:#0a1628;border-radius:20px;height:5px;margin-top:6px;overflow:hidden"><div style="background:${balColor};width:${pct}%;height:100%;border-radius:20px"></div></div>`:'';
+    const pBar=rec>0?`<div style="background:var(--surface);border-radius:20px;height:5px;margin-top:6px;overflow:hidden"><div style="background:${balColor};width:${pct}%;height:100%;border-radius:20px"></div></div>`:'';
     return `<div style="border-bottom:1px solid var(--border);padding:11px 0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-family:var(--fh);font-size:15px;font-weight:700">${esc(name)}</span>
@@ -3283,7 +3385,7 @@ function renderDash(){
     ${statusBanner()}
 
     <!-- Welcome Header -->
-    <div style="background:linear-gradient(135deg,#081428,#111f38);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div style="font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase">${dateStr}</div>
@@ -3293,7 +3395,7 @@ function renderDash(){
         <div style="text-align:right">
           <div style="font-size:10px;color:var(--muted)">Signed in</div>
           <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:var(--green)">${esc((USER&&USER.username||'').toUpperCase())}</div>
-          <span style="display:inline-block;background:${USER&&USER.role==='admin'?'#002b1f':'#0d2a4a'};border:1px solid ${USER&&USER.role==='admin'?'var(--green)':'var(--blue)'};border-radius:20px;padding:1px 7px;font-size:9px;font-weight:800;color:${USER&&USER.role==='admin'?'var(--green)':'var(--blue)'};letter-spacing:.6px">${USER&&USER.role==='admin'?'ADMIN':'STAFF'}</span>
+          <span style="display:inline-block;background:${USER&&USER.role==='admin'?'rgba(0,43,31,.15)':'rgba(13,42,74,.15)'};border:1px solid ${USER&&USER.role==='admin'?'var(--green)':'var(--blue)'};border-radius:20px;padding:1px 7px;font-size:9px;font-weight:800;color:${USER&&USER.role==='admin'?'var(--green)':'var(--blue)'};letter-spacing:.6px">${USER&&USER.role==='admin'?'ADMIN':'STAFF'}</span>
         </div>
       </div>
     </div>
@@ -3303,10 +3405,10 @@ function renderDash(){
     <!-- Quick Actions -->
     <div class="sh" style="margin-top:0">Quick Actions</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" style="background:linear-gradient(135deg,#002b1f,#001a0e);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">${_comStats[0]?_comStats[0].icon:'📦'}</span>Commodity In</button>
-      <button onclick="showTab('general');setTimeout(()=>openGenRecForm(),80)" style="background:linear-gradient(135deg,#0d2a00,#082000);border:1.5px solid var(--amber);border-radius:12px;padding:12px 6px;color:var(--amber);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">📦</span>Receive</button>
-      <button onclick="showTab('staff');setTimeout(()=>openLogForm(),80)" style="background:linear-gradient(135deg,#0d1a40,#060f28);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Log Work</button>
-      <button onclick="openPrintSummary()" style="background:linear-gradient(135deg,#1a0d2e,#100820);border:1.5px solid var(--purple);border-radius:12px;padding:12px 6px;color:var(--purple);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">🖨️</span>Print Summary</button>
+      <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" class="qa-btn-green" style="background:var(--surface);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">${_comStats[0]?_comStats[0].icon:'📦'}</span>Commodity In</button>
+      <button onclick="showTab('general');setTimeout(()=>openGenRecForm(),80)" class="qa-btn-amber" style="background:var(--surface);border:1.5px solid var(--amber);border-radius:12px;padding:12px 6px;color:var(--amber);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">📦</span>Receive</button>
+      <button onclick="showTab('staff');setTimeout(()=>openLogForm(),80)" class="qa-btn-blue" style="background:var(--surface);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Log Work</button>
+      <button onclick="openPrintSummary()" class="qa-btn-purple" style="background:var(--surface);border:1.5px solid var(--purple);border-radius:12px;padding:12px 6px;color:var(--purple);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">🖨️</span>Print Summary</button>
     </div>
 
     <!-- Today Snapshot -->
@@ -3349,13 +3451,13 @@ function renderDash(){
       const cStockValue=cBal>0&&cUnitPrice>0?cBal*cUnitPrice:0;
       const cPct=cRec>0?Math.min(100,Math.round((cIssTotal/cRec)*100)):0;
       const cBarColor=cPct>=90?'var(--red)':cPct>=60?'var(--amber)':'var(--blue)';
-      return `<div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue);margin-bottom:12px">
+      return `<div class="card" style="background:var(--surface);border-color:var(--blue);margin-bottom:12px">
         <div class="ctitle">${comObj.icon||'📦'} ${esc(comObj.name)}</div>
         <div class="srow">
           <div class="sbox"><div class="sv">${cRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
           <div class="sbox am"><div class="sv">${cIssTotal.toLocaleString()}</div><div class="sl">Total Issued</div></div>
         </div>
-        <div style="background:#0a1628;border-radius:12px;padding:12px;text-align:center;margin-top:2px">
+        <div style="background:var(--surface);border-radius:12px;padding:12px;text-align:center;margin-top:2px">
           <div style="font-family:var(--fh);font-size:32px;font-weight:900;color:${cBal<=0?'var(--red)':'var(--blue)'}">${cBal.toLocaleString()}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${(comObj.unit||'UNITS').toUpperCase()} IN STOCK AS AT TODAY</div>
           ${cStockValue>0?`<div style="font-size:12px;color:var(--amber);font-weight:700;margin-top:6px">💰 Stock Value: ${zm(cStockValue)}</div>`:''}
@@ -3364,7 +3466,7 @@ function renderDash(){
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
             <span>Issued vs Received</span><span style="color:${cBarColor};font-weight:700">${cPct}%</span>
           </div>
-          <div style="background:#0a1628;border-radius:20px;height:10px;overflow:hidden">
+          <div style="background:var(--surface);border-radius:20px;height:10px;overflow:hidden">
             <div style="background:${cBarColor};width:${cPct}%;height:100%;border-radius:20px;transition:width .4s"></div>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
@@ -3407,7 +3509,7 @@ function renderDash(){
         ?'<div class="empty">No entries yet. Use Quick Actions above to get started.</div>'
         :allActivity.map(a=>`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-          <div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${a.type==='rec'?'#002b1f':'#3d2a00'}">
+          <div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${a.type==='rec'?'rgba(0,43,31,.15)':'rgba(61,42,0,.15)'}">
             <span style="font-size:16px">${a.type==='rec'?'📥':'📤'}</span>
           </div>
           <div style="flex:1;min-width:0">
@@ -3466,7 +3568,7 @@ function renderGeneral(){
 
   return `
     <!-- Page Header -->
-    <div style="background:linear-gradient(135deg,#002b1f,#0a1628);border:1px solid var(--green);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+    <div style="background:var(--surface);border:1px solid var(--green);border-radius:14px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">📦 General Inventory</div>
@@ -3482,7 +3584,7 @@ function renderGeneral(){
 
     ${hasPrices?`
     <!-- Financial Overview -->
-    <div class="card" style="background:linear-gradient(135deg,#001a2e,#081428);border-color:var(--blue);margin-bottom:12px">
+    <div class="card" style="background:var(--surface);border-color:var(--blue);margin-bottom:12px">
       <div class="ctitle" style="margin-bottom:10px">💰 Financial Overview (All Time)</div>
       <div class="srow">
         <div class="sbox"><div class="sv" style="font-size:16px">${zm(cumPurchases)}</div><div class="sl">Cumulative Purchases</div></div>
@@ -3691,13 +3793,13 @@ function renderGenReceived(){
   const cumPurchases=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
   const hasPrices=items.some(r=>Number(r.purchasePrice||0)>0);
   return `
-    <div class="card" style="background:linear-gradient(135deg,#002b1f,#0a1e36);border-color:var(--green)">
+    <div class="card" style="background:var(--surface);border-color:var(--green)">
       <div class="ctitle" style="margin-bottom:8px">📊 Received Stock Overview</div>
       <div class="srow">
         <div class="sbox"><div class="sv">${allTimeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
         <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
       </div>
-      <div class="sbox bl" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628">
+      <div class="sbox bl" style="border-radius:10px;padding:10px;text-align:center;background:var(--surface)">
         <div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div>
       </div>
       ${cumPurchases>0?`<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -4515,7 +4617,7 @@ function renderMaizeRec(){
   const allTimeSV=allTimeCost; // cumulative stock value = total cost of all received
   const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
   return `
-    <div class="card" style="background:linear-gradient(135deg,#002b1f,#0a1e36);border-color:var(--green)">
+    <div class="card" style="background:var(--surface);border-color:var(--green)">
       <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
       <div class="srow">
         <div class="sbox"><div class="sv">${allTimeRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
@@ -4526,7 +4628,7 @@ function renderMaizeRec(){
       </div>
       ${allTimeCost>0&&USER.role==='admin'?`<div class="srow">
         <div class="sbox am"><div class="sv" style="font-size:16px">${zm(allTimeCost)}</div><div class="sl">Cum. Cost (Total Spend)</div></div>
-        <div class="sbox" style="background:#0a1628"><div class="sv" style="font-size:16px">${zm(allTimeSV)}</div><div class="sl">Cum. Stock Value</div></div>
+        <div class="sbox" style="background:var(--surface)"><div class="sv" style="font-size:16px">${zm(allTimeSV)}</div><div class="sl">Cum. Stock Value</div></div>
       </div>`:''}
     </div>
     <div class="srow">
@@ -4594,16 +4696,16 @@ function renderMaizeIss(){
   const allTimeRev=all.reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
   const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
   return `
-    <div class="card" style="background:linear-gradient(135deg,#2a1500,#0a1e36);border-color:var(--amber)">
+    <div class="card" style="background:var(--surface);border-color:var(--amber)">
       <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
       <div class="srow">
         <div class="sbox am"><div class="sv">${allTimeIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
         <div class="sbox bl"><div class="sv">${(allTimeRec-allTimeIss).toLocaleString()}</div><div class="sl">Balance Remaining</div></div>
       </div>
       ${allTimeRev>0&&USER.role==='admin'?`<div class="srow">
-        <div class="sbox" style="background:#0a1628;grid-column:1/-1"><div class="sv" style="font-size:16px;color:var(--green)">${zm(allTimeRev)}</div><div class="sl">Cum. Revenue (Total Earned)</div></div>
+        <div class="sbox" style="background:var(--surface);grid-column:1/-1"><div class="sv" style="font-size:16px;color:var(--green)">${zm(allTimeRev)}</div><div class="sl">Cum. Revenue (Total Earned)</div></div>
       </div>`:''}
-      <div class="sbox" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628;margin-top:8px">
+      <div class="sbox" style="border-radius:10px;padding:10px;text-align:center;background:var(--surface);margin-top:8px">
         <div class="sv" style="font-size:18px;color:var(--muted)">${periodIss.toLocaleString()}</div><div class="sl">Period Issued</div>
       </div>
     </div>
@@ -4712,20 +4814,20 @@ function renderMaizeSummary(){
     </div>
     ${hasPricing?`
     <div class="sh">Financial Summary</div>
-    <div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue)">
+    <div class="card" style="background:var(--surface);border-color:var(--blue)">
       <div class="ctitle" style="margin-bottom:12px">💰 Cumulative Financials</div>
       <div class="srow">
         <div class="sbox am"><div class="sv" style="font-size:16px">${zm(cumCost)}</div><div class="sl">Cum. Cost (Total Spend)</div></div>
-        <div class="sbox" style="background:#0a1628"><div class="sv" style="font-size:16px;color:var(--green)">${zm(cumRev)}</div><div class="sl">Cum. Revenue (Total Earned)</div></div>
+        <div class="sbox" style="background:var(--surface)"><div class="sv" style="font-size:16px;color:var(--green)">${zm(cumRev)}</div><div class="sl">Cum. Revenue (Total Earned)</div></div>
       </div>
       <div class="srow">
-        <div class="sbox" style="background:#0a1628;grid-column:1/-1;border:1px solid ${cumProfit>=0?'var(--green)':'var(--red)'}">
+        <div class="sbox" style="background:var(--surface);grid-column:1/-1;border:1px solid ${cumProfit>=0?'var(--green)':'var(--red)'}">
           <div class="sv" style="font-size:20px;color:${profitColor}">${cumProfit>=0?'+':''}${zm(cumProfit)}</div>
           <div class="sl">Cum. Gross Profit (Revenue − Cost)</div>
         </div>
       </div>
       <div class="srow">
-        <div class="sbox" style="background:#0a1628;grid-column:1/-1">
+        <div class="sbox" style="background:var(--surface);grid-column:1/-1">
           <div class="sv" style="font-size:16px;color:var(--blue)">${zm(cumStockVal)}</div>
           <div class="sl">Current Stock Value (Available Units × Avg Unit Cost)</div>
         </div>
@@ -4890,7 +4992,7 @@ function renderTransportLog(){
     </tr>`;
   }).join('');
   return`
-    <div class="card" style="background:linear-gradient(135deg,#001a2e,#0a1628);border-color:var(--blue)">
+    <div class="card" style="background:var(--surface);border-color:var(--blue)">
       <div class="ctitle" style="margin-bottom:8px">🚛 Transport Log — ${com.name}</div>
       <div class="srow">
         <div class="sbox bl"><div class="sv">${totalTrips}</div><div class="sl">Total Trips</div></div>
@@ -5048,7 +5150,7 @@ function openTraceModal(issueId, type){
   const batchTransport=(DATA.transportLog||[]).filter(t=>t.commodity===comId&&t.batchName===issRec.batchName).sort((a,b)=>a.date.localeCompare(b.date));
 
   const srcSection=srcRec?`
-    <div style="background:linear-gradient(135deg,#001a10,#0a1628);border:1.5px solid var(--green);border-radius:12px;padding:13px;margin-bottom:12px">
+    <div style="background:var(--surface);border:1.5px solid var(--green);border-radius:12px;padding:13px;margin-bottom:12px">
       <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">✅ Source Receive Record</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
         <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Date</div><div style="font-weight:700">${fmtDate(srcRec.date)}</div></div>
@@ -5685,7 +5787,7 @@ function openLogForm(){
     </div>
     <div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lf-staff" onchange="onStaffChange()">${opts}</select></div>
     <div id="lf-work-fields">
-      <div class="fw"><div class="fl">Role</div><div class="fi" id="lf-role-display" style="background:#0a1628;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="lf-role"/></div>
+      <div class="fw"><div class="fl">Role</div><div class="fi" id="lf-role-display" style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;color:var(--green)">—</div><input type="hidden" id="lf-role"/></div>
       <div class="fw"><div class="fl">Task</div><select class="fi" id="lf-task" onchange="onTaskChange()"><option>—</option></select></div>
       <div class="fw" id="lf-qty-wrap"><div class="fl" id="lf-qty-label">Quantity</div><input class="fi" type="number" id="lf-bags" placeholder="0" inputmode="decimal" step="0.01" oninput="calcGross()"/></div>
       <div id="gross-hint"></div>
@@ -5946,7 +6048,7 @@ function renderPayments(){
         <div class="sbox"><div class="sv" style="font-size:18px">${zm(cumEarned)}</div><div class="sl">TOTAL EARNED</div></div>
         <div class="sbox bl"><div class="sv" style="font-size:18px">${zm(cumPaid)}</div><div class="sl">TOTAL PAID</div></div>
       </div>
-      <div class="sbox ${unpaid>0?'am':''}" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628;margin-bottom:10px">
+      <div class="sbox ${unpaid>0?'am':''}" style="border-radius:10px;padding:10px;text-align:center;background:var(--surface);margin-bottom:10px">
         <div class="sv" style="font-size:18px;color:${unpaid>0?'var(--amber)':'var(--green)'}">${zm(unpaid)}</div>
         <div class="sl">${unpaid>0?'UNPAID BALANCE':'FULLY PAID ✓'}</div>
       </div>
@@ -6013,15 +6115,15 @@ function renderStaffList(){
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px">
-          <div style="background:#0a1628;border-radius:8px;padding:7px;text-align:center">
+          <div style="background:var(--surface);border-radius:8px;padding:7px;text-align:center">
             <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:var(--text)">${totBags.toLocaleString()}</div>
             <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">BAGS</div>
           </div>
-          <div style="background:#0a1628;border-radius:8px;padding:7px;text-align:center">
+          <div style="background:var(--surface);border-radius:8px;padding:7px;text-align:center">
             <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:var(--green)">${zm(net)}</div>
             <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">NET EARNED</div>
           </div>
-          <div style="background:#0a1628;border-radius:8px;padding:7px;text-align:center">
+          <div style="background:var(--surface);border-radius:8px;padding:7px;text-align:center">
             <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:var(--blue)">${sLogs.length}</div>
             <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">SESSIONS</div>
           </div>
@@ -6103,7 +6205,7 @@ function openStaffDetail(id){
       <div class="sbox"><div class="sv" style="font-size:20px">${zm(net)}</div><div class="sl">Total Earned</div></div>
       <div class="sbox bl"><div class="sv" style="font-size:20px">${zm(paid)}</div><div class="sl">Total Paid</div></div>
     </div>
-    <div class="sbox ${unpaid>0?'am':''}" style="border-radius:10px;padding:10px;text-align:center;background:#0a1628;margin-bottom:14px">
+    <div class="sbox ${unpaid>0?'am':''}" style="border-radius:10px;padding:10px;text-align:center;background:var(--surface);margin-bottom:14px">
       <div class="sv" style="font-size:20px;color:${unpaid>0?'var(--amber)':'var(--green)'}">${zm(unpaid)}</div>
       <div class="sl">${unpaid>0?'UNPAID BALANCE':'FULLY PAID ✓'}</div>
     </div>
@@ -6581,7 +6683,7 @@ function renderLicenseCard(){
     </div>
     ${statusDetail}
     <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">COMPANY LICENSE KEY</div>
-    <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:monospace;font-size:13px;color:var(--blue);margin-bottom:10px;word-break:break-all;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:monospace;font-size:13px;color:var(--blue);margin-bottom:10px;word-break:break-all;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <span>${depotId}</span>
       <button class="pm-copy" style="flex-shrink:0" onclick="copyNum('${depotId}')">Copy</button>
     </div>
@@ -6589,7 +6691,7 @@ function renderLicenseCard(){
       <span>Firebase: ${configBadge}</span>
       <span>Last check: ${lastChecked}</span>
     </div>
-    ${LICENSE.lastError ? `<div style="background:#3d1515;border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:#ff8080;word-break:break-all;font-family:monospace">⚠️ Last error: ${LICENSE.lastError}</div>` : ''}
+    ${LICENSE.lastError ? `<div style="background:rgba(220,38,38,.12);border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:var(--red);word-break:break-all;font-family:monospace">⚠️ Last error: ${LICENSE.lastError}</div>` : ''}
     <div style="margin-top:10px">
       <button id="fb-test-btn" class="btn bo bsm" style="width:100%" onclick="testFirebaseConnection()">🔌 Test Connection</button>
       <div id="fb-test-out" style="display:none;margin-top:8px;border-radius:8px;padding:9px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;line-height:1.5"></div>
@@ -6806,7 +6908,7 @@ function renderSettings(){
       <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(this)"/>
       <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Danger zone — irreversible action</div>
-        <button onclick="clearAll()" style="background:none;border:1px solid #3d1515;border-radius:8px;color:#884444;font-size:11px;padding:5px 12px;cursor:pointer;touch-action:manipulation">🗑 Clear all data</button>
+        <button onclick="clearAll()" style="background:none;border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:11px;padding:5px 12px;cursor:pointer;touch-action:manipulation">🗑 Clear all data</button>
       </div>
     </div>`:''}
     <div class="sh">Contact &amp; Support</div>
@@ -6836,7 +6938,7 @@ function renderSettings(){
       <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:12px">
         All company data is automatically saved to your Firebase cloud. Even if you clear your phone's browser data or switch devices, your data is fully restored the next time you log in.
       </div>
-      <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:12px;color:var(--muted)">Last cloud sync</span>
         <span id="last-sync-time" style="font-size:12px;color:var(--green);font-weight:700">—</span>
       </div>
@@ -6906,7 +7008,7 @@ function showTOS(){
       <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of the country in which the operator is registered. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
       <b style="color:var(--white)">11. Modifications</b><p style="margin:4px 0 10px">Terms may be updated at any time. Continued use = acceptance.</p>
       <b style="color:var(--white)">12. Age &amp; Legal Capacity</b><p style="margin:4px 0 10px">By using this Software you confirm you are at least 18 years old and legally capable of entering a binding agreement under applicable local law. Minors may not use this Software.</p>
-      <div style="background:#3d1515;border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#ff8080"><b>\u26a0\ufe0f IMPORTANT:</b> This is a general-purpose admin tool only — NOT legal, financial, or accounting advice. All figures must be independently verified.</div>
+      <div style="background:rgba(220,38,38,.12);border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#ff8080"><b>\u26a0\ufe0f IMPORTANT:</b> This is a general-purpose admin tool only — NOT legal, financial, or accounting advice. All figures must be independently verified.</div>
       <div style="text-align:center;font-size:11px">My Depot Master \u00b7 \u00a9 ${yr} MDM Developer \u00b7 All Rights Reserved</div>
     </div>
     <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 I Understand &amp; Accept</button></div>`);
@@ -6944,7 +7046,7 @@ function renderRolesEditor(){
       const isCustom=u==='custom';
       const unitOpts=RATE_UNITS.map(ru=>`<option value="${ru.value}"${ru.value===u?' selected':''}>${ru.icon} ${ru.label}</option>`).join('');
       return `
-      <div style="background:#0a1628;border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:7px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:7px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
           <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(task.name)}</div>
           <button class="delbtn" title="Remove task" onclick="removeTask(${ri},${ti})">🗑</button>
@@ -6958,7 +7060,7 @@ function renderRolesEditor(){
               onblur="saveTaskRate(${ri},${ti},this.value)"
               inputmode="decimal"/>
           </div>
-          <select style="flex:1;min-width:120px;background:#0a1628;border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236a90b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;"
+          <select style="flex:1;min-width:120px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236a90b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;"
             onchange="saveTaskRateUnit(${ri},${ti},this.value)">${unitOpts}</select>
           ${isCustom?`<input type="text" placeholder="e.g. hours, trips…" value="${esc(task.customUnit||'')}"
             style="width:90px;background:var(--surface);border:1.5px solid var(--green);border-radius:8px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;"
@@ -8397,7 +8499,7 @@ function _beFormulaBarInput(val) {
 function _renderGrid() {
   const colHdrs = BE_COL_LABELS.slice(0, _beGrid[0]?.length||BE_COLS);
   const head = `<thead><tr>
-    <th class="col-hdr" style="background:#0a1628;border:1px solid var(--border);min-width:28px;position:sticky;top:0;left:0;z-index:3"></th>
+    <th class="col-hdr" style="background:var(--surface);border:1px solid var(--border);min-width:28px;position:sticky;top:0;left:0;z-index:3"></th>
     ${colHdrs.map(c=>`<th class="col-hdr">${c}</th>`).join('')}
   </tr></thead>`;
   const body = _beGrid.map((row,ri)=>`<tr>
@@ -8806,7 +8908,7 @@ function renderContacts(){
   }).join('');
 
   return `
-    <div style="background:linear-gradient(135deg,#1a0d2e,#100820);border:1px solid var(--purple);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+    <div style="background:var(--surface);border:1px solid var(--purple);border-radius:14px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--white)">🤝 Contacts</div>
@@ -9091,7 +9193,7 @@ function renderProfitLoss(){
     </div>
 
     <!-- Net Profit -->
-    <div style="background:${netProfit>=0?'linear-gradient(135deg,#002b1f,#001a0e)':'linear-gradient(135deg,#2a0000,#1a0000)'};border:2px solid ${pColor(netProfit)};border-radius:14px;padding:16px;margin-bottom:14px">
+    <div style="background:${netProfit>=0?'rgba(0,122,80,.08)':'rgba(185,28,28,.08)'};border:2px solid ${pColor(netProfit)};border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-family:var(--fh);font-size:16px;font-weight:800;color:var(--white)">NET PROFIT</div>
@@ -9347,7 +9449,7 @@ function renderCashFlow(){
         <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--red)">${zm(totalCashOut)}</div>
       </div>
     </div>
-    <div style="background:${netCashFlow>=0?'linear-gradient(135deg,#002b1f,#001a0e)':'linear-gradient(135deg,#2a0000,#1a0000)'};border:2px solid ${pColor(netCashFlow)};border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+    <div style="background:${netCashFlow>=0?'rgba(0,122,80,.08)':'rgba(185,28,28,.08)'};border:2px solid ${pColor(netCashFlow)};border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-family:var(--fh);font-size:14px;font-weight:800;color:var(--white)">NET CASH FLOW</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${netCashFlow>=0?'Cash surplus for period':'Cash deficit for period'}</div>
