@@ -487,6 +487,21 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 .be-formula-bar-label{font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0;}
 .be-formula-bar-input{flex:1;background:transparent;border:none;outline:none;font-size:12px;color:var(--text);font-family:var(--fm);}
 .be-footer{background:var(--surface);border-top:1px solid var(--border);padding:8px 14px;display:flex;gap:8px;flex-shrink:0;}
+/* ── NAV CLOUD SYNC ICONS ──────────────────────────────────── */
+.nb{position:relative;}
+.nb-cloud-wrap{position:absolute;top:3px;right:3px;display:flex;gap:2px;opacity:0;transition:opacity .18s;pointer-events:none;}
+.nb:hover .nb-cloud-wrap,.nb.act .nb-cloud-wrap{opacity:1;pointer-events:auto;}
+.nb-cloud-btn{width:18px;height:18px;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:4px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .12s,color .12s;color:var(--muted);}
+.nb-cloud-btn:hover{background:rgba(255,255,255,.08);color:var(--green);}
+.nb-cloud-btn:active{background:rgba(0,214,143,.15);color:var(--green);}
+.nb-cloud-btn svg{width:11px;height:11px;pointer-events:none;}
+/* Always show cloud icons on active tab on mobile (no hover) */
+@media (hover:none){
+  .nb.act .nb-cloud-wrap{opacity:1;pointer-events:auto;}
+  .nb:not(.act) .nb-cloud-wrap{opacity:.45;pointer-events:auto;}
+}
+/* Spinning state for cloud sync */
+.nb-cloud-btn.syncing svg{animation:spin .8s linear infinite;}
 /* ── THEME TOGGLE BUTTON (Fix 13) ──────────────────────────── */
 .theme-toggle{display:flex;align-items:center;justify-content:space-between;background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 4px 0 14px;height:44px;width:100%;cursor:pointer;transition:.15s;}
 .theme-toggle-label{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
@@ -758,21 +773,69 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
   <div class="nav" id="nav" style="display:none">
     <button class="nb act" id="nb-dash" data-tab="dashboard">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Dashboard</span>
+      <span class="nb-cloud-wrap">
+        <button class="nb-cloud-btn" id="nb-cloud-up-dashboard" onclick="tabCloudUpload('dashboard',event)" title="Upload to cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+        <button class="nb-cloud-btn" id="nb-cloud-dn-dashboard" onclick="tabCloudDownload('dashboard',event)" title="Download from cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+      </span>
     </button>
     <button class="nb" id="nb-gen" data-tab="general">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>General</span>
+      <span class="nb-cloud-wrap">
+        <button class="nb-cloud-btn" id="nb-cloud-up-general" onclick="tabCloudUpload('general',event)" title="Upload to cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+        <button class="nb-cloud-btn" id="nb-cloud-dn-general" onclick="tabCloudDownload('general',event)" title="Download from cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+      </span>
     </button>
     <button class="nb" id="nb-maize" data-tab="maize">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg><span>Commodities</span>
+      <span class="nb-cloud-wrap">
+        <button class="nb-cloud-btn" id="nb-cloud-up-maize" onclick="tabCloudUpload('maize',event)" title="Upload to cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+        <button class="nb-cloud-btn" id="nb-cloud-dn-maize" onclick="tabCloudDownload('maize',event)" title="Download from cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+      </span>
     </button>
     <button class="nb" id="nb-staff" data-tab="staff">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Staff</span>
+      <span class="nb-cloud-wrap">
+        <button class="nb-cloud-btn" id="nb-cloud-up-staff" onclick="tabCloudUpload('staff',event)" title="Upload to cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+        <button class="nb-cloud-btn" id="nb-cloud-dn-staff" onclick="tabCloudDownload('staff',event)" title="Download from cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+      </span>
     </button>
     <button class="nb" id="nb-books" data-tab="books">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg><span>Books</span>
+      <span class="nb-cloud-wrap">
+        <button class="nb-cloud-btn" id="nb-cloud-up-books" onclick="tabCloudUpload('books',event)" title="Upload to cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+        <button class="nb-cloud-btn" id="nb-cloud-dn-books" onclick="tabCloudDownload('books',event)" title="Download from cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+      </span>
     </button>
     <button class="nb" id="nb-contacts" data-tab="contacts">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg><span>Contacts</span>
+      <span class="nb-cloud-wrap">
+        <button class="nb-cloud-btn" id="nb-cloud-up-contacts" onclick="tabCloudUpload('contacts',event)" title="Upload to cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+        <button class="nb-cloud-btn" id="nb-cloud-dn-contacts" onclick="tabCloudDownload('contacts',event)" title="Download from cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
+        </button>
+      </span>
     </button>
     <button class="nb" id="nb-settings" data-tab="settings" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span>
@@ -10336,6 +10399,65 @@ function renderSupplierPerformance(){
     </div>`:''}
     ${cards}`;
 }
+
+// ══════════════════════════════════════════════════════════
+// TAB CLOUD SYNC ICONS — Upload / Download handlers
+// Triggered by the small cloud icons on each nav tab button.
+// Both operate on the full DATA object (Firebase is all-or-nothing).
+// ══════════════════════════════════════════════════════════
+async function tabCloudUpload(tab, evt) {
+  if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  if (!isFbConfigured()) { showToast('⚠️ Firebase not configured'); return; }
+  if (!navigator.onLine) { showToast('⚠️ You are offline — upload queued'); scheduleFbSync(); return; }
+  const btnId = 'nb-cloud-up-' + tab;
+  const btn = document.getElementById(btnId);
+  if (btn) btn.classList.add('syncing');
+  try {
+    await doFbSync();
+    showToast('☁️ Data uploaded to cloud');
+  } catch(e) {
+    showToast('❌ Upload failed: ' + (e.message||'unknown error'));
+  } finally {
+    if (btn) btn.classList.remove('syncing');
+  }
+}
+
+async function tabCloudDownload(tab, evt) {
+  if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  if (!isFbConfigured()) { showToast('⚠️ Firebase not configured'); return; }
+  if (!navigator.onLine) { showToast('⚠️ No internet connection'); return; }
+  const key = DATA.installId || _loadPersistedInstallId();
+  if (!key || key === 'MDM-????-????-????') { showToast('❌ No depot key found'); return; }
+  const btnId = 'nb-cloud-dn-' + tab;
+  const btn = document.getElementById(btnId);
+  if (btn) btn.classList.add('syncing');
+  try {
+    const val = await fbGet('depots/' + key + '/data');
+    if (!val || !val._v) { showToast('❌ No cloud data found'); return; }
+    const localV = DATA._v || 0;
+    const cloudV = val._v || 0;
+    if (cloudV <= localV) { showToast('✅ Already up to date (local v' + localV + ')'); return; }
+    if (!confirm('⬇ Replace local data with cloud copy?\n\nCloud: v' + cloudV + '  ·  Local: v' + localV + '\n\nThis will overwrite unsaved local changes.')) return;
+    const localTrialStart = DATA.trialStart || 0;
+    const localUsers = Array.isArray(DATA.users) ? DATA.users : [];
+    DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+    const cloudUsernames = new Set((DATA.users||[]).map(u=>(u.username||'').toLowerCase()));
+    const localOnlyUsers = localUsers.filter(u=>(u.username||'') && !cloudUsernames.has((u.username||'').toLowerCase()));
+    if (localOnlyUsers.length > 0) DATA.users = [...(DATA.users||[]), ...localOnlyUsers];
+    if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) DATA.trialStart = localTrialStart;
+    DATA._lastFbSync = Date.now();
+    if (DATA.installId) _persistInstallId(DATA.installId);
+    sv(DATA);
+    render();
+    showToast('✅ Data downloaded from cloud');
+    updateLastSyncDisplay();
+  } catch(e) {
+    showToast('❌ Download failed: ' + (e.message||'unknown error'));
+  } finally {
+    if (btn) btn.classList.remove('syncing');
+  }
+}
+// ══ END TAB CLOUD SYNC ════════════════════════════════════
 
 // ══ END CSV EXPORT ════════════════════════════════════════
 </script>
