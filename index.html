@@ -488,20 +488,39 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 .theme-toggle-pill{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px;gap:2px;}
 .theme-toggle-opt{padding:4px 10px;border-radius:16px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s;border:none;background:transparent;font-family:var(--fh);}
 .theme-toggle-opt.active{background:var(--green);color:#060d18;}
-/* ── FIX 14: OS default theme via prefers-color-scheme ─────── */
+/* ── THEME SYSTEM ────────────────────────────────────────────
+   Explicit choices (dark / light) are set on :root[data-theme]
+   and always win over the OS media query.
+   Auto mode: no data-theme on :root → media query decides.     */
+
+/* Light variables shared by both explicit light and auto-light */
+:root[data-theme="light"],
+:root[data-theme="auto-light"]{
+  --bg:#f5f5f5;--surface:#ffffff;--surface2:#f0f0f0;--border:#d0d0d0;
+  --text:#111111;--muted:#666666;--white:#000000;
+  --green:#007a50;--green2:#005f3e;--amber:#b35a00;--red:#b91c1c;--blue:#1a40b8;--purple:#5b21b6;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.10);--shadow-md:0 3px 10px rgba(0,0,0,.12);--shadow-lg:0 6px 24px rgba(0,0,0,.15);
+  --glow-green:none;--glow-blue:none;
+  --overlay-dark-1:#ebebeb;--overlay-dark-2:#e4e4e4;--overlay-dark-3:rgba(0,0,0,.40);
+  --overlay-light-1:#fafafa;--overlay-light-2:#f8f8f8;--overlay-light-3:#f5f5f5;
+  --overlay-light-4:#f2f2f2;--overlay-light-5:#efefef;--overlay-light-8:#eaeaea;
+  --overlay-light-10:#e6e6e6;--table-th-bg:#eeeeee;--table-td-border:#dddddd;
+  --table-row-hover:#f9f9f9;--fi-bg:#ffffff;--select-bg:#ffffff;--movl-bg:rgba(0,0,0,.50);
+}
+
+/* Auto mode: let the OS decide via media query (no explicit data-theme on :root) */
 @media (prefers-color-scheme:light){
-  :root:not([data-theme-set]) body,
-  body[data-theme="auto"]{
-    --bg:#f0f4f9;--surface:#ffffff;--surface2:#e6edf5;--border:#c5d4e4;
-    --text:#1e3a5f;--muted:#5a7a99;--white:#0a1628;
-    --green:#009e6a;--green2:#007f55;--amber:#c77b00;--red:#c81e1e;--blue:#1d4ed8;--purple:#6d28d9;
-    --shadow-sm:0 1px 3px rgba(0,0,0,.12);--shadow-md:0 4px 16px rgba(0,0,0,.14);--shadow-lg:0 8px 32px rgba(0,0,0,.18);
-    --glow-green:0 0 20px rgba(0,158,106,.15);--glow-blue:0 0 20px rgba(29,78,216,.15);
-    --overlay-dark-1:rgba(0,0,0,.05);--overlay-dark-2:rgba(0,0,0,.07);--overlay-dark-3:rgba(0,0,0,.35);
-    --overlay-light-1:rgba(0,0,0,.02);--overlay-light-2:rgba(0,0,0,.02);--overlay-light-3:rgba(0,0,0,.03);
-    --overlay-light-4:rgba(0,0,0,.04);--overlay-light-5:rgba(0,0,0,.04);--overlay-light-8:rgba(0,0,0,.05);
-    --overlay-light-10:rgba(0,0,0,.06);--table-th-bg:rgba(0,0,0,.06);--table-td-border:rgba(180,200,220,.6);
-    --table-row-hover:rgba(0,0,0,.02);--fi-bg:rgba(255,255,255,.8);--select-bg:rgba(255,255,255,.8);--movl-bg:rgba(0,0,0,.45);
+  :root:not([data-theme]){
+    --bg:#f5f5f5;--surface:#ffffff;--surface2:#f0f0f0;--border:#d0d0d0;
+    --text:#111111;--muted:#666666;--white:#000000;
+    --green:#007a50;--green2:#005f3e;--amber:#b35a00;--red:#b91c1c;--blue:#1a40b8;--purple:#5b21b6;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.10);--shadow-md:0 3px 10px rgba(0,0,0,.12);--shadow-lg:0 6px 24px rgba(0,0,0,.15);
+    --glow-green:none;--glow-blue:none;
+    --overlay-dark-1:#ebebeb;--overlay-dark-2:#e4e4e4;--overlay-dark-3:rgba(0,0,0,.40);
+    --overlay-light-1:#fafafa;--overlay-light-2:#f8f8f8;--overlay-light-3:#f5f5f5;
+    --overlay-light-4:#f2f2f2;--overlay-light-5:#efefef;--overlay-light-8:#eaeaea;
+    --overlay-light-10:#e6e6e6;--table-th-bg:#eeeeee;--table-td-border:#dddddd;
+    --table-row-hover:#f9f9f9;--fi-bg:#ffffff;--select-bg:#ffffff;--movl-bg:rgba(0,0,0,.50);
   }
 }
 /* ── END THEME ──────────────────────────────────────────────── */
@@ -816,13 +835,125 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
   <div class="be-doc-area" id="be-doc-area"><!-- injected by JS --></div>
   <div class="be-footer">
     <button class="btn bg" style="flex:1" onclick="saveBookFromEditor()">💾 Save</button>
-    <button class="btn bo" style="flex:1" onclick="downloadBookFromEditor()">⬇ Download</button>
+    <button class="btn bo" style="flex:1" onclick="downloadBookFromEditor()" id="book-dl-btn">⬇ Download PDF / CSV</button>
   </div>
 </div>
 
 <div id="update-toast">🔄 New version available — tap to update</div>
 
 <script>
+
+// ══════════════════════════════════════════════════════════
+// ██  PDF PRINT ENGINE  ████████████████████████████████████
+// Universal PDF download: opens a styled print window.
+// No CDN, no external libs — works fully offline.
+// ══════════════════════════════════════════════════════════
+function _pdfPrint(htmlBody, title, filename) {
+  const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${title||'MDM Export'}</title>
+<style>
+  @page { size: A4; margin: 1.5cm 2cm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    color: #111;
+    margin: 0;
+    background: #fff;
+  }
+  .pdf-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2.5px solid #00d68f;
+    padding-bottom: 8px;
+    margin-bottom: 18px;
+  }
+  .pdf-logo {
+    font-size: 20pt;
+    font-weight: 900;
+    color: #00d68f;
+    letter-spacing: -1px;
+  }
+  .pdf-meta { text-align: right; font-size: 9pt; color: #555; }
+  .pdf-title { font-size: 15pt; font-weight: 700; margin: 0 0 14px; color: #0a1628; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 10pt;
+  }
+  thead th {
+    background: #0a1628;
+    color: #fff;
+    padding: 7px 9px;
+    text-align: left;
+    font-size: 9.5pt;
+    font-weight: 600;
+  }
+  tbody tr:nth-child(even) { background: #f5fdf9; }
+  tbody tr:hover { background: #e6faf3; }
+  td { padding: 6px 9px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pdf-footer {
+    margin-top: 24px;
+    font-size: 8.5pt;
+    color: #888;
+    border-top: 1px solid #ddd;
+    padding-top: 7px;
+  }
+  .total-row td { font-weight: 700; background: #eafaf3; border-top: 2px solid #00d68f; }
+  /* Payslip / summary specific overrides */
+  .payslip-company { font-size: 18pt; font-weight: 900; color: #0a1628; margin-bottom: 2px; }
+  .payslip-sub { font-size: 10pt; color: #555; margin-bottom: 10px; }
+  .pay-section-title { font-size: 12pt; font-weight: 700; margin: 14px 0 6px; color: #0a1628; border-left: 4px solid #00d68f; padding-left: 8px; }
+  .net-row td { font-size: 13pt; font-weight: 900; background: #eafaf3; color: #007a4d; border-top: 3px solid #00d68f; }
+  .sig-row { margin-top: 36px; display: flex; justify-content: space-between; }
+  .sig-box { width: 42%; border-top: 1px solid #aaa; padding-top: 5px; font-size: 9.5pt; color: #555; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+${htmlBody}
+</body>
+</html>`;
+
+  const w = window.open('','_blank','width=900,height=700');
+  if(!w){ showToast('⚠️ Allow pop-ups to download PDF'); return; }
+  w.document.write(fullHtml);
+  w.document.close();
+  // Give images/fonts a moment to load, then trigger print
+  w.onload = ()=>{ w.focus(); w.print(); };
+  // Fallback if onload already fired
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 600);
+}
+
+// Build the standard MDM header block for PDF exports
+function _pdfHeader(title){
+  const di=DATA.depotInfo||{};
+  const co=di.name||'My Depot Master';
+  const loc=[di.district,di.province,di.country].filter(Boolean).join(', ');
+  const now=new Date().toLocaleString('en-GB');
+  return `<div class="pdf-header">
+    <div><div class="pdf-logo">MDM</div><div style="font-size:11pt;font-weight:700;color:#0a1628">${esc(co)}</div>${loc?`<div style="font-size:9pt;color:#555">${esc(loc)}</div>`:''}</div>
+    <div class="pdf-meta">My Depot Master<br>${esc(now)}</div>
+  </div>
+  <div class="pdf-title">${esc(title)}</div>`;
+}
+
+// Convert rows array (first row = headers) into an HTML table
+function _pdfTable(headers, rows){
+  const ths = headers.map(h=>`<th>${esc(String(h))}</th>`).join('');
+  const trs = rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${typeof c==='number'||(!isNaN(parseFloat(c))&&i>0)?'num':''}">${esc(String(c??''))}</td>`).join('')}</tr>`).join('');
+  return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function _pdfFooter(note){
+  return `<div class="pdf-footer">Generated by My Depot Master · ${new Date().toLocaleString('en-GB')}${note?' · '+note:''}</div>`;
+}
 
 // ══════════════════════════════════════════════════════════
 // ██████╗ PASSWORD HASHING — Pure-JS salted stretching
@@ -3655,7 +3786,7 @@ function renderGeneral(){
         <button class="btn bo bsm" id="btn-add-gen-sc">&#x1F4E6; Stock Count</button>
         ${USER.role==='admin'?`<button class="btn bo bsm" onclick="openManageInventory()">⚙️ Manage</button>`:''}
         <button class="btn bo bsm" id="btn-add-transport" onclick="openTransportForm()">🚛 Transport</button>
-        <button class="btn bo bsm" onclick="exportCurrentTabCSV()" title="Export current view to CSV">⬇️ CSV</button>
+        <button class="btn bo bsm" onclick="exportCurrentTabCSV()" title="Export current view as PDF">⬇️ PDF</button>
       </div>
     </div>
     <div class="stabs">
@@ -4630,7 +4761,7 @@ function renderMaize(){
         <button class="btn ba bsm" id="btn-add-maize-iss">+ Issue</button>
         <button class="btn bo bsm" id="btn-add-stock-count">📦 Stock Count</button>
         ${USER.role==='admin'?`<button class="btn bo bsm" id="btn-manage-commodities" onclick="openManageCommodities()">⚙️ Manage</button>`:''}
-        <button class="btn bo bsm" onclick="exportCurrentTabCSV()" title="Export current view to CSV">⬇️ CSV</button>
+        <button class="btn bo bsm" onclick="exportCurrentTabCSV()" title="Export current view as PDF">⬇️ PDF</button>
       </div>
     </div>
     <div class="stabs">
@@ -5624,7 +5755,7 @@ function renderStaff(){
         ${USER.role==='admin'?`<button class="btn bo bsm" id="btn-add-staff">+ Add Staff</button>`:''}
         <button class="btn bg bsm" id="btn-log-work">+ Log Work</button>
         <button class="btn ba bsm" id="btn-pay-staff">💳 Pay</button>
-        <button class="btn bo bsm" onclick="exportCurrentTabCSV()" title="Export current view to CSV">⬇️ CSV</button>
+        <button class="btn bo bsm" onclick="exportCurrentTabCSV()" title="Export current view as PDF">⬇️ PDF</button>
       </div>
     </div>
     <div class="stabs">
@@ -6487,44 +6618,46 @@ function generatePayslip(staffId, periodMonth, periodYear){
   const totalPaid=payments.reduce((a,b)=>a+Number(b.amount||0),0);
   const unpaid=net-totalPaid;
   const dedRows=Object.entries(dedByReason).map(([r,a])=>`<tr><td style="padding:6px 10px">${esc(r)}</td><td style="text-align:right;padding:6px 10px;color:#c00">- ${zm(a)}</td></tr>`).join('')||'<tr><td colspan="2" style="padding:6px 10px;color:#888">None</td></tr>';
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Payslip — ${esc(s.name)}</title>
-<style>body{font-family:'Times New Roman',serif;font-size:13pt;margin:2cm;color:#111;}
-h1{font-size:22pt;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:16px;}
-h2{font-size:15pt;margin:0 0 4px}
-table{width:100%;border-collapse:collapse;margin-bottom:16px}
-th{background:#f0f0f0;padding:7px 10px;text-align:left;border:1px solid #ccc;font-size:11pt}
-td{padding:6px 10px;border:1px solid #ddd;font-size:11pt}
-.net{font-weight:bold;font-size:14pt;background:#e8ffe8}
-.sig{margin-top:40px;display:flex;justify-content:space-between}
-.sig div{border-top:1px solid #000;padding-top:4px;width:40%;font-size:10pt;color:#555}
-.logo{font-size:10pt;color:#555;margin-bottom:4px}
-</style></head><body>
-<div class="logo">${esc(di.name||'My Depot Master')}${di.district?' · '+esc(di.district):''}${di.country?' · '+esc(di.country):''}</div>
-<h1>PAYSLIP</h1>
-<table><tr><th>Employee Name</th><td>${esc(s.name)}</td><th>Period</th><td>${period}</td></tr>
-<tr><th>Job Role</th><td>${esc(s.role)}</td><th>Date Issued</th><td>${today.toLocaleDateString('en-GB')}</td></tr>
-${s.dateJoined?`<tr><th>Date Joined</th><td>${fmtDate(s.dateJoined)}</td><th>Employee ID</th><td>${esc(s.employeeId||'—')}</td></tr>`:''}
+  const html=`
+<div class="pdf-header">
+  <div>
+    <div class="pdf-logo">MDM</div>
+    <div style="font-size:11pt;font-weight:700;color:#0a1628">${esc(di.name||'My Depot Master')}</div>
+    ${[di.district,di.province,di.country].filter(Boolean).length?`<div style="font-size:9pt;color:#555">${[di.district,di.province,di.country].filter(Boolean).map(esc).join(', ')}</div>`:''}
+  </div>
+  <div class="pdf-meta">PAYSLIP<br>${today.toLocaleDateString('en-GB')}</div>
+</div>
+<div class="pdf-title">Payslip — ${esc(s.name)}</div>
+<table>
+  <tr><th>Employee Name</th><td>${esc(s.name)}</td><th>Period</th><td>${period}</td></tr>
+  <tr><th>Job Role</th><td>${esc(s.role)}</td><th>Date Issued</th><td>${today.toLocaleDateString('en-GB')}</td></tr>
+  ${s.dateJoined?`<tr><th>Date Joined</th><td>${fmtDate(s.dateJoined)}</td><th>Employee ID</th><td>${esc(s.employeeId||'—')}</td></tr>`:''}
 </table>
-<h2>Earnings</h2>
-<table><tr><th>Description</th><th style="text-align:right">Amount</th></tr>
-<tr><td>Gross Wages (${sLogs.length} sessions)</td><td style="text-align:right">${zm(gross)}</td></tr>
+<div class="pay-section-title">Earnings</div>
+<table>
+  <thead><tr><th>Description</th><th style="text-align:right">Amount (ZMW)</th></tr></thead>
+  <tbody><tr><td>Gross Wages (${sLogs.length} session${sLogs.length!==1?'s':''})</td><td class="num">${zm(gross)}</td></tr></tbody>
 </table>
-<h2>Deductions</h2>
-<table><tr><th>Reason</th><th style="text-align:right">Amount</th></tr>${dedRows}</table>
-<table><tr class="net"><td style="font-weight:bold">NET PAY</td><td style="text-align:right;font-weight:bold">${zm(net)}</td></tr>
-<tr><td style="color:#555">Already Paid</td><td style="text-align:right;color:#555">- ${zm(totalPaid)}</td></tr>
-<tr><td style="color:${unpaid>0?'#c00':'#060'};font-weight:bold">${unpaid>0?'OUTSTANDING BALANCE':'FULLY PAID'}</td><td style="text-align:right;font-weight:bold;color:${unpaid>0?'#c00':'#060'}">${zm(Math.abs(unpaid))}</td></tr>
+<div class="pay-section-title">Deductions</div>
+<table>
+  <thead><tr><th>Reason</th><th style="text-align:right">Amount (ZMW)</th></tr></thead>
+  <tbody>${dedRows||'<tr><td colspan="2" style="color:#888">No deductions</td></tr>'}</tbody>
 </table>
-<div class="sig"><div>Employee Signature<br><br>${esc(s.name)}</div><div>Authorised By<br><br>${esc(di.name||'Management')}</div></div>
-<p style="font-size:9pt;color:#888;margin-top:30px">Generated by My Depot Master · ${today.toLocaleString('en-GB')} · This payslip must be verified by management before payment.</p>
-</body></html>`;
-  const blob=new Blob([html],{type:'text/html'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`Payslip_${s.name.replace(/\s+/g,'_')}_${period.replace(/\s/g,'_')}.html`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  showToast('🧾 Payslip downloaded for '+s.name);
+<table>
+  <tbody>
+    <tr class="net-row"><td>NET PAY</td><td class="num">${zm(net)}</td></tr>
+    <tr><td style="color:#555">Already Paid</td><td class="num" style="color:#555">− ${zm(totalPaid)}</td></tr>
+    <tr style="font-weight:700;color:${unpaid>0?'#c00':'#007a4d'}"><td>${unpaid>0?'OUTSTANDING BALANCE':'✅ FULLY PAID'}</td><td class="num">${zm(Math.abs(unpaid))}</td></tr>
+  </tbody>
+</table>
+<div class="sig-row">
+  <div class="sig-box">Employee Signature<br><br>${esc(s.name)}</div>
+  <div class="sig-box">Authorised By<br><br>${esc(di.name||'Management')}</div>
+</div>
+<div class="pdf-footer">Generated by My Depot Master · ${today.toLocaleString('en-GB')} · This payslip must be verified by management before payment.</div>
+`;
+  _pdfPrint(html, 'Payslip — '+s.name);
+  showToast('🧾 Opening payslip PDF for '+s.name);
 }
 
 function delLog(id){const _r=(DATA.staffLogs||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}requireAdminPassword('delete this work log',()=>{logAuditEvent('DELETE','Work Log',`ID:${id} · Staff:${_r?_r.staffId:''} · Task:${_r?_r.task:''}`,_r);updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));});}
@@ -6996,7 +7129,7 @@ function renderSettings(){
         <button class="btn bo" style="flex:1" onclick="importJSON()">📂 Restore Backup</button>
       </div>
       <div style="margin-top:10px">
-        <button class="btn bo" style="width:100%;color:var(--amber);border-color:var(--amber)" onclick="exportAuditLog()">📋 Export Audit Log (CSV)</button>
+        <button class="btn bo" style="width:100%;color:var(--amber);border-color:var(--amber)" onclick="exportAuditLog()">📋 Export Audit Log (PDF)</button>
       </div>
       <div style="margin-top:8px">
         <button class="btn bo" style="width:100%;font-size:12px" onclick="viewAuditLog()">🔍 View Recent Audit Events</button>
@@ -7427,18 +7560,14 @@ function exportAuditLog(){
   if(!requireAdmin('export audit log'))return;
   const log=DATA.auditLog||[];
   if(log.length===0){alert('No audit events recorded yet. Events are captured from this point forward whenever records are created, edited, or deleted.');return;}
-  const headers=['Timestamp','Date','Time','User','Role','Action','Area','Detail','Before (JSON)'];
+  const headers=['Date / Time','User','Role','Action','Area','Detail'];
   const rows=log.slice().sort((a,b)=>a.ts.localeCompare(b.ts)).map(e=>[
-    e.ts||'',e.date||'',e.time||'',e.user||'',e.role||'',
-    e.action||'',e.entity||'',e.detail||'',
-    e.before?e.before.replace(/"/g,"'"):''
-  ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
-  const csv=[headers.join(','),...rows].join('\r\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`mdm_audit_log_${today()}.csv`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  showToast(`📋 Exported ${log.length} audit event${log.length!==1?'s':''}`);
+    (e.date||'')+(e.time?' '+e.time:''),e.user||'',e.role||'',
+    e.action||'',e.entity||'',e.detail||''
+  ]);
+  const body=_pdfHeader('Audit Log')+_pdfTable(headers,rows)+_pdfFooter(`${log.length} event${log.length!==1?'s':''}`);
+  _pdfPrint(body,'MDM Audit Log');
+  showToast(`📋 Opening PDF for ${log.length} audit event${log.length!==1?'s':''}`);
 }
 
 // ── Fix 26: Audit Log Viewer ──────────────────────────────────────────────────
@@ -7464,7 +7593,7 @@ function viewAuditLog(){
     </table></div></div>
     <div class="mact">
       <button class="btn bo" onclick="closeModal()">Close</button>
-      <button class="btn ba" onclick="closeModal();exportAuditLog()">📥 Export CSV</button>
+      <button class="btn ba" onclick="closeModal();exportAuditLog()">📥 Export PDF</button>
     </div>`);
 }
 
@@ -7811,29 +7940,28 @@ const THEME_KEY = 'mdm_theme';
 function getThemePref(){ return localStorage.getItem(THEME_KEY) || 'auto'; }
 
 function applyTheme(pref){
-  const body = document.body;
   localStorage.setItem(THEME_KEY, pref);
+  const root = document.documentElement; // <html> element = :root
+  const body = document.body;
   if(pref === 'auto'){
-    // Remove manual overrides; let the prefers-color-scheme media query take over
+    // Remove explicit override → let OS media query take over
+    root.removeAttribute('data-theme');
     body.classList.remove('light');
-    body.removeAttribute('data-theme');
-    // Also apply the OS preference right now so there's no flash on toggle
-    const osLight = window.matchMedia('(prefers-color-scheme:light)').matches;
-    if(osLight) body.classList.add('light'); else body.classList.remove('light');
   } else if(pref === 'light'){
-    body.classList.add('light');
-    body.setAttribute('data-theme','light');
-  } else {
+    root.setAttribute('data-theme','light');
+    body.classList.add('light'); // keep for body.light selector compat
+  } else { // dark
+    root.setAttribute('data-theme','dark');
     body.classList.remove('light');
-    body.setAttribute('data-theme','dark');
   }
-  // Sync any rendered toggle buttons in Settings
+  // Sync toggle buttons
   document.querySelectorAll('.theme-toggle-opt').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.theme === pref);
   });
-  // Update theme-color meta
+  // Update theme-color meta tag (browser tab / mobile chrome colour)
+  const isLight = pref === 'light' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme:light)').matches);
   const tc = document.querySelector('meta[name="theme-color"]');
-  if(tc) tc.content = body.classList.contains('light') ? '#f0f4f9' : '#0a1628';
+  if(tc) tc.content = isLight ? '#f5f5f5' : '#0a1628';
 }
 
 // Called from Settings toggle pill
@@ -8798,17 +8926,12 @@ function downloadBookById(id) {
 function _triggerDownload(book) {
   let content, mime, filename;
   if(book.type==='docx') {
-    // Download as Word-compatible MHTML document (opens natively in Microsoft Word)
-    const wordHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta charset='UTF-8'><title>${esc(book.name)}</title>
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
-<style>body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.8;margin:2.5cm;color:#111;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ccc;padding:6px 10px;}</style>
-</head><body>${book.htmlContent||''}</body></html>`;
-    content = wordHtml;
-    mime = 'application/msword';
-    filename = book.name.replace(/\.docx$/i,'').replace(/\.html?$/i,'')+'.docx';
+    // PDF: print the Word document content
+    const docBody = `<div style="font-family:'Times New Roman',serif;font-size:14pt;line-height:1.8;color:#111">${book.htmlContent||''}</div>`;
+    _pdfPrint(docBody, book.name);
+    return;
   } else {
-    // Download as CSV
+    // Spreadsheet: download as CSV (spreadsheet format)
     const grid = book.gridData||[[]];
     content = grid.map(row=>row.map(cell=>{
       const s=String(cell||'');
@@ -8853,13 +8976,29 @@ function _csvEscape(v){
 }
 function _csvRow(arr){return arr.map(_csvEscape).join(',');}
 function _csvDownload(rows,filename){
-  const bom='\uFEFF'; // UTF-8 BOM for Excel compatibility
-  const csv=bom+rows.join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=filename;a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  // PDF version: parse rows back to headers+data and print
+  if(rows.length===0){showToast('No data to export.');return;}
+  // rows[0] is the header row (already CSV-escaped), rest are data
+  function _unesc(s){return s.replace(/^"|"$/g,'').replace(/""/g,'"');}
+  function _splitRow(r){
+    const res=[];let cur='',inQ=false;
+    for(let i=0;i<r.length;i++){
+      const c=r[i];
+      if(c==='"'&&!inQ){inQ=true;}
+      else if(c==='"'&&inQ&&r[i+1]==='"'){cur+='"';i++;}
+      else if(c==='"'&&inQ){inQ=false;}
+      else if(c===','&&!inQ){res.push(cur);cur='';}
+      else{cur+=c;}
+    }
+    res.push(cur);return res;
+  }
+  const headers=_splitRow(rows[0]).map(_unesc);
+  const dataRows=rows.slice(1).map(r=>_splitRow(r).map(_unesc));
+  // Derive title from filename: CompanyName_Label_Date.csv → Label (replace underscores)
+  const titlePart=filename.replace(/\.csv$/i,'').split('_').slice(1,-1).join(' ')||filename;
+  const body=_pdfHeader(titlePart)+_pdfTable(headers,dataRows)+_pdfFooter(`${dataRows.length} record${dataRows.length!==1?'s':''}`);
+  _pdfPrint(body,'MDM — '+titlePart);
+  showToast('📄 Opening PDF — use print dialog to save');
 }
 function _csvFilename(label){
   const d=new Date();
@@ -9434,59 +9573,37 @@ function generatePrintSummary(month,year){
   }).join('');
 
   const c=cur()||'';
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Period Summary — ${periodLabel}</title>
-<style>
-*{box-sizing:border-box}
-body{font-family:'Times New Roman',serif;font-size:12pt;margin:1.5cm;color:#111}
-h1{font-size:20pt;border-bottom:2.5px solid #000;padding-bottom:6px;margin-bottom:16px}
-h2{font-size:14pt;margin:20px 0 6px;border-bottom:1px solid #ccc;padding-bottom:3px}
-table{width:100%;border-collapse:collapse;margin-bottom:16px}
-th{background:#f0f0f0;padding:6px 8px;text-align:left;border:1px solid #ccc;font-size:10pt}
-td{padding:5px 8px;border:1px solid #ddd;font-size:10pt}
-.logo{font-size:9pt;color:#555;margin-bottom:3px}
-.meta{font-size:9pt;color:#777;margin-bottom:20px}
-.fin{font-weight:bold;background:#e8ffe8}
-.warn{color:#c00}
-@media print{body{margin:1cm}button{display:none}}
-</style></head><body>
-<div class="logo">${esc(di.name||'My Depot Master')}${di.district?' · '+esc(di.district):''}${di.country?' · '+esc(di.country):''}</div>
-<h1>PERIOD SUMMARY — ${periodLabel.toUpperCase()}</h1>
-<div class="meta">Generated: ${today.toLocaleString('en-GB')} · My Depot Master</div>
-<button onclick="window.print()" style="padding:8px 20px;background:#000;color:#fff;border:none;cursor:pointer;border-radius:4px;font-size:11pt;margin-bottom:20px">🖨️ Print</button>
+  const html=`
+${_pdfHeader('Period Summary — '+periodLabel)}
 
-${comRows?`<h2>${DATA.commodities.length>1?'Commodities':'Commodity'} Movement</h2>
+${comRows?`<div class="pay-section-title">${DATA.commodities.length>1?'Commodities':'Commodity'} Movement</div>
 <table><thead><tr><th>Commodity</th><th style="text-align:right">Received</th><th style="text-align:right">Issued</th><th style="text-align:right">Net</th></tr></thead>
 <tbody>${comRows}</tbody></table>`:''}
 
-${genRows?`<h2>General Inventory</h2>
+${genRows?`<div class="pay-section-title">General Inventory</div>
 <table><thead><tr><th>Item</th><th style="text-align:right">Received</th><th style="text-align:right">Issued</th><th style="text-align:right">Balance</th></tr></thead>
 <tbody>${genRows}</tbody></table>`:''}
 
-${hasPrices?`<h2>Financial Summary</h2>
-<table><tr><th>Total Purchases</th><td>${c} ${cumPurchases.toFixed(2)}</td></tr>
-<tr><th>Total Sales Revenue</th><td>${c} ${cumSales.toFixed(2)}</td></tr>
-<tr class="fin"><th>Gross Profit</th><td class="${cumProfit<0?'warn':''}">${c} ${cumProfit.toFixed(2)}</td></tr></table>`:''}
+${hasPrices?`<div class="pay-section-title">Financial Summary</div>
+<table>
+  <tr><th>Total Purchases</th><td class="num">${c} ${cumPurchases.toFixed(2)}</td></tr>
+  <tr><th>Total Sales Revenue</th><td class="num">${c} ${cumSales.toFixed(2)}</td></tr>
+  <tr class="total-row"><th>Gross Profit</th><td class="num" style="color:${cumProfit<0?'#c00':'#007a4d'}">${c} ${cumProfit.toFixed(2)}</td></tr>
+</table>`:''}
 
-${staffRows?`<h2>Staff Payroll Summary</h2>
+${staffRows?`<div class="pay-section-title">Staff Payroll Summary</div>
 <table><thead><tr><th>Name</th><th>Role</th><th style="text-align:right">Earned</th><th style="text-align:right">Paid</th><th style="text-align:right">Balance</th></tr></thead>
 <tbody>${staffRows}</tbody></table>`:''}
 
-${leaveRows?`<h2>Leave Taken</h2>
+${leaveRows?`<div class="pay-section-title">Leave Taken</div>
 <table><thead><tr><th>Staff</th><th>Type</th><th>Date</th><th style="text-align:right">Days</th></tr></thead>
 <tbody>${leaveRows}</tbody></table>`:''}
 
-<p style="font-size:9pt;color:#888;margin-top:30px;border-top:1px solid #ccc;padding-top:10px">
-  Generated by My Depot Master · ${today.toLocaleString('en-GB')} · This report must be verified by management before use.
-</p>
-</body></html>`;
+${_pdfFooter('This report must be verified by management before use.')}
+`;
 
-  const blob=new Blob([html],{type:'text/html'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`MDM_Summary_${periodLabel.replace(/\s/g,'_')}.html`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  showToast('🖨️ Summary report downloaded for '+periodLabel);
+  _pdfPrint(html, 'MDM Summary — '+periodLabel);
+  showToast('🖨️ Opening summary PDF for '+periodLabel);
 }
 
 // ══════════════════════════════════════════════════════════
