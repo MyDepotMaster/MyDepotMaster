@@ -25,15 +25,31 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v26 changes (2026-06-12):
+//   - Fix 29: Staff ID Card Generator. New "🪪 Print ID Card" button in every
+//     staff profile modal opens a print-ready pop-up with front and back of a
+//     credit-card-sized ID card (85.6 × 54 mm). Front shows initials avatar,
+//     name, role, phone, date joined, location, contract type badge (colour-
+//     coded), employee ID, and live status indicator. Back shows emergency
+//     contact, company info, employee ID in barcode style, and signature line.
+//     Fully offline — no external deps, pure HTML/CSS via _pdfPrint engine.
+//
 // v25 changes (2026-06-12):
 //   - Cloud upload/download icons added to every nav tab (Dashboard, General,
-//     Commodities, Staff, Books, Contacts). Each tab shows two small SVG cloud
-//     buttons in its top-right corner: ↑ Upload (calls doFbSync immediately)
-//     and ↓ Download (fetches cloud copy, version-gates with _v check, confirms
-//     before overwrite). Icons fade in on hover (desktop) and are always visible
-//     on the active tab; on touch devices inactive tabs show them at 45% opacity.
-//     Button spins while syncing (reuses existing spin keyframe). Both handlers
-//     use stopPropagation so tapping the icon does not switch tabs.
+//     Commodities, Staff, Books, Contacts). Each tab has two small SVG cloud
+//     buttons: ↑ Upload (calls doFbSync immediately) and ↓ Download (fetches
+//     cloud copy, version-gates with _v check, confirms before overwrite).
+//     Icons fade in on hover (desktop); always visible on active tab; 45%
+//     opacity on inactive tabs on touch devices. Button spins while syncing.
+//   - Fix 27: First-Run Onboarding Checklist. 5-step setup modal auto-appears
+//     after first admin login. Steps auto-check from live DATA state. Tapping
+//     any step navigates to the relevant tab. Permanently dismissible.
+//     Re-openable from Settings → Help & Documentation.
+//   - Fix 28: Inline ℹ️ Tooltips. mdmTip() helper adds hoverable/tappable
+//     info badges on key fields. Singleton popup positions intelligently near
+//     screen edges. 15 tooltips added across: Currency, Shift Hours, Annual
+//     Leave, Edit Window, Auto-Logout, Recovery PIN, Purchase Price, Selling
+//     Price, Batch Name, Deduction, Budget Period/Value/Quantity, and more.
 //
 // v24 changes (2026-06-11):
 //   - Two-Stage Shift Log: "Log Work" button split into ⏵ Clock In and
@@ -117,7 +133,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v25';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v26';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
