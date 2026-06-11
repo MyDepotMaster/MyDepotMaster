@@ -25,6 +25,15 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v23 changes (2026-06-11):
+//   - PC/tablet nav moved from left sidebar to bottom tab bar.
+//     Tabs display icon + label side-by-side (row layout), 64px tall,
+//     max 140px wide per tab, centred across full width. Active tab
+//     retains green top-border indicator. Content area uses full screen
+//     width with 28–40px horizontal padding. Book editor unlocked from
+//     480px cap on PC. Extra-wide (≥1200px) breakpoint bumped to 68px
+//     tab height and 40px content padding.
+//
 // v22 changes (2026-06-11):
 //   - Light theme purified: all hardcoded dark hex backgrounds (#0a1628,
 //     #001a2e, #002b1f, #081428, #0d1a40, #1a0d2e, #0d2a00, #2a1500,
@@ -83,7 +92,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v22';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v23';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 

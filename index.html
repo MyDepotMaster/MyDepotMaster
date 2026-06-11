@@ -117,7 +117,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* ── Tablet / PC landscape (wide + tall viewport) ───────────
    Triggers for any screen wider than 600px in landscape or
-   any screen wider than 768px regardless of orientation.     */
+   any screen wider than 768px regardless of orientation.
+   Nav stays at BOTTOM — wider tab bar with labels visible.   */
 @media (min-width:600px) and (orientation:landscape),
        (min-width:768px) {
   html,body{overflow:hidden;}
@@ -126,56 +127,74 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     width:100%;
     height:100dvh;
     height:100vh;
-    flex-direction:row;        /* sidebar nav on left, content on right */
+    flex-direction:column;     /* header → content → bottom nav */
     overflow:hidden;
   }
-  /* Sidebar navigation */
+  /* Bottom tab bar — wider, spacious, horizontal */
   .nav{
-    flex-direction:column;
-    width:72px;
-    min-height:100%;
-    height:100%;
-    border-top:none;
-    border-right:1px solid var(--border);
+    flex-direction:row;
+    width:100%;
+    min-height:64px;
+    height:64px;
+    border-top:1px solid var(--border);
+    border-right:none;
     border-bottom:none;
     padding-bottom:env(safe-area-inset-bottom,0px);
-    padding-top:env(safe-area-inset-top,0px);
-    justify-content:flex-start;
-    padding-top:12px;
-    gap:2px;
-    overflow-y:auto;
+    padding-top:0;
+    justify-content:center;
+    gap:0;
+    overflow:visible;
     flex-shrink:0;
+    order:3;                   /* ensures nav is always at bottom */
   }
   .nb{
-    width:100%;
-    flex-direction:column;
-    padding:10px 4px;
-    border-top:none;
-    border-left:3px solid transparent;
-    font-size:9px;
-    min-height:60px;
+    flex:0 1 120px;            /* fixed max-width tabs, don't over-stretch */
+    max-width:140px;
+    flex-direction:row;        /* icon + label side by side on PC */
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    padding:0 10px;
+    border-top:2px solid transparent;
+    border-left:none;
+    font-size:12px;
+    min-height:64px;
     border-radius:0;
   }
-  .nb.act{
-    border-left-color:var(--green);
-    border-top-color:transparent;
-    background:rgba(0,214,143,.06);
+  .nb svg{
+    width:18px;
+    height:18px;
+    flex-shrink:0;
   }
-  /* Main area (header + content) fills remaining width */
+  .nb span{
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:visible;
+    text-overflow:clip;
+  }
+  .nb.act{
+    border-top-color:var(--green);
+    border-left-color:transparent;
+    background:rgba(0,214,143,.06);
+    color:var(--green);
+  }
+  /* Main area (header + content) fills remaining height */
   #main-area{
     flex:1;
     display:flex;
     flex-direction:column;
     min-width:0;
+    min-height:0;
     overflow:hidden;
-    height:100%;
+    order:1;
   }
   .content{
     flex:1;
     overflow-y:auto;
-    padding:20px 24px;
+    padding:20px 28px;
   }
-  .hdr{padding:12px 24px;}
+  .hdr{padding:12px 28px;}
   /* Modals and overlays go full-height, centered */
   .movl{align-items:center;}
   .modal{
@@ -191,10 +210,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* ── Extra-wide PC (≥1200px): more breathing room ─────────── */
 @media (min-width:1200px){
-  .nav{width:88px;}
-  .nb{font-size:10px;}
-  .content{padding:24px 32px;}
-  .hdr{padding:14px 32px;}
+  .nav{min-height:68px;height:68px;}
+  .nb{font-size:13px;flex:0 1 150px;max-width:160px;gap:8px;}
+  .nb svg{width:20px;height:20px;}
+  .content{padding:24px 40px;}
+  .hdr{padding:14px 40px;}
   .modal{max-width:640px;}
 }
 
@@ -469,7 +489,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 /* ── END BOOKS ─────────────────────────────────────────────── */
 
 /* ── BOOK EDITOR ───────────────────────────────────────────── */
-#book-editor-screen{position:fixed;inset:0;background:var(--bg);z-index:600;display:none;flex-direction:column;max-width:480px;margin:0 auto;}
+#book-editor-screen{position:fixed;inset:0;background:var(--bg);z-index:600;display:none;flex-direction:column;max-width:100%;margin:0 auto;}
 .be-hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .be-title-input{flex:1;background:transparent;border:none;outline:none;font-family:var(--fh);font-size:16px;font-weight:700;color:var(--white);min-width:0;}
 .be-title-input::placeholder{color:var(--muted);}
