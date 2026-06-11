@@ -8339,9 +8339,15 @@ setInterval(()=>{ if(ONLINE && USER) scheduleFbSync(); }, 5*60*1000);
 let _beBookId   = null;   // null = new doc
 let _beType     = 'docx'; // 'docx' | 'xlsx'
 let _beGrid     = [];     // spreadsheet rows: [[cell,...],...]
-const BE_ROWS   = 30;
-const BE_COLS   = 8;
-const BE_COL_LABELS = ['A','B','C','D','E','F','G','H'];
+const BE_ROWS   = 50;    // default initial rows (grid grows dynamically — no hard cap)
+const BE_COLS   = 8;     // default initial cols (grid grows dynamically — no hard cap)
+// Generate spreadsheet column label: 1→A, 26→Z, 27→AA, 28→AB, …
+function _colLabel(n) { // n is 0-based
+  let s = '', i = n + 1;
+  while (i > 0) { s = String.fromCharCode(64 + (i % 26 || 26)) + s; i = Math.floor((i - 1) / 26); }
+  return s;
+}
+const BE_COL_LABELS = Array.from({length:702}, (_,i)=>_colLabel(i)); // A–ZZ (702 cols)
 
 function booksFmtSize(bytes) {
   if (!bytes) return '—';
@@ -8512,10 +8518,10 @@ function beHeading(tag) {
 
 // ── WORD DOC — INSERT TABLE ────────────────────────────────
 function beInsertTable() {
-  const rows = parseInt(prompt('Rows (e.g. 3):', '3'));
-  if(!rows || rows < 1 || rows > 50) { alert('Enter a valid row count (1–50).'); return; }
-  const cols = parseInt(prompt('Columns (e.g. 3):', '3'));
-  if(!cols || cols < 1 || cols > 20) { alert('Enter a valid column count (1–20).'); return; }
+  const rows = parseInt(prompt('Rows:', '3'));
+  if(!rows || rows < 1 || isNaN(rows)) { alert('Enter a valid number of rows (1 or more).'); return; }
+  const cols = parseInt(prompt('Columns:', '3'));
+  if(!cols || cols < 1 || isNaN(cols)) { alert('Enter a valid number of columns (1 or more).'); return; }
 
   const thCells = Array.from({length:cols}, (_,i)=>
     `<th style="border:1px solid #999;padding:5px 8px;background:#e8e8e8;font-weight:bold;min-width:60px">Col ${i+1}</th>`
@@ -8544,10 +8550,10 @@ function beInsertSheetTable() {
   for(let r=0;r<_beGrid.length;r++){
     if(_beGrid[r].every(c=>!c)){startRow=r;break;}
   }
-  const cols = parseInt(prompt('Number of columns for table (e.g. 4):', '4'));
-  if(!cols||cols<1||cols>8){alert('Enter 1–8 columns.');return;}
-  const rows = parseInt(prompt('Number of data rows (e.g. 5):', '5'));
-  if(!rows||rows<1||rows>30){alert('Enter 1–30 rows.');return;}
+  const cols = parseInt(prompt('Number of columns for table:', '4'));
+  if(!cols||cols<1||isNaN(cols)){alert('Enter a valid number of columns (1 or more).');return;}
+  const rows = parseInt(prompt('Number of data rows:', '5'));
+  if(!rows||rows<1||isNaN(rows)){alert('Enter a valid number of rows (1 or more).');return;}
 
   // Ensure grid is big enough
   while(_beGrid.length < startRow + rows + 2) _beGrid.push(Array(_beGrid[0]?.length||BE_COLS).fill(''));
@@ -8563,7 +8569,7 @@ function beInsertSheetTable() {
   while(_beGrid.length <= sumRow) _beGrid.push(Array(_beGrid[0]?.length||BE_COLS).fill(''));
   _beGrid[sumRow][0] = 'TOTAL';
   for(let c=1;c<cols;c++){
-    const colLetter = BE_COL_LABELS[c]||String(c+1);
+    const colLetter = _colLabel(c);
     const r1 = startRow+2, r2 = startRow+rows+1;
     _beGrid[sumRow][c] = `=SUM(${colLetter}${r1}:${colLetter}${r2})`;
   }
@@ -8579,10 +8585,12 @@ function beInsertSheetTable() {
 // Cell refs: A1, B3 | Ranges: A1:C5 | Arithmetic: +−×÷^
 // Usage: =SUM(A1:A10), =A1+B1*2, =IF(A1>0,"Yes","No")
 
-const _COL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-function _colIndex(letter) {
-  return _COL_LETTERS.indexOf(letter.toUpperCase());
+// Convert column label (A→0, Z→25, AA→26, AB→27, ...) to 0-based index
+function _colIndex(label) {
+  const s = label.toUpperCase();
+  let n = 0;
+  for (let i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+  return n - 1;
 }
 
 function _resolveRange(ref, selfR, selfC) {
@@ -8725,7 +8733,7 @@ function _beGridFocus(inp, r, c) {
   // Update formula bar
   const cellRef = document.getElementById('be-cell-ref');
   const fbar = document.getElementById('be-formula-input');
-  if(cellRef) cellRef.textContent = (_COL_LETTERS[c]||String(c+1)) + (r+1);
+  if(cellRef) cellRef.textContent = _colLabel(c) + (r+1);
   if(fbar) fbar.value = raw;
 }
 
@@ -8776,7 +8784,8 @@ function _beFormulaBarInput(val) {
 
 // ── SPREADSHEET GRID ──────────────────────────────────────
 function _renderGrid() {
-  const colHdrs = BE_COL_LABELS.slice(0, _beGrid[0]?.length||BE_COLS);
+  const numCols = _beGrid[0]?.length||BE_COLS;
+  const colHdrs = Array.from({length:numCols},(_,i)=>_colLabel(i));
   const head = `<thead><tr>
     <th class="col-hdr" style="background:var(--surface);border:1px solid var(--border);min-width:28px;position:sticky;top:0;left:0;z-index:3"></th>
     ${colHdrs.map(c=>`<th class="col-hdr">${c}</th>`).join('')}
@@ -8837,14 +8846,13 @@ function beAddRow(){
 function beAddCol(){
   const newLen = (_beGrid[0]?.length||BE_COLS) + 1;
   _beGrid = _beGrid.map(r=>[...r,'']);
-  if(newLen<=26) BE_COL_LABELS[newLen-1] = String.fromCharCode(64+newLen);
   const wrap = document.getElementById('be-doc-area').querySelector('.be-grid-wrap');
   if (!wrap) return;
   const table = wrap.querySelector('.be-grid');
   // Fall back to full rebuild if table not yet in DOM
   if (!table) { wrap.innerHTML = _renderGrid(); return; }
   const ci = newLen - 1;
-  const label = BE_COL_LABELS[ci] || String.fromCharCode(64+newLen);
+  const label = _colLabel(ci);
   // Add column header
   const headerRow = table.querySelector('thead tr');
   if (headerRow) {
