@@ -1507,7 +1507,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v21';
+const SW_VERSION  = 'mdm-v22';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1523,7 +1523,7 @@ const SW_VERSION  = 'mdm-v21';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v21';
+  const VER = 'mdm-v22';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -9310,7 +9310,7 @@ function renderCashFlow(){
     const outPct=Math.round((d.out/maxVal)*100);
     return`<div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
-        <span>${m}</span><span style="color:${net>=0?'var(--green)':'var(--red)';font-weight:700}">${net>=0?'+':''}${zm(net)}</span>
+        <span>${m}</span><span style="color:${net>=0?'var(--green)':'var(--red)'};font-weight:700">${net>=0?'+':''}${zm(net)}</span>
       </div>
       <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:2px">
         <div style="height:100%;width:${inPct}%;background:var(--green);border-radius:4px;transition:width .3s"></div>
@@ -9470,7 +9470,7 @@ function renderBudgetVsActual(){
           <span>·</span>
           <span>Issued: <b style="color:var(--blue)">${a.issQty.toLocaleString()}</b></span>
           <span>·</span>
-          <span style="color:${varQty>=0?'var(--green)':'var(--red)';font-weight:700}">${varQty>=0?'+':''}${varQty.toLocaleString()}</span>
+          <span style="color:${varQty>=0?'var(--green)':'var(--red)'};font-weight:700">${varQty>=0?'+':''}${varQty.toLocaleString()}</span>
         </div>`:''}
         ${b.notes?`<div style="margin-top:6px;font-size:11px;color:var(--muted);font-style:italic">${esc(b.notes)}</div>`:''}
       </div>`;
