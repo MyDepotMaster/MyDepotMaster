@@ -1238,9 +1238,55 @@ async function forceFbSync() {
   DATA._lastFbSync = Date.now();
   sv(DATA);
   await doFbSync();
-  if(btn){btn.disabled=false;btn.textContent='🔄 Sync Now';}
+  if(btn){btn.disabled=false;btn.textContent='🔄 Upload to Cloud';}
   updateLastSyncDisplay();
-  showToast('✅ Data synced to cloud');
+  showToast('✅ Data uploaded to cloud');
+}
+
+async function forceCloudRestore() {
+  const btn = document.querySelector('button[onclick="forceCloudRestore()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Downloading…'; }
+  if (!isFbConfigured() || !navigator.onLine) {
+    showToast('❌ No internet connection');
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Download from Cloud'; }
+    return;
+  }
+  const key = DATA.installId || _loadPersistedInstallId();
+  if (!key || key === 'MDM-????-????-????') {
+    showToast('❌ No depot key found');
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Download from Cloud'; }
+    return;
+  }
+  try {
+    const val = await fbGet('depots/' + key + '/data');
+    if (!val || !val._v) {
+      showToast('❌ No cloud data found for this account');
+      if (btn) { btn.disabled = false; btn.textContent = '⬇ Download from Cloud'; }
+      return;
+    }
+    if (!confirm('⬇ Replace your local data with the cloud copy?\n\nThis will overwrite any unsaved local changes.')) {
+      if (btn) { btn.disabled = false; btn.textContent = '⬇ Download from Cloud'; }
+      return;
+    }
+    const localTrialStart = DATA.trialStart || 0;
+    const localUsers = Array.isArray(DATA.users) ? DATA.users : [];
+    DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+    // Merge local-only users not present in cloud
+    const cloudUsernames = new Set((DATA.users||[]).map(u=>(u.username||'').toLowerCase()));
+    const localOnlyUsers = localUsers.filter(u=>(u.username||'') && !cloudUsernames.has((u.username||'').toLowerCase()));
+    if (localOnlyUsers.length > 0) DATA.users = [...(DATA.users||[]), ...localOnlyUsers];
+    // Keep earliest trialStart
+    if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) DATA.trialStart = localTrialStart;
+    DATA._lastFbSync = Date.now();
+    if (DATA.installId) _persistInstallId(DATA.installId);
+    sv(DATA);
+    render();
+    showToast('✅ Data downloaded from cloud');
+    updateLastSyncDisplay();
+  } catch(e) {
+    showToast('❌ Download failed: ' + e.message);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '⬇ Download from Cloud'; }
 }
 
 function updateLastSyncDisplay() {
@@ -6962,7 +7008,10 @@ function renderSettings(){
         <span style="font-size:12px;color:var(--muted)">Last cloud sync</span>
         <span id="last-sync-time" style="font-size:12px;color:var(--green);font-weight:700">—</span>
       </div>
-      <button class="btn bo bsm" style="width:100%" onclick="forceFbSync()">🔄 Sync Now</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn bo bsm" style="flex:1" onclick="forceFbSync()">🔄 Upload to Cloud</button>
+        <button class="btn bo bsm" style="flex:1" onclick="forceCloudRestore()">⬇ Download from Cloud</button>
+      </div>
     </div>
 
 
