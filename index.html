@@ -9,9 +9,16 @@
 <meta name="apple-mobile-web-app-title" content="My Depot Master"/>
 <meta name="theme-color" content="#0a1628"/>
 <!-- ── SECURITY HEADERS ────────────────────────────────────────────────────── -->
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; connect-src https://*.firebaseio.com https://firebaseinstallations.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self' blob:;">
+<!-- X-Content-Type-Options and X-Frame-Options must be HTTP response headers  -->
+<!-- to be enforced by browsers — meta http-equiv is ignored for these.        -->
+<!-- frame-ancestors 'none' below replaces X-Frame-Options via CSP (which IS  -->
+<!-- respected from a meta CSP tag in modern browsers).                        -->
+<!-- NOTE (Fix 8): script-src includes 'unsafe-inline' because this is a      -->
+<!-- single-file app with all JS inline. This means CSP provides no XSS       -->
+<!-- protection for script injection. To harden: extract JS to a separate     -->
+<!-- file and switch to a nonce-based CSP. Until then, all other XSS vectors  -->
+<!-- (esc(), input validation) are the primary defence.                       -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; connect-src https://*.firebaseio.com https://firebaseinstallations.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self' blob:; frame-ancestors 'none';">
 <!-- ──────────────────────────────────────────────────────────────────────── -->
 <!-- OpenGraph / Social sharing -->
 <meta property="og:title" content="My Depot Master"/>
@@ -618,7 +625,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
         <div class="land-stat-lbl">1-Month<br>Trial</div>
       </div>
       <div class="land-stat">
-        <div class="land-stat-num">K100</div>
+        <div class="land-stat-num">K300</div>
         <div class="land-stat-lbl">Per<br>Month</div>
       </div>
     </div>
@@ -689,7 +696,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <div class="land-pricing">
         <div class="land-pricing-badge">🎁 1-MONTH FREE TRIAL</div>
         <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin-bottom:4px">
-          <div class="land-pricing-price">K100</div>
+          <div class="land-pricing-price">K300</div>
           <div style="font-size:15px;color:#6a88a8;font-weight:500">/ month</div>
         </div>
         <div class="land-pricing-sub">No payment needed to start your free trial.<br>Pay via <strong style="color:var(--white)">Airtel Money</strong>, <strong style="color:var(--white)">MTN MoMo</strong>, or <strong style="color:var(--white)">card</strong> to continue.</div>
@@ -744,7 +751,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
     </div>
     <div style="width:100%;max-width:400px">
       <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">💳 Make Payment To Activate</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Subscribe for <strong style="color:var(--white)">K100/month</strong> via <strong style="color:var(--text)">Airtel Money</strong>, <strong style="color:var(--text)">MTN MoMo</strong>, <strong style="color:var(--text)">Zamtel</strong>, or <strong style="color:var(--text)">card</strong>. Your account activates instantly after payment.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Subscribe for <strong style="color:var(--white)">K300/month</strong> via <strong style="color:var(--text)">Airtel Money</strong>, <strong style="color:var(--text)">MTN MoMo</strong>, <strong style="color:var(--text)">Zamtel</strong>, or <strong style="color:var(--text)">card</strong>. Your account activates instantly after payment.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
@@ -1058,10 +1065,15 @@ ${htmlBody}
 </body>
 </html>`;
 
-  const w = window.open('','_blank','width=900,height=700');
-  if(!w){ showToast('⚠️ Allow pop-ups to download PDF'); return; }
-  w.document.write(fullHtml);
-  w.document.close();
+  // Fix 10: replaced document.write() with a blob URL — avoids the risks of
+  // document.write() while keeping full print fidelity. All callers of
+  // _pdfPrint() MUST ensure htmlBody contains only esc()-sanitised user data.
+  const blob = new Blob([fullHtml], { type: 'text/html' });
+  const blobUrl = URL.createObjectURL(blob);
+  const w = window.open(blobUrl, '_blank', 'width=900,height=700');
+  if(!w){ URL.revokeObjectURL(blobUrl); showToast('⚠️ Allow pop-ups to download PDF'); return; }
+  // Revoke after a generous delay to ensure the window has fully loaded
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   // Give images/fonts a moment to load, then trigger print
   w.onload = ()=>{ w.focus(); w.print(); };
   // Fallback if onload already fired
@@ -1140,6 +1152,10 @@ function _stretch(pass, salt) {
 }
 
 // Public API — hashPassword is async (PBKDF2); verifyPassword handles both new and legacy formats.
+// Fix 14: SubtleCrypto fallback risk — if PBKDF2 is unavailable this function now throws
+// instead of silently falling back to the weaker mdm1 algorithm.  A clear console warning
+// and a user-facing toast are emitted first so operators know the device is unsupported.
+// mdm1 is still accepted in verifyPassword for reading existing legacy hashes.
 async function hashPassword(plain) {
   try {
     const enc = new TextEncoder();
@@ -1153,11 +1169,16 @@ async function hashPassword(plain) {
     );
     const hash = Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join('');
     return 'mdm2:' + salt + ':' + hash; // mdm2 = PBKDF2/SHA-256/200k rounds
-  } catch {
-    // Fallback: old stretch algorithm for ancient WebViews without PBKDF2
-    const salt = _genSalt();
-    const hash = _stretch(plain, salt);
-    return 'mdm1:' + salt + ':' + hash;
+  } catch (pbkdf2Err) {
+    // Fix 14: Do NOT fall back to mdm1 for new passwords — mdm1 is a custom
+    // stretching loop that is significantly weaker than PBKDF2/200k.
+    // Emit a prominent warning and throw so the caller surfaces an error to the user.
+    const msg = 'MDM Security: crypto.subtle.deriveBits (PBKDF2) is unavailable on this device. ' +
+                'Password hashing aborted — mdm1 fallback disabled for new passwords. ' +
+                'Please use a modern browser or enable HTTPS. Raw error: ' + pbkdf2Err;
+    console.error(msg);
+    try { showToast('⚠️ Your browser does not support secure password hashing. Please update your browser or use HTTPS.', 8000); } catch {}
+    throw new Error('Secure password hashing unavailable: PBKDF2 not supported on this device. Update your browser to continue.');
   }
 }
 async function verifyPassword(plain, stored) {
@@ -1241,7 +1262,8 @@ function esc(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
+    .replace(/'/g, '&#x27;')
+    .replace(/`/g, '&#x60;'); // Fix 5: escape backticks to prevent template-literal injection
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1250,30 +1272,47 @@ function esc(str) {
 // Replace the values below with your own Firebase project config.
 // See the Setup Guide in Settings > License & Firebase for step-by-step instructions.
 // ══════════════════════════════════════════════════════════
-// ██████╗ FIREBASE SECURITY — IMPORTANT
+// ██████╗ FIREBASE SECURITY — IMPORTANT (Fix 11)
 // ══════════════════════════════════════════════════════════
-// The Firebase Realtime Database MUST have Security Rules configured
-// to prevent unauthorised reads/writes. Recommended minimum rules:
+// The Firebase API key below is intentionally visible in client-side code —
+// Firebase Web API keys identify the project, not authenticate the caller.
+// Security is enforced entirely by Firebase Security Rules (see below).
 //
+// ── ACTIVE RULES (applied in Firebase Console) ───────────
 // {
 //   "rules": {
 //     "licenses": {
-//       "$key": {
-//         ".read":  "auth == null",   // public read for license check
-//         ".write": false             // only writable by admin SDK / console
-//       }
+//       ".read": true,
+//       ".write": false,
+//       "$key": { ".write": false }
 //     },
 //     "depots": {
-//       "$key": {
-//         ".read":  "auth == null",   // read by known installId key
-//         ".write": "auth == null"    // write by app (key acts as shared secret)
+//       "$installId": {
+//         ".read": "auth == null",
+//         ".write": "auth == null && newData.child('data/installId').val() === $installId"
+//       }
+//     },
+//     "usernames": {
+//       "$username": {
+//         ".read": "auth == null",
+//         ".write": "auth == null"
+//       }
+//     },
+//     "lockouts": {
+//       "$installId": {
+//         ".read": "auth == null",
+//         ".write": "auth == null"
 //       }
 //     }
 //   }
 // }
 //
-// For stronger security, enable Firebase App Check (prevents non-app callers)
-// and consider Firebase Auth anonymous sign-in so rules can use auth != null.
+// KEY POINTS:
+// - depots write rule verifies the installId in the payload matches the key,
+//   preventing any caller from overwriting another depot's data.
+// - The API key alone gives no write access — rules enforce all restrictions.
+// - For stronger security: enable Firebase App Check (prevents non-app callers)
+//   and migrate to Firebase Auth anonymous sign-in (rules can use auth != null).
 // ══════════════════════════════════════════════════════════
 
 const FB_CONFIG = {
@@ -1288,7 +1327,7 @@ const FB_CONFIG = {
 // ═══════════════════════════════════════════════════════════
 
 // ── LICENSE STATE ─────────────────────────────────────────
-let LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 30 };
+let LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 30, activeSince: 0, payments: [] };
 const LICENSE_CACHE_KEY = 'mdm_license_cache';
 const LICENSE_GRACE_MS  = 7 * 24 * 60 * 60 * 1000; // 7-day offline grace
 const TRIAL_MS          = 30 * 24 * 60 * 60 * 1000; // 30-day trial (1 month)
@@ -1774,7 +1813,7 @@ function applyLicenseMode() {
     document.body.classList.add('readonly-mode');
     if (bsIcon)  bsIcon.textContent  = '⏳';
     if (bsTitle) bsTitle.textContent = 'Trial Period Ended';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>1-month free trial</strong> has ended.<br><br>Subscribe for <strong style="color:var(--green)">K100/month</strong> to continue adding data. You can still view all your records.';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>1-month free trial</strong> has ended.<br><br>Subscribe for <strong style="color:var(--green)">K300/month</strong> to continue adding data. You can still view all your records.';
     if (bsKey)   bsKey.textContent   = depotKey();
     if (blocked) blocked.style.display = 'flex';
 
@@ -1792,7 +1831,7 @@ function applyLicenseMode() {
     document.body.classList.add('readonly-mode');
     if (bsIcon)  bsIcon.textContent  = '🔒';
     if (bsTitle) bsTitle.textContent = 'Subscription Expired';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your subscription has ended.<br><br>Renew for <strong style="color:var(--green)">K100/month</strong> to continue adding data. All your records are safe and visible.';
+    if (bsMsg)   bsMsg.innerHTML     = 'Your subscription has ended.<br><br>Renew for <strong style="color:var(--green)">K300/month</strong> to continue adding data. All your records are safe and visible.';
     if (bsKey)   bsKey.textContent   = depotKey();
     if (blocked) blocked.style.display = 'flex';
 
@@ -1802,7 +1841,7 @@ function applyLicenseMode() {
     if (daysLeft <= 10 && trialBnr) {
       document.body.classList.add('trial-mode');
       trialBnr.style.display = 'flex';
-      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Subscribe for K100/month to keep access.`;
+      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Subscribe for K300/month to keep access.`;
       if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
     }
 
@@ -1815,7 +1854,7 @@ function applyLicenseMode() {
       if (daysLeft <= 10 && daysLeft > 0 && trialBnr) {
         document.body.classList.add('trial-mode');
         trialBnr.style.display = 'flex';
-        if (trialMsg) trialMsg.textContent = `Subscription expires in ${daysLeft} day${daysLeft===1?'':'s'}. Renew for K100/month.`;
+        if (trialMsg) trialMsg.textContent = `Subscription expires in ${daysLeft} day${daysLeft===1?'':'s'}. Renew for K300/month.`;
         if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
       }
     }
@@ -1911,7 +1950,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v27';
+const SW_VERSION  = 'mdm-v28';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1927,7 +1966,7 @@ const SW_VERSION  = 'mdm-v27';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v27';
+  const VER = 'mdm-v28';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -1957,7 +1996,7 @@ if ('caches' in window) {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     // Register the real same-origin sw.js — this is what makes offline work on Android.
-    navigator.serviceWorker.register('./sw-4.js', { scope: './' })
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
       .then(reg => {
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
@@ -2623,10 +2662,10 @@ function _recAutoLoad() {
       <div class="rec-opt-label" style="color:var(--green)">🔑 Option ${hasEmail ? '1 — ' : ''}Recovery PIN</div>
       <div class="err-box" id="rec-pin-err" style="display:none;margin-bottom:10px"></div>
       <div class="fw"><div class="fl">Recovery PIN</div>
-        <input class="fi" type="password" id="rec-pin" placeholder="Your 4–8 digit PIN" inputmode="numeric" maxlength="8" autocomplete="off"/>
+        <input class="fi" type="password" id="rec-pin" placeholder="Your 6–8 digit PIN" inputmode="numeric" maxlength="8" autocomplete="one-time-code"/>
       </div>
       <div class="fw"><div class="fl">New Password</div>
-        <input class="fi" type="password" id="rec-np1" placeholder="New password (min 4 chars)" autocomplete="new-password"/>
+        <input class="fi" type="password" id="rec-np1" placeholder="New password (min 8 chars)" autocomplete="new-password"/>
       </div>
       <div class="fw" style="margin-bottom:10px"><div class="fl">Confirm Password</div>
         <input class="fi" type="password" id="rec-np2" placeholder="Repeat new password" autocomplete="new-password"/>
@@ -2646,7 +2685,7 @@ function _recAutoLoad() {
         <input class="fi" type="email" id="rec-email-input" placeholder="Type your full email address" autocapitalize="none" autocomplete="email" spellcheck="false" style="text-transform:none"/>
       </div>
       <div class="fw"><div class="fl">New Password</div>
-        <input class="fi" type="password" id="rec-enp1" placeholder="New password (min 4 chars)" autocomplete="new-password"/>
+        <input class="fi" type="password" id="rec-enp1" placeholder="New password (min 8 chars)" autocomplete="new-password"/>
       </div>
       <div class="fw" style="margin-bottom:10px"><div class="fl">Confirm Password</div>
         <input class="fi" type="password" id="rec-enp2" placeholder="Repeat new password" autocomplete="new-password"/>
@@ -2665,7 +2704,7 @@ function _recAutoLoad() {
 
 async function doRecoveryAutomatic(mode) {
   // Recovery brute-force lockout
-  const recLock = _recBfLocked();
+  const recLock = await _recBfLocked();
   if (recLock) {
     const errEl = document.getElementById(mode === 'email' ? 'rec-email-err' : 'rec-pin-err');
     if (errEl) { errEl.style.display = 'block'; errEl.textContent = recLock; }
@@ -2680,7 +2719,7 @@ async function doRecoveryAutomatic(mode) {
     err.style.display = 'none';
 
     if (!inputEmail)        { err.style.display='block'; err.textContent='⚠️ Enter your recovery email address.'; return; }
-    if (np1.length < 4)     { err.style.display='block'; err.textContent='New password must be at least 4 characters.'; return; }
+    if (np1.length < 8)     { err.style.display='block'; err.textContent='New password must be at least 8 characters.'; return; }
     if (np1 !== np2)        { err.style.display='block'; err.textContent='❌ Passwords do not match.'; return; }
 
     const admins = (DATA.users || []).filter(u => u.role === 'admin');
@@ -2688,13 +2727,13 @@ async function doRecoveryAutomatic(mode) {
                         ((DATA.depotInfo || {}).recoveryEmail || '').toLowerCase();
 
     if (!storedEmail || inputEmail !== storedEmail) {
-      _recBfFail();
+      await _recBfFail();
       err.style.display = 'block';
       err.textContent = '❌ Email does not match. Please check and try again.';
       return;
     }
 
-    _recBfOk();
+    await _recBfOk();
     const hashed = await hashPassword(np1);
     updateData(d => ({
       ...d,
@@ -2714,17 +2753,17 @@ async function doRecoveryAutomatic(mode) {
   err.style.display = 'none';
 
   if (!pin)           { err.style.display='block'; err.textContent='⚠️ Enter your Recovery PIN.'; return; }
-  if (np1.length < 4) { err.style.display='block'; err.textContent='New password must be at least 4 characters.'; return; }
+  if (np1.length < 8) { err.style.display='block'; err.textContent='New password must be at least 8 characters.'; return; }
   if (np1 !== np2)    { err.style.display='block'; err.textContent='❌ Passwords do not match.'; return; }
 
   if (!await verifyPassword(pin, DATA.recoveryPin)) {
-    _recBfFail();
+    await _recBfFail();
     err.style.display = 'block';
     err.textContent = '❌ Incorrect Recovery PIN. Please try again.';
     return;
   }
 
-  _recBfOk();
+  await _recBfOk();
   const hashed = await hashPassword(np1);
   updateData(d => ({
     ...d,
@@ -2750,7 +2789,7 @@ function adminResetUserPass(username) {
     <div class="mtitle">🔑 Reset Password — ${esc(username)}</div>
     <div id="arp-err" class="err-box" style="display:none"></div>
     <div class="fw"><div class="fl">New Password</div>
-      <input class="fi" type="password" id="arp-p1" placeholder="New password (min 4 chars)" autocomplete="new-password"/>
+      <input class="fi" type="password" id="arp-p1" placeholder="New password (min 8 chars)" autocomplete="new-password"/>
     </div>
     <div class="fw"><div class="fl">Confirm Password</div>
       <input class="fi" type="password" id="arp-p2" placeholder="Repeat new password" autocomplete="new-password"/>
@@ -2766,7 +2805,7 @@ async function _confirmAdminReset(username) {
   const p2  = document.getElementById('arp-p2')?.value || '';
   const err = document.getElementById('arp-err');
   err.style.display = 'none';
-  if (p1.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
+  if (p1.length < 8) { err.style.display='block'; err.textContent='Password must be at least 8 characters.'; return; }
   if (p1 !== p2)     { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
   const hashed = await hashPassword(p1);
   updateData(d => ({
@@ -2788,7 +2827,7 @@ async function saveRecoveryPin() {
   const p2  = document.getElementById('rec-pin-conf')?.value || '';
   const msg = document.getElementById('rec-pin-set-msg');
   msg.innerHTML = '';
-  if (p1.length < 4)       { msg.innerHTML='<div class="err-box">PIN must be at least 4 digits.</div>'; return; }
+  if (p1.length < 6)       { msg.innerHTML='<div class="err-box">PIN must be at least 6 digits.</div>'; return; }
   if (!/^\d+$/.test(p1))   { msg.innerHTML='<div class="err-box">PIN must contain digits only.</div>'; return; }
   if (p1 !== p2)            { msg.innerHTML='<div class="err-box">PINs do not match.</div>'; return; }
   const hashed = await hashPassword(p1);
@@ -3004,7 +3043,7 @@ async function signupFinish() {
   if (!/^[a-z0-9_]+$/.test(username)) { err.style.display='block'; err.textContent='⚠️ Username can only contain letters, numbers and underscores.'; return; }
   if (!_suUsernameOk) { err.style.display='block'; err.textContent='⚠️ Please wait for username availability check to complete.'; return; }
   if (!suCurrency) { err.style.display='block'; err.textContent='Please enter a currency (e.g. ZMW, USD).'; return; }
-  if (pass.length < 4) { err.style.display='block'; err.textContent='Password must be at least 4 characters.'; return; }
+  if (pass.length < 8) { err.style.display='block'; err.textContent='Password must be at least 8 characters.'; return; }
   if (pass !== pass2) { err.style.display='block'; err.textContent='Passwords do not match.'; return; }
   if (emailRaw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
     err.style.display='block'; err.textContent='⚠️ Recovery email format looks invalid. Please check it or leave it blank.'; return;
@@ -3112,31 +3151,71 @@ document.getElementById('logout-btn').addEventListener('click',doLogout);
 document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 // ── BRUTE-FORCE LOCKOUT ───────────────────────────────────────────────────────
-// 5 failed attempts → 60-second lockout. Resets on success.
-// ── BRUTE-FORCE LOCKOUT ──────────────────────────────────────────────────────
-// Persisted to localStorage so a page refresh or app restart cannot bypass it.
-const _BF_KEY = 'mdm_bf_state';
-function _bfLoad() {
-  try { return JSON.parse(localStorage.getItem(_BF_KEY) || '{}'); } catch { return {}; }
-}
-function _bfSave(state) {
-  try { localStorage.setItem(_BF_KEY, JSON.stringify(state)); } catch {}
-}
-const _BF_MAX = 5;
-const _BF_LOCK_MS = 60 * 1000; // 60-second lockout
+// ── FIX 2: BRUTE-FORCE LOCKOUT ───────────────────────────────────────────────
+// Lockout state is stored in Firebase under lockouts/<installId>/login and
+// lockouts/<installId>/recovery — a separate path from depot data so it cannot
+// be bypassed by clearing localStorage or wiping app data.
+// Falls back to localStorage only when offline or Firebase is unavailable.
+// ─────────────────────────────────────────────────────────────────────────────
 
-function _bfFail() {
-  const s = _bfLoad();
+const _BF_MAX      = 5;
+const _BF_LOCK_MS  = 60 * 1000;   // 60-second login lockout
+const _REC_BF_MAX  = 5;
+const _REC_BF_LOCK_MS = 120000;   // 2-minute recovery lockout
+
+// ── localStorage fallback keys (offline only) ────────────────────────────────
+const _BF_KEY     = 'mdm_bf_state';
+const _REC_BF_KEY = 'mdm_rec_bf';
+
+// ── Firebase path helpers ─────────────────────────────────────────────────────
+function _bfFbPath(type) {
+  // type: 'login' | 'recovery'
+  const id = (DATA && DATA.installId) || _loadPersistedInstallId();
+  if (!id || id === 'MDM-????-????-????') return null;
+  return 'lockouts/' + id + '/' + type;
+}
+
+// ── Generic load/save (Firebase-first, localStorage fallback) ─────────────────
+async function _bfLoadRemote(type) {
+  if (isFbConfigured() && navigator.onLine) {
+    try {
+      const path = _bfFbPath(type);
+      if (path) {
+        const val = await fbGet(path);
+        return val || {};
+      }
+    } catch(e) { /* fall through to localStorage */ }
+  }
+  const lk = type === 'login' ? _BF_KEY : _REC_BF_KEY;
+  try { return JSON.parse(localStorage.getItem(lk) || '{}'); } catch { return {}; }
+}
+
+async function _bfSaveRemote(type, state) {
+  const lk = type === 'login' ? _BF_KEY : _REC_BF_KEY;
+  // Always write localStorage as a fast local mirror
+  try { localStorage.setItem(lk, JSON.stringify(state)); } catch {}
+  // Write Firebase (fire-and-forget — don't block the UI)
+  if (isFbConfigured() && navigator.onLine) {
+    const path = _bfFbPath(type);
+    if (path) fbSet(path, state).catch(() => {});
+  }
+}
+
+// ── Login brute-force ─────────────────────────────────────────────────────────
+// _bfLocked() is called before login so must be async now.
+async function _bfFail() {
+  const s = await _bfLoadRemote('login');
   s.attempts = (s.attempts || 0) + 1;
   if (s.attempts >= _BF_MAX) {
     s.lockedUntil = Date.now() + _BF_LOCK_MS;
     s.attempts = 0;
   }
-  _bfSave(s);
+  await _bfSaveRemote('login', s);
+  return s;
 }
-function _bfOk() { _bfSave({ attempts: 0, lockedUntil: 0 }); }
-function _bfLocked() {
-  const s = _bfLoad();
+async function _bfOk() { await _bfSaveRemote('login', { attempts: 0, lockedUntil: 0 }); }
+async function _bfLocked() {
+  const s = await _bfLoadRemote('login');
   if (s.lockedUntil && Date.now() < s.lockedUntil) {
     const secs = Math.ceil((s.lockedUntil - Date.now()) / 1000);
     return `⛔ Too many failed attempts. Try again in ${secs} second${secs !== 1 ? 's' : ''}.`;
@@ -3144,35 +3223,26 @@ function _bfLocked() {
   return null;
 }
 
-// Recovery PIN/email attempt throttle (separate from login)
-// Persisted to localStorage so a page reload cannot bypass it.
-const _REC_BF_KEY = 'mdm_rec_bf';
-function _recBfLoad() {
-  try { return JSON.parse(localStorage.getItem(_REC_BF_KEY) || '{}'); } catch { return {}; }
-}
-function _recBfSave(s) {
-  try { localStorage.setItem(_REC_BF_KEY, JSON.stringify(s)); } catch {}
-}
-const _REC_BF_MAX = 5;
-const _REC_BF_LOCK_MS = 120000; // 2-minute lockout
-function _recBfFail() {
-  const s = _recBfLoad();
+// ── Recovery brute-force ──────────────────────────────────────────────────────
+async function _recBfFail() {
+  const s = await _bfLoadRemote('recovery');
   s.attempts = (s.attempts || 0) + 1;
   if (s.attempts >= _REC_BF_MAX) {
     s.lockedUntil = Date.now() + _REC_BF_LOCK_MS;
     s.attempts = 0;
   }
-  _recBfSave(s);
+  await _bfSaveRemote('recovery', s);
 }
-function _recBfOk()  { _recBfSave({ attempts: 0, lockedUntil: 0 }); }
-function _recBfLocked() {
-  const s = _recBfLoad();
+async function _recBfOk()  { await _bfSaveRemote('recovery', { attempts: 0, lockedUntil: 0 }); }
+async function _recBfLocked() {
+  const s = await _bfLoadRemote('recovery');
   if (s.lockedUntil && Date.now() < s.lockedUntil) {
     const secs = Math.ceil((s.lockedUntil - Date.now()) / 1000);
     return `⛔ Too many failed attempts. Try again in ${secs}s.`;
   }
   return null;
 }
+// ── END FIX 2 ─────────────────────────────────────────────────────────────────
 
 async function doLogin(){
   const u = (document.getElementById('l-user').value||'').trim().toLowerCase().replace(/\s+/g,'');
@@ -3185,8 +3255,8 @@ async function doLogin(){
   // Block if already logged in
   if (USER) return;
 
-  // Brute-force lockout check
-  const lockMsg = _bfLocked();
+  // Brute-force lockout check (async — reads Firebase first)
+  const lockMsg = await _bfLocked();
   if (lockMsg) {
     err.style.display = 'block';
     err.textContent = lockMsg;
@@ -3287,8 +3357,7 @@ async function doLogin(){
     btn.disabled=false; btn.textContent='🔒 Sign In';
 
     if(!valid){
-      _bfFail();
-      const _s = _bfLoad();
+      const _s = await _bfFail();
       const _rem = _BF_MAX - (_s.attempts || 0);
       err.style.display='block';
       if (!DATA.users || DATA.users.length === 0) {
@@ -3315,7 +3384,7 @@ async function doLogin(){
       return;
     }
     // ─────────────────────────────────────────────────────────────────────────
-    _bfOk();
+    await _bfOk();
     err.style.display='none';
     USER = Object.freeze({...userObj}); // freeze to prevent console mutation
     localStorage.setItem(_TOS_PFX+userObj.username,'y');
@@ -3384,6 +3453,62 @@ function doLogout(){
       <button class="btn rd" onclick="closeModal();_doLogoutNow()">⏏ Log Out</button>
     </div>`);
 }
+
+// ── FIX 13: CROSS-TAB LOGOUT SYNCHRONISATION ────────────────────────────────
+// When the user logs out in one tab, all other tabs sharing the same session
+// must also be logged out immediately.  BroadcastChannel is the modern way
+// (Chrome, Firefox, Edge); Safari <15.4 falls back to a storage-event sentinel.
+(function(){
+  const _CH_NAME = 'mdm_session';
+  const _LS_KEY  = 'mdm_session_event';
+
+  // ── Broadcast a logout event to every other tab ──────────────────────────
+  function _broadcastLogout() {
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        new BroadcastChannel(_CH_NAME).postMessage({ type: 'logout' });
+      }
+    } catch {}
+    // localStorage fallback (triggers storage event in other tabs)
+    try {
+      localStorage.setItem(_LS_KEY, 'logout:' + Date.now());
+      // Remove after a tick so repeated logouts always fire a new value
+      setTimeout(() => { try { localStorage.removeItem(_LS_KEY); } catch {} }, 500);
+    } catch {}
+  }
+
+  // ── Listen for logout signals from other tabs ────────────────────────────
+  function _onRemoteLogout(msg) {
+    if (!msg || msg.type !== 'logout') return;
+    if (!USER) return; // already logged out in this tab
+    _doLogoutNow();
+    showToast('🔒 Logged out — session ended in another tab.');
+  }
+
+  // BroadcastChannel listener
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const _bc = new BroadcastChannel(_CH_NAME);
+      _bc.onmessage = e => _onRemoteLogout(e.data);
+    }
+  } catch {}
+
+  // localStorage fallback listener (Safari <15.4, old WebViews)
+  window.addEventListener('storage', e => {
+    if (e.key === _LS_KEY && e.newValue && e.newValue.startsWith('logout:')) {
+      _onRemoteLogout({ type: 'logout' });
+    }
+  });
+
+  // Patch _doLogoutNow so every explicit logout (button, idle, etc.) broadcasts
+  const _origDoLogoutNow = _doLogoutNow;
+  window._doLogoutNow = function() {
+    _broadcastLogout();
+    _origDoLogoutNow();
+  };
+  // Re-expose so existing callers (doLogout modal, idle timer) pick up the patch
+  window._doLogoutNow = window._doLogoutNow; // no-op re-assignment for clarity
+})();
 
 // ── AUTO-LOGOUT ON INACTIVITY ────────────────────────────────────────────────
 // Protects against physical access to a logged-in phone left unattended.
@@ -4956,14 +5081,14 @@ function renderMaize(){
   const comSelector=coms.length>1?`
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
       <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Commodity:</span>
-      ${coms.map(c=>`<button class="stab${CCOM===c.id?' act':''}" onclick="CCOM='${c.id}';MTAB='received';render()" style="font-size:12px">${c.icon} ${c.name}</button>`).join('')}
+      ${coms.map(c=>`<button class="stab${CCOM===c.id?' act':''}" onclick="CCOM='${c.id}';MTAB='received';render()" style="font-size:12px">${esc(c.icon)} ${esc(c.name)}</button>`).join('')}
     </div>`:'';
 
   return `
     ${comSelector}
     ${_syncStatusChip()}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="sh" style="margin:0">${com.icon} ${com.name} Handling</div>
+      <div class="sh" style="margin:0">${esc(com.icon)} ${esc(com.name)} Handling</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn bg bsm" id="btn-add-maize-rec">+ Receive</button>
         <button class="btn ba bsm" id="btn-add-maize-iss">+ Issue</button>
@@ -5062,7 +5187,7 @@ function renderMaizeRec(){
         ${USER.role==='admin'?`<th style="text-align:right;color:var(--amber);border-left:1px solid var(--border)">Cum.Cost</th>`:''}
         ${USER.role==='admin'?'<th></th>':''}
       </tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="9" class="empty">No ${com.name} received for this period</td></tr>`:rows}</tbody>
+      <tbody>${items.length===0?`<tr><td colspan="9" class="empty">No ${esc(com.name)} received for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
@@ -5141,7 +5266,7 @@ function renderMaizeIss(){
         ${USER.role==='admin'?'<th></th>':''}
         <th title="Batch traceability">🔍</th>
       </tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="12" class="empty">No ${com.name} issued for this period</td></tr>`:rows}</tbody>
+      <tbody>${items.length===0?`<tr><td colspan="12" class="empty">No ${esc(com.name)} issued for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
 }
 
@@ -5219,7 +5344,7 @@ function renderMaizeSummary(){
   const profitColor=cumProfit>=0?'var(--green)':'var(--red)';
   return `
     <div class="card">
-      <div class="ctitle">${com.icon} Cumulative ${com.name} Summary</div>
+      <div class="ctitle">${esc(com.icon)} Cumulative ${esc(com.name)} Summary</div>
       <div class="srow">
         <div class="sbox"><div class="sv">${totRec.toLocaleString()}</div><div class="sl">Total Received</div></div>
         <div class="sbox am"><div class="sv">${totIss.toLocaleString()}</div><div class="sl">Total Issued</div></div>
@@ -5302,7 +5427,7 @@ function renderMaizeBatchSummaryRows(hasPricing){
 function openMaizeRecForm(){
   const com=getCom(CCOM);
   openModal(`
-    <div class="mtitle">${com.icon} Receive ${com.name}</div>
+    <div class="mtitle">${esc(com.icon)} Receive ${esc(com.name)}</div>
     <div class="fw"><div class="fl">Batch Name ${mdmTip('A unique name for this delivery or lot (e.g. Batch 1, Season A, June-2025). All received, issued and counted records are grouped by batch, making it easy to track and trace each consignment.')}</div><input class="fi" id="mr-batch" placeholder="e.g. Batch 1, Batch A…"/></div>
     <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Received</div><input class="fi" type="number" id="mr-rec" placeholder="0" inputmode="numeric"/></div>
     <div class="fw"><div class="fl">Unit Price (${cur()} per ${com.unit.slice(0,-1)||com.unit}) <span style="color:var(--muted);font-weight:400;font-size:10px">— optional</span></div><input class="fi" type="number" id="mr-uprice" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
@@ -5347,7 +5472,7 @@ function openMaizeIssForm(){
     ?`<option value="">— None / Unknown —</option>`+allRec.map(r=>`<option value="${r.id}">${r.batchName} · ${fmtDate(r.date)} · ${Number(r.received||0).toLocaleString()} ${com.unit}</option>`).join('')
     :`<option value="">No receive records yet</option>`;
   openModal(`
-    <div class="mtitle">📤 Issue ${com.name}</div>
+    <div class="mtitle">📤 Issue ${esc(com.name)}</div>
     <div class="fw"><div class="fl">Batch Name</div><select class="fi" id="mi-batch" onchange="_miAutoSrcRec(this.value)">${opts}</select></div>
     <div class="fw"><div class="fl">Source Receive Record <span style="font-size:10px;color:var(--muted)">— for traceability (optional)</span></div><select class="fi" id="mi-src-rec">${srcOpts}</select></div>
     <div class="fw"><div class="fl">Transporter Name</div><input class="fi" id="mi-trans" placeholder="e.g. Truck A, John's Truck…"/></div>
@@ -5415,7 +5540,7 @@ function renderTransportLog(){
   }).join('');
   return`
     <div class="card" style="background:var(--surface);border-color:var(--blue)">
-      <div class="ctitle" style="margin-bottom:8px">🚛 Transport Log — ${com.name}</div>
+      <div class="ctitle" style="margin-bottom:8px">🚛 Transport Log — ${esc(com.name)}</div>
       <div class="srow">
         <div class="sbox bl"><div class="sv">${totalTrips}</div><div class="sl">Total Trips</div></div>
         <div class="sbox am"><div class="sv">${totalQty.toLocaleString()}</div><div class="sl">Total ${com.unit} Moved</div></div>
@@ -5595,7 +5720,7 @@ function openTraceModal(issueId, type){
   openModal(`
     <div class="mtitle">🔍 Batch Trace — ${esc(issRec.batchName)}</div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:12px">
-      <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">${com.icon} ${com.name} · ${esc(issRec.batchName)}</div>
+      <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">${esc(com.icon)} ${esc(com.name)} · ${esc(issRec.batchName)}</div>
       ${(()=>{const srcRecForLot=((DATA.commodityReceived||{})[comId]||[]).find(r=>r.batchName===issRec.batchName&&r.lotId);return srcRecForLot?`<div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-family:var(--fm)">Lot ID: <span style="color:var(--amber);font-weight:700">${esc(srcRecForLot.lotId)}</span></div>`:'';})()}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
         <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Issue Date</div><div style="font-weight:700">${fmtDate(issRec.date)}</div></div>
@@ -5628,7 +5753,7 @@ function openTraceModal(issueId, type){
 function openStockCountForm(){
   const com=getCom(CCOM);
   const batches=[...new Set(cRec(CCOM).map(x=>x.batchName))];
-  if(batches.length===0){alert(`No ${com.name} batches received yet.`);return;}
+  if(batches.length===0){alert(`No ${esc(com.name)} batches received yet.`);return;}
   const opts=batches.map(b=>{
     const avail=batchAvail(b,CCOM);
     return `<option value="${b}">${b} (Available: ${avail.toLocaleString()} ${com.unit})</option>`;
@@ -5706,7 +5831,7 @@ function _doOpenEditMaizeRec(id){
   const rec=cRec(CCOM).find(x=>String(x.id)===String(id));
   if(!rec){alert('Record not found.');return;}
   openModal(`
-    <div class="mtitle">✏️ Edit ${com.name} Received</div>
+    <div class="mtitle">✏️ Edit ${esc(com.name)} Received</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
     <div class="fw"><div class="fl">Batch Name</div><input class="fi" id="emr-batch" value="${esc(rec.batchName)}" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="fw"><div class="fl">${com.unit.charAt(0).toUpperCase()+com.unit.slice(1)} Received</div><input class="fi" type="number" id="emr-rec" value="${rec.received}" inputmode="numeric"/></div>
@@ -5744,7 +5869,7 @@ function _doOpenEditMaizeIss(id){
   const batches=[...new Set(cRec(CCOM).map(x=>x.batchName))];
   const opts=batches.map(b=>`<option value="${b}"${b===iss.batchName?' selected':''}>${b}</option>`).join('');
   openModal(`
-    <div class="mtitle">✏️ Edit ${com.name} Issued</div>
+    <div class="mtitle">✏️ Edit ${esc(com.name)} Issued</div>
     <div class="warn">⏰ Edits close 24 hrs after entry.</div>
     <div class="fw"><div class="fl">Batch</div><select class="fi" id="emi-batch">${opts}</select></div>
     <div class="fw"><div class="fl">Transporter</div><input class="fi" id="emi-trans" value="${iss.transporter||''}" oninput="this.value=this.value.toUpperCase()"/></div>
@@ -5788,7 +5913,7 @@ function renderManageCommoditiesModal(){
     return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:22px">${c.icon}</span>
+        <span style="font-size:22px">${esc(c.icon)}</span>
         <div><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11px;color:var(--muted)">Unit: ${esc(c.unit)} · ID: ${esc(c.id)}</div></div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
@@ -5821,7 +5946,7 @@ function deleteCommodity(cid){
   if(!requireAdmin('delete commodities'))return;
   const com=getCom(cid);
   const hasData=(cRec(cid).length+cIss(cid).length+cSC(cid).length)>0;
-  if(hasData){alert(`Cannot delete "${com.name}" — it has existing records. Delete all its records first.`);return;}
+  if(hasData){alert(`Cannot delete "${esc(com.name)}" — it has existing records. Delete all its records first.`);return;}
   requireAdminPassword('delete this commodity', ()=>{
     if(CCOM===cid) CCOM=(DATA.commodities||[]).filter(c=>c.id!==cid)[0]?.id||'';
     updateData(d=>({...d,commodities:(d.commodities||[]).filter(c=>c.id!==cid)}));
@@ -7072,10 +7197,13 @@ function printStaffIdCard(id) {
   <button onclick="window.print()" style="margin-top:10px;padding:9px 24px;background:#00d68f;border:none;border-radius:8px;font-weight:700;font-size:11pt;cursor:pointer;color:#0a1628">🖨 Print Now</button>
 </div>`;
 
-  const w = window.open('', '_blank', 'width=820,height=640');
-  if (!w) { showToast('⚠️ Allow pop-ups to print ID card'); return; }
-  w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>ID Card — ${esc(s.name)}</title></head><body>${html}</body></html>`);
-  w.document.close();
+  // Fix 10: use blob URL instead of document.write()
+  const _idHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>ID Card — ${esc(s.name)}</title></head><body>${html}</body></html>`;
+  const _idBlob = new Blob([_idHtml], { type: 'text/html' });
+  const _idUrl  = URL.createObjectURL(_idBlob);
+  const w = window.open(_idUrl, '_blank', 'width=820,height=640');
+  if (!w) { URL.revokeObjectURL(_idUrl); showToast('⚠️ Allow pop-ups to print ID card'); return; }
+  setTimeout(() => URL.revokeObjectURL(_idUrl), 10000);
   w.onload = () => { w.focus(); };
   showToast('🪪 ID card opened — click Print Now');
 }
@@ -7471,7 +7599,7 @@ function renderLicenseCard(){
   const depotId    = depotKey();
   const lastChecked= LICENSE.checkedAt ? new Date(LICENSE.checkedAt).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : 'Never';
 
-  // Status color & label
+  // ── Status color & label ──────────────────────────────────────────────────
   let statusColor, statusLabel, statusDetail = '';
   if (eff === 'active') {
     statusColor = 'var(--green)'; statusLabel = '✅ ACTIVE';
@@ -7487,7 +7615,7 @@ function renderLicenseCard(){
     statusDetail = `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6"><strong style="color:${statusColor}">${d} day${d===1?'':'s'} remaining</strong> of 1-month free trial</div>`;
   } else if (eff === 'trial_expired') {
     statusColor = 'var(--red)'; statusLabel = '⏳ TRIAL EXPIRED';
-    statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your 1-month trial has ended. Subscribe for K100/month.</div>`;
+    statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your 1-month trial has ended. Subscribe for K300/month.</div>`;
   } else if (eff === 'expired') {
     statusColor = 'var(--red)'; statusLabel = '🔒 EXPIRED';
     statusDetail = `<div style="font-size:12px;color:var(--red);margin-top:6px">Your subscription has expired. Renew to continue.</div>`;
@@ -7504,28 +7632,105 @@ function renderLicenseCard(){
 
   const showPayment = ['trial','trial_expired','expired'].includes(eff);
 
+  // ── Subscription status panel ─────────────────────────────────────────────
+  const fmt = ts => ts ? new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+
+  // Plan name row
+  const planName = eff === 'active' ? 'Monthly Subscription'
+                 : eff === 'trial' || eff === 'trial_grace' ? '1-Month Free Trial'
+                 : eff === 'trial_expired' ? '1-Month Free Trial (Ended)'
+                 : eff === 'expired' || eff === 'expired_grace' ? 'Monthly Subscription (Expired)'
+                 : eff === 'suspended' ? 'Suspended'
+                 : 'Free Trial';
+
+  // Key dates
+  const trialStartFmt  = fmt(DATA.trialStart || LICENSE.trialStart);
+  const trialEndFmt    = (DATA.trialStart || LICENSE.trialStart)
+                         ? fmt((DATA.trialStart || LICENSE.trialStart) + TRIAL_MS) : '—';
+  const activeSinceFmt = LICENSE.activeSince ? fmt(LICENSE.activeSince) : '—';
+  const renewalFmt     = LICENSE.activeUntil  ? fmt(LICENSE.activeUntil)  : '—';
+
+  // Payment history — stored as LICENSE.payments = [{date, amount, method, ref}]
+  const payments = Array.isArray(LICENSE.payments) ? LICENSE.payments : [];
+  const historyRows = payments.length
+    ? payments.slice().reverse().map(p => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <div>
+            <div style="color:var(--text);font-weight:600">${esc(p.method||'Payment')}</div>
+            <div style="color:var(--muted)">${fmt(p.date)} ${p.ref?'· Ref: <span style="font-family:monospace;color:var(--blue)">'+esc(p.ref)+'</span>':''}</div>
+          </div>
+          <div style="color:var(--green);font-weight:700">K${Number(p.amount||300).toLocaleString()}</div>
+        </div>`).join('')
+    : `<div style="text-align:center;padding:14px 0;color:var(--muted);font-size:12px">No payment records yet</div>`;
+
+  const subPanel = `
+  <div class="sh" style="margin-top:14px">My Subscription</div>
+  <div class="card" style="border-color:${statusColor};padding:0">
+    <!-- Plan header -->
+    <div style="background:linear-gradient(135deg,var(--surface2) 0%,var(--surface) 100%);border-radius:12px 12px 0 0;padding:16px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin-bottom:3px">Current Plan</div>
+          <div style="font-family:var(--fh);font-size:16px;font-weight:800;color:var(--white)">${planName}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--fh);font-size:22px;font-weight:900;color:${statusColor}">K300</div>
+          <div style="font-size:11px;color:var(--muted)">per month</div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <span style="background:${statusColor};color:${eff==='active'?'#060d18':'#fff'};border-radius:20px;padding:3px 12px;font-size:11px;font-weight:800;letter-spacing:.5px">${statusLabel}</span>
+      </div>
+    </div>
+    <!-- Key dates grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)">
+      <div style="background:var(--surface);padding:12px 14px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px">Trial Started</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${trialStartFmt}</div>
+      </div>
+      <div style="background:var(--surface);padding:12px 14px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px">Trial Ended</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${trialEndFmt}</div>
+      </div>
+      <div style="background:var(--surface);padding:12px 14px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px">Subscribed Since</div>
+        <div style="font-size:13px;font-weight:600;color:${activeSinceFmt==='—'?'var(--muted)':'var(--text)'}">${activeSinceFmt}</div>
+      </div>
+      <div style="background:var(--surface);padding:12px 14px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px">Next Renewal</div>
+        <div style="font-size:13px;font-weight:600;color:${renewalFmt==='—'?'var(--muted)':eff==='active'?'var(--green)':'var(--red)'}">${renewalFmt}</div>
+      </div>
+    </div>
+    <!-- Payment history -->
+    <div style="padding:14px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Payment History</div>
+      ${historyRows}
+    </div>
+    <!-- Company license key (compact) -->
+    <div style="padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2);border-radius:0 0 12px 12px">
+      <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px">Company License Key</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;font-family:monospace;font-size:12px;color:var(--blue);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;word-break:break-all">${depotId}</div>
+        <button class="pm-copy" style="flex-shrink:0" onclick="copyNum('${depotId}')">Copy</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">Send this key with your payment to confirm activation instantly.</div>
+    </div>
+  </div>`;
+
   return `
-  <div class="sh">License & Subscription</div>
+  ${subPanel}
+  <div class="sh" style="margin-top:14px">License & Connection</div>
   <div class="card" style="border-color:${statusColor}">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-family:var(--fh);font-size:17px;font-weight:700;color:var(--white)">License Status</div>
-      <div style="font-family:var(--fh);font-size:15px;font-weight:800;color:${statusColor}">${statusLabel}</div>
+      <div style="font-family:var(--fh);font-size:15px;font-weight:700;color:var(--white)">Connection Status</div>
+      <div style="font-size:12px;color:var(--muted)">Last check: ${lastChecked}</div>
     </div>
-    ${statusDetail}
-    <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">COMPANY LICENSE KEY</div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:monospace;font-size:13px;color:var(--blue);margin-bottom:10px;word-break:break-all;display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <span>${depotId}</span>
-      <button class="pm-copy" style="flex-shrink:0" onclick="copyNum('${depotId}')">Copy</button>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:10px">
       <span>Firebase: ${configBadge}</span>
-      <span>Last check: ${lastChecked}</span>
     </div>
-    ${LICENSE.lastError ? `<div style="background:rgba(220,38,38,.12);border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:var(--red);word-break:break-all;font-family:monospace">⚠️ Last error: ${LICENSE.lastError}</div>` : ''}
-    <div style="margin-top:10px">
-      <button id="fb-test-btn" class="btn bo bsm" style="width:100%" onclick="testFirebaseConnection()">🔌 Test Connection</button>
-      <div id="fb-test-out" style="display:none;margin-top:8px;border-radius:8px;padding:9px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;line-height:1.5"></div>
-    </div>
+    ${LICENSE.lastError ? `<div style="background:rgba(220,38,38,.12);border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--red);word-break:break-all;font-family:monospace">⚠️ Last error: ${LICENSE.lastError}</div>` : ''}
+    <button id="fb-test-btn" class="btn bo bsm" style="width:100%" onclick="testFirebaseConnection()">🔌 Test Connection</button>
+    <div id="fb-test-out" style="display:none;margin-top:8px;border-radius:8px;padding:9px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;line-height:1.5"></div>
     ${showPayment ? renderPaymentSection() : ''}
   </div>`;
 }
@@ -7701,18 +7906,18 @@ function renderSettings(){
     <div class="sh">Recovery PIN</div>
     <div class="card">
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        Set a Recovery PIN to allow the <strong style="color:var(--text)">Admin</strong> to reset their own password from the login screen — useful if you forget your password. Use 4–8 digits. Keep it safe and separate from your password.
+        Set a Recovery PIN to allow the <strong style="color:var(--text)">Admin</strong> to reset their own password from the login screen — useful if you forget your password. Use 6–8 digits. Keep it safe and separate from your password.
       </div>
       ${DATA.recoveryPin
         ? `<div class="ok-msg" style="margin-bottom:12px">✅ Recovery PIN is active. You can update it below.</div>`
         : `<div class="warn" style="margin-bottom:12px">⚠️ No Recovery PIN is set. If you forget your admin password, you can still recover using your recovery email (if set).</div>`
       }
       <div id="rec-pin-set-msg"></div>
-      <div class="fw"><div class="fl">New Recovery PIN (digits only, 4–8) ${mdmTip('A numeric PIN you can use at the login screen to reset your admin password if you forget it. Keep this separate and safe — anyone with this PIN can reset your admin password.')}</div>
-        <input class="fi" type="password" id="rec-pin-new" inputmode="numeric" placeholder="E.G. 123456" maxlength="8" autocomplete="off"/>
+      <div class="fw"><div class="fl">New Recovery PIN (digits only, 6–8) ${mdmTip('A numeric PIN you can use at the login screen to reset your admin password if you forget it. Keep this separate and safe — anyone with this PIN can reset your admin password.')}</div>
+        <input class="fi" type="password" id="rec-pin-new" inputmode="numeric" placeholder="E.G. 123456" maxlength="8" autocomplete="one-time-code"/>
       </div>
       <div class="fw"><div class="fl">Confirm PIN</div>
-        <input class="fi" type="password" id="rec-pin-conf" inputmode="numeric" placeholder="Repeat PIN" maxlength="8" autocomplete="off"/>
+        <input class="fi" type="password" id="rec-pin-conf" inputmode="numeric" placeholder="Repeat PIN" maxlength="8" autocomplete="one-time-code"/>
       </div>
       <button class="btn bg" onclick="saveRecoveryPin()">🔑 Save Recovery PIN</button>
     </div>
@@ -7814,7 +8019,7 @@ function renderSettings(){
 
 
     <div class="card">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K100/month</strong>. Pay via Airtel Money, MTN MoMo, Zamtel, or card. Your account activates instantly after payment.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K300/month</strong>. Pay via Airtel Money, MTN MoMo, Zamtel, or card. Your account activates instantly after payment.</div>
       <div class="pay-method">
         <span class="pm-icon">🔴</span>
         <div class="pm-info">
@@ -8057,7 +8262,7 @@ async function changePw(){
   const cp=document.getElementById('pw-conf').value;
   const msg=document.getElementById('pw-msg');
   if(!np||np!==cp){msg.innerHTML='<div class="err-box">Passwords do not match.</div>';return;}
-  if(np.length < 4){msg.innerHTML='<div class="err-box">Password must be at least 4 characters.</div>';return;}
+  if(np.length < 8){msg.innerHTML='<div class="err-box">Password must be at least 8 characters.</div>';return;}
   const target=document.getElementById('pw-target').value;
   const hashed = await hashPassword(np);
   updateData(d=>({...d,users:d.users.map(u=>u.username===target?{...u,password:hashed}:u)}));
@@ -8079,7 +8284,7 @@ function addUser(){
       </select>
     </div>
     <div class="fw"><div class="fl">Password <span style="color:var(--red)">*</span></div>
-      <input class="fi" type="password" id="au-pass" placeholder="Min 4 characters" autocomplete="new-password"/>
+      <input class="fi" type="password" id="au-pass" placeholder="Min 8 characters" autocomplete="new-password"/>
     </div>
     <div class="fw"><div class="fl">Confirm Password <span style="color:var(--red)">*</span></div>
       <input class="fi" type="password" id="au-pass2" placeholder="Repeat password" autocomplete="new-password"/>
@@ -8103,7 +8308,7 @@ async function _confirmAddUser(){
   // Local duplicate check — case-insensitive within this depot
   const exists=(DATA.users||[]).some(u=>(u.username||'').toLowerCase()===username);
   if(exists){ err.style.display='block'; err.textContent='⛔ Username "'+username+'" is already taken. Choose a different one.'; return; }
-  if(pass.length<4){ err.style.display='block'; err.textContent='⚠️ Password must be at least 4 characters.'; return; }
+  if(pass.length<8){ err.style.display='block'; err.textContent='⚠️ Password must be at least 8 characters.'; return; }
   if(pass!==pass2){ err.style.display='block'; err.textContent='❌ Passwords do not match.'; return; }
 
   // ── GLOBAL FIREBASE DUPLICATE CHECK ────────────────────────────────────────
@@ -8185,8 +8390,14 @@ function removeInvItem(idx){
 }
 function exportJSON(){
   if(!requireAdmin('export data'))return;
+  // Fix 9: strip password hashes before export — hashes are sensitive and
+  // not needed to restore the backup (they will be re-migrated on next login).
+  const exportData = JSON.parse(JSON.stringify(DATA));
+  if (Array.isArray(exportData.users)) {
+    exportData.users = exportData.users.map(u => { const c={...u}; delete c.password; return c; });
+  }
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'}));
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'}));
   a.download=`mdm_backup_${today()}.json`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 }

@@ -25,6 +25,17 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v28 changes (2026-06-12):
+//   - Price per month updated from K100 to K300.
+//   - Fix 13: Cross-tab logout synchronisation via BroadcastChannel (with
+//     localStorage storage-event fallback for Safari <15.4). Logging out in
+//     any tab now immediately logs out all other open tabs.
+//   - Fix 14: SubtleCrypto (PBKDF2) fallback to mdm1 disabled for new
+//     passwords. hashPassword now throws with a user-facing toast when
+//     crypto.subtle.deriveBits is unavailable instead of silently falling
+//     back to the weaker custom stretch algorithm. Legacy mdm1 hashes are
+//     still accepted by verifyPassword for backward compatibility.
+//
 // v27 changes (2026-06-12):
 //   - Fix 30: Dashboard Widget Customisation. New "Dashboard Widgets" section
 //     in Settings lets users show/hide any of the 8 dashboard sections via
@@ -139,7 +150,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v27';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v28';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
