@@ -25,31 +25,37 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v27 changes (2026-06-12):
+//   - Fix 30: Dashboard Widget Customisation. New "Dashboard Widgets" section
+//     in Settings lets users show/hide any of the 8 dashboard sections via
+//     toggle switches: Alerts & Warnings, Quick Actions, Today Snapshot,
+//     Commodities, Inventory Balances, Staff Summary, Recent Activity, Recent
+//     Books. Preferences stored in localStorage (per-device, not cloud-synced).
+//     All widgets default to on. "↺ Show All Widgets" reset button restores
+//     all. Each toggle re-renders the dashboard instantly with a toast.
+//
 // v26 changes (2026-06-12):
-//   - Fix 29: Staff ID Card Generator. New "🪪 Print ID Card" button in every
-//     staff profile modal opens a print-ready pop-up with front and back of a
-//     credit-card-sized ID card (85.6 × 54 mm). Front shows initials avatar,
-//     name, role, phone, date joined, location, contract type badge (colour-
-//     coded), employee ID, and live status indicator. Back shows emergency
-//     contact, company info, employee ID in barcode style, and signature line.
-//     Fully offline — no external deps, pure HTML/CSS via _pdfPrint engine.
+//   - Fix 29: Staff ID Card Generator. "🪪 Print ID Card" button added to
+//     every staff profile modal. Opens a print-ready pop-up with front and
+//     back of a credit-card-sized ID card (85.6 × 54 mm). Front: initials
+//     avatar, name, role, phone, date joined, location, colour-coded contract
+//     type badge, employee ID, live status indicator. Back: emergency contact,
+//     company info, employee ID in barcode style, authorised signature line.
+//     Fully offline — pure HTML/CSS, no external dependencies.
 //
 // v25 changes (2026-06-12):
-//   - Cloud upload/download icons added to every nav tab (Dashboard, General,
-//     Commodities, Staff, Books, Contacts). Each tab has two small SVG cloud
-//     buttons: ↑ Upload (calls doFbSync immediately) and ↓ Download (fetches
-//     cloud copy, version-gates with _v check, confirms before overwrite).
-//     Icons fade in on hover (desktop); always visible on active tab; 45%
-//     opacity on inactive tabs on touch devices. Button spins while syncing.
-//   - Fix 27: First-Run Onboarding Checklist. 5-step setup modal auto-appears
-//     after first admin login. Steps auto-check from live DATA state. Tapping
-//     any step navigates to the relevant tab. Permanently dismissible.
+//   - Cloud upload/download icons on every nav tab. Two small SVG cloud
+//     buttons per tab: ↑ Upload (doFbSync) and ↓ Download (version-gated
+//     pull with confirm). Fade on hover; always visible on active tab;
+//     45% opacity on inactive tabs on touch. Spins while syncing.
+//   - Fix 27: First-Run Onboarding Checklist. 5-step modal auto-appears
+//     after first admin login. Steps auto-check from live DATA state.
+//     Navigates to relevant tab on tap. Permanently dismissible.
 //     Re-openable from Settings → Help & Documentation.
-//   - Fix 28: Inline ℹ️ Tooltips. mdmTip() helper adds hoverable/tappable
-//     info badges on key fields. Singleton popup positions intelligently near
-//     screen edges. 15 tooltips added across: Currency, Shift Hours, Annual
-//     Leave, Edit Window, Auto-Logout, Recovery PIN, Purchase Price, Selling
-//     Price, Batch Name, Deduction, Budget Period/Value/Quantity, and more.
+//   - Fix 28: Inline ℹ️ Tooltips. mdmTip() helper with smart-positioned
+//     singleton popup. 15 tooltips across key fields: Currency, Shift Hours,
+//     Annual Leave, Edit Window, Auto-Logout, Recovery PIN, Purchase Price,
+//     Selling Price, Batch Name, Deduction, Budget fields, and more.
 //
 // v24 changes (2026-06-11):
 //   - Two-Stage Shift Log: "Log Work" button split into ⏵ Clock In and
@@ -133,7 +139,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v26';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v27';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 

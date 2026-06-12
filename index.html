@@ -487,6 +487,18 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 .be-formula-bar-label{font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0;}
 .be-formula-bar-input{flex:1;background:transparent;border:none;outline:none;font-size:12px;color:var(--text);font-family:var(--fm);}
 .be-footer{background:var(--surface);border-top:1px solid var(--border);padding:8px 14px;display:flex;gap:8px;flex-shrink:0;}
+/* ── FIX 30: DASHBOARD WIDGET TOGGLES ──────────────────────── */
+.dw-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);}
+.dw-row:last-child{border-bottom:none;}
+.dw-label{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
+.dw-label span{font-size:18px;}
+/* Toggle pill */
+.dw-toggle{position:relative;width:42px;height:24px;flex-shrink:0;}
+.dw-toggle input{opacity:0;width:0;height:0;position:absolute;}
+.dw-toggle-track{position:absolute;inset:0;background:var(--border);border-radius:12px;cursor:pointer;transition:background .2s;}
+.dw-toggle input:checked+.dw-toggle-track{background:var(--green);}
+.dw-toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .2s;pointer-events:none;}
+.dw-toggle input:checked~.dw-toggle-thumb{transform:translateX(18px);}
 /* ── FIX 28: INLINE TOOLTIPS ───────────────────────────────── */
 .mdm-tip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:var(--blue);font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;vertical-align:middle;margin-left:5px;transition:background .15s,color .15s;font-style:normal;line-height:1;position:relative;}
 .mdm-tip:hover,.mdm-tip:focus{background:var(--blue);color:#fff;outline:none;}
@@ -581,7 +593,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <div class="fs-mini">
         <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
         <div class="fs-mini-sep"></div>
-        <div class="fs-mini-lbl fs-lbl-all">100%</div>
+        <div class="fs-mini-lbl fs-lbl-all">50%</div>
         <div class="fs-mini-sep"></div>
         <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
       </div>
@@ -592,7 +604,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <div class="land-logo">MDM</div>
       <div class="land-title">My <span>Depot</span> Master</div>
       <div class="land-tag">The smarter way to run your depot.<br>Built for African business operators.</div>
-      <div class="land-badge">✨ v3.0 — Now with Auto Subscriptions</div>
+      <div class="land-badge">✨ v3.0 — Now with Financial Reports &amp; Traceability</div>
     </div>
 
     <!-- Live Stats Strip -->
@@ -618,42 +630,56 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
         <div class="land-feat-icon" style="background:rgba(0,224,150,.12);">🌽</div>
         <div class="land-feat-body">
           <div class="land-feat-title">Commodity Tracking</div>
-          <div class="land-feat-desc">Track maize, wheat, or any commodity — received, issued, and balanced per batch with full variance reports.</div>
-        </div>
-      </div>
-      <div class="land-feat">
-        <div class="land-feat-icon" style="background:rgba(96,165,250,.12);">👷</div>
-        <div class="land-feat-body">
-          <div class="land-feat-title">Staff &amp; Payroll</div>
-          <div class="land-feat-desc">Log daily work, auto-calculate wages by bag, hour, or day. Track deductions and payments per worker.</div>
+          <div class="land-feat-desc">Receive, issue and balance any commodity per batch. Full variance reports, stock counts, transport log and batch traceability.</div>
         </div>
       </div>
       <div class="land-feat">
         <div class="land-feat-icon" style="background:rgba(245,166,35,.12);">📦</div>
         <div class="land-feat-body">
           <div class="land-feat-title">General Inventory</div>
-          <div class="land-feat-desc">Manage fertiliser, equipment, and supplies. Running balances with stock count and variance tracking.</div>
+          <div class="land-feat-desc">Manage fertiliser, equipment and supplies. Stock counts, expiry tracking, low-stock alerts, credit/debt status per entry.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon" style="background:rgba(96,165,250,.12);">👷</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Staff &amp; Payroll</div>
+          <div class="land-feat-desc">Clock in/out shifts, log work by bag, hour or day. Auto-calculate wages, deductions, payments, leave balances and print ID cards.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon" style="background:rgba(0,214,143,.12);">📊</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Financial Reports</div>
+          <div class="land-feat-desc">Profit &amp; Loss, Cash Flow statement and Budget vs Actual — covering both inventory and commodity data in one view.</div>
+        </div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon" style="background:rgba(245,158,11,.12);">🏢</div>
+        <div class="land-feat-body">
+          <div class="land-feat-title">Contacts &amp; Suppliers</div>
+          <div class="land-feat-desc">Store suppliers and customers. Track balances, link receive records to suppliers and view full Supplier Performance reports.</div>
         </div>
       </div>
       <div class="land-feat" style="border-color:rgba(0,224,150,.3);background:rgba(0,224,150,.05);">
         <div class="land-feat-icon" style="background:rgba(0,224,150,.15);">📚</div>
         <div class="land-feat-body">
-          <div class="land-feat-title">Books &amp; Documents <span style="background:linear-gradient(90deg,var(--amber),#f59e0b);color:#0a1628;font-size:9px;font-weight:900;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:4px;letter-spacing:.5px">NEW</span></div>
-          <div class="land-feat-desc">Excel-style spreadsheets with formulas and Word documents with tables — create and download inside the app.</div>
+          <div class="land-feat-title">Books &amp; Documents</div>
+          <div class="land-feat-desc">Excel-style spreadsheets with formulas and Word-style documents with tables — create and download directly inside the app.</div>
         </div>
       </div>
       <div class="land-feat">
         <div class="land-feat-icon" style="background:rgba(167,139,250,.12);">☁️</div>
         <div class="land-feat-body">
           <div class="land-feat-title">Cloud Sync &amp; Offline</div>
-          <div class="land-feat-desc">Works without internet. Auto-syncs to the cloud when online. Your data is always safe and recoverable.</div>
+          <div class="land-feat-desc">Works fully without internet. Auto-syncs to the cloud when online. PIN and email account recovery. Fingerprint login supported.</div>
         </div>
       </div>
       <div class="land-feat">
         <div class="land-feat-icon" style="background:rgba(251,113,133,.12);">🔐</div>
         <div class="land-feat-body">
-          <div class="land-feat-title">Multi-User &amp; Roles</div>
-          <div class="land-feat-desc">Admin and staff logins. Read-only mode for staff. Full audit trail with 24-hour edit window.</div>
+          <div class="land-feat-title">Multi-User &amp; Smart Alerts</div>
+          <div class="land-feat-desc">Admin and staff roles. Customisable dashboard with live alerts for variances, low stock, expiry, negative balances and credit debts.</div>
         </div>
       </div>
     </div>
@@ -876,7 +902,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <div class="fs-mini">
         <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
         <div class="fs-mini-sep"></div>
-        <div class="fs-mini-lbl fs-lbl-all">100%</div>
+        <div class="fs-mini-lbl fs-lbl-all">50%</div>
         <div class="fs-mini-sep"></div>
         <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
       </div>
@@ -1885,7 +1911,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v23';
+const SW_VERSION  = 'mdm-v27';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1901,7 +1927,7 @@ const SW_VERSION  = 'mdm-v23';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v23';
+  const VER = 'mdm-v27';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -1931,7 +1957,7 @@ if ('caches' in window) {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     // Register the real same-origin sw.js — this is what makes offline work on Android.
-    navigator.serviceWorker.register('./sw.js', { scope: './' })
+    navigator.serviceWorker.register('./sw-4.js', { scope: './' })
       .then(reg => {
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
@@ -2296,7 +2322,41 @@ function logAuditEvent(action, entity, detail, before){
     return{...d, auditLog: log.length>2000 ? log.slice(log.length-2000) : log};
   });
 }
-function uc(v){return(v||'').trim().toUpperCase();}
+// ── FIX 30: DASHBOARD WIDGET VISIBILITY ──────────────────────────────────────
+// Widget visibility is stored in localStorage (not DATA) so it is per-device
+// and does not sync to cloud — a personal display preference per user.
+const _DW_KEY = 'mdm_dash_widgets';
+const _DW_DEFAULTS = {
+  alerts:true, quickactions:true, today:true, commodities:true,
+  inventory:true, staff:true, activity:true, books:true
+};
+
+function _loadDashWidgets(){
+  try{
+    const raw = localStorage.getItem(_DW_KEY);
+    if(!raw) return {..._DW_DEFAULTS};
+    return Object.assign({..._DW_DEFAULTS}, JSON.parse(raw));
+  } catch{ return {..._DW_DEFAULTS}; }
+}
+function _saveDashWidgets(obj){
+  try{ localStorage.setItem(_DW_KEY, JSON.stringify(obj)); } catch{}
+}
+function isDashWidgetOn(id){
+  return _loadDashWidgets()[id] !== false;
+}
+function toggleDashWidget(id, on){
+  const obj = _loadDashWidgets();
+  obj[id] = on;
+  _saveDashWidgets(obj);
+  render();
+  showToast(on ? `✅ "${id}" widget shown` : `🙈 "${id}" widget hidden`);
+}
+function resetDashWidgets(){
+  _saveDashWidgets({..._DW_DEFAULTS});
+  render();
+  showToast('✅ All dashboard widgets restored');
+}
+// ── END FIX 30 HELPERS ────────────────────────────────────────────────────────
 function today(){return new Date().toISOString().split('T')[0];}
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
 function cur(){return(DATA&&DATA.currency)||'';}
@@ -3721,19 +3781,19 @@ function renderDash(){
       </div>
     </div>
 
-    ${warnBlock}
+    ${isDashWidgetOn('alerts') ? warnBlock : ''}
 
     <!-- Quick Actions -->
-    <div class="sh" style="margin-top:0">Quick Actions</div>
+    ${isDashWidgetOn('quickactions') ? `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
       <button onclick="showTab('maize');setTimeout(()=>openMaizeRecForm(),80)" class="qa-btn-green" style="background:var(--surface);border:1.5px solid var(--green);border-radius:12px;padding:12px 6px;color:var(--green);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">${_comStats[0]?_comStats[0].icon:'📦'}</span>Commodity In</button>
       <button onclick="showTab('general');setTimeout(()=>openGenRecForm(),80)" class="qa-btn-amber" style="background:var(--surface);border:1.5px solid var(--amber);border-radius:12px;padding:12px 6px;color:var(--amber);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">📦</span>Receive</button>
       <button onclick="showTab('staff');setTimeout(()=>openClockInForm(),80)" class="qa-btn-blue" style="background:var(--surface);border:1.5px solid var(--blue);border-radius:12px;padding:12px 6px;color:var(--blue);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">👷</span>Clock In</button>
       <button onclick="openPrintSummary()" class="qa-btn-purple" style="background:var(--surface);border:1.5px solid var(--purple);border-radius:12px;padding:12px 6px;color:var(--purple);font-family:var(--fh);font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:22px">🖨️</span>Print Summary</button>
-    </div>
+    </div>` : ''}
 
     <!-- Today Snapshot -->
-    <div class="sh">Today — ${todayStr}</div>
+    ${isDashWidgetOn('today') ? `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:12px;padding:12px">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Commodities In Today</div>
@@ -3755,9 +3815,10 @@ function renderDash(){
         <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:var(--purple)">${todayStaffLogs}</div>
         <div style="font-size:10px;color:var(--muted)">logged today</div>
       </div>
-    </div>
+    </div>` : ''}
 
     <!-- Commodities Overview -->
+    ${isDashWidgetOn('commodities') ? `
     ${_coms.length>0?`<div class="sh">Commodities Overview</div>
     ${_coms.map(comObj=>{
       const cid=comObj.id;
@@ -3766,7 +3827,6 @@ function renderDash(){
       const cRec=cRecs.reduce((a,b)=>a+Number(b.received||0),0);
       const cIssTotal=cIss.reduce((a,b)=>a+Number(b.issued||0),0);
       const cBal=cRec-cIssTotal;
-      // Stock value: balance × latest unit price
       const latestUP=cRecs.filter(r=>Number(r.unitPrice||0)>0).slice(-1)[0];
       const cUnitPrice=latestUP?Number(latestUP.unitPrice):0;
       const cStockValue=cBal>0&&cUnitPrice>0?cBal*cUnitPrice:0;
@@ -3796,16 +3856,19 @@ function renderDash(){
         </div>`:''}
       </div>`;
     }).join('')}`:`<div class="card" style="margin-bottom:12px"><div class="empty" style="padding:20px 16px">📦 No commodities added yet.<br><span style="font-size:12px">Go to <strong>Settings → Commodities</strong> to add your first commodity.</span></div></div>`}
+    ` : ''}
+
     <!-- General Inventory -->
-    ${uniqueItems.length>0?`
+    ${isDashWidgetOn('inventory') && uniqueItems.length>0 ? `
     <div class="sh">Inventory Balances</div>
     <div class="card" style="margin-bottom:12px">
       <div class="ctitle">📦 General Inventory</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Opening + Received − Issued = Balance</div>
       ${invCards}
-    </div>`:''}
+    </div>` : ''}
 
     <!-- Staff Summary -->
+    ${isDashWidgetOn('staff') ? `
     <div class="sh">Staff</div>
     <div class="card" style="margin-bottom:12px">
       <div class="ctitle" style="justify-content:space-between">
@@ -3820,9 +3883,10 @@ function renderDash(){
         <div class="sbox"><div class="sv">${logs.filter(l=>!l.entryType||l.entryType==='work').length}</div><div class="sl">Work Sessions</div></div>
       </div>
       <div class="prow" style="margin-top:10px">${pBtns('dashboard')}</div>
-    </div>
+    </div>` : ''}
 
     <!-- Recent Activity -->
+    ${isDashWidgetOn('activity') ? `
     <div class="sh">Recent Activity</div>
     <div class="card">
       <div class="ctitle">📅 Latest Entries</div>
@@ -3839,9 +3903,9 @@ function renderDash(){
           </div>
           <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:${a.type==='rec'?'var(--green)':'var(--amber)'};white-space:nowrap">${a.qty}</div>
         </div>`).join('')}
-    </div>
+    </div>` : ''}
 
-    ${(()=>{
+    ${isDashWidgetOn('books') ? (()=>{
       const books=(DATA.books||[]).slice().sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0)).slice(0,4);
       if(!books.length) return '';
       return `
@@ -3861,7 +3925,7 @@ function renderDash(){
           <button class="book-btn dl" onclick="openBookEditor('${b.id}')">✏️ Open</button>
         </div>`).join('')}
     </div>`;
-    })()}`;
+    })() : ''}`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -4914,9 +4978,12 @@ function renderMaize(){
       <button class="stab${MTAB==='variance'?' act':''}" id="mtab-variance">Variance</button>
       <button class="stab${MTAB==='summary'?' act':''}" id="mtab-summary">Summary</button>
       <button class="stab${MTAB==='transport'?' act':''}" id="mtab-transport">🚛 Transport</button>
+      <button class="stab${MTAB==='pl'?' act':''}" id="mtab-pl" style="${MTAB==='pl'?'background:rgba(0,214,143,.1);color:var(--green);border-color:rgba(0,214,143,.3)':''}">📊 P&amp;L</button>
+      <button class="stab${MTAB==='cashflow'?' act':''}" id="mtab-cashflow" style="${MTAB==='cashflow'?'background:rgba(59,130,246,.1);color:var(--blue);border-color:rgba(59,130,246,.3)':''}">💵 Cash Flow</button>
+      <button class="stab${MTAB==='budget'?' act':''}" id="mtab-budget" style="${MTAB==='budget'?'background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.3)':''}">🎯 Budget</button>
     </div>
     <div class="prow">${pBtns('maize')}</div>
-    ${MTAB==='received'?renderMaizeRec():MTAB==='issued'?renderMaizeIss():MTAB==='variance'?renderMaizeVariance():MTAB==='transport'?renderTransportLog():renderMaizeSummary()}`;
+    ${MTAB==='received'?renderMaizeRec():MTAB==='issued'?renderMaizeIss():MTAB==='variance'?renderMaizeVariance():MTAB==='transport'?renderTransportLog():MTAB==='pl'?renderProfitLoss():MTAB==='cashflow'?renderCashFlow():MTAB==='budget'?renderBudgetVsActual():renderMaizeSummary()}`;
 }
 
 function renderMaizeRec(){
@@ -4981,7 +5048,10 @@ function renderMaizeRec(){
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--muted)">
       💰 <strong style="color:var(--amber)">Stock Value</strong> = Qty × Unit Price &nbsp;|&nbsp; 🔵 <strong style="color:var(--green)">Cum. Received</strong> &amp; <strong style="color:var(--amber)">Cum. Cost</strong> = running all-time totals
     </div>
-    <div class="card" style="padding:0"><div class="tw"><table>
+    <div style="margin-bottom:10px">
+      <input class="fi" id="maize-rec-search" placeholder="🔍 Search by batch name, date…" oninput="filterTable('maize-rec-table',this.value)" style="font-size:13px"/>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table id="maize-rec-table">
       <thead><tr>
         <th>Date & Time</th><th>Batch</th>
         <th style="text-align:right">Received</th>
@@ -5055,7 +5125,10 @@ function renderMaizeIss(){
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--muted)">
       💚 <strong style="color:var(--green)">Revenue</strong> = Qty × Sale Price &nbsp;|&nbsp; 🟠 <strong style="color:var(--amber)">Cum. Issued</strong> &amp; <strong style="color:var(--green)">Cum. Revenue</strong> = running all-time totals
     </div>
-    <div class="card" style="padding:0"><div class="tw"><table>
+    <div style="margin-bottom:10px">
+      <input class="fi" id="maize-iss-search" placeholder="🔍 Search by batch name, transporter…" oninput="filterTable('maize-iss-table',this.value)" style="font-size:13px"/>
+    </div>
+    <div class="card" style="padding:0"><div class="tw"><table id="maize-iss-table">
       <thead><tr>
         <th>Date & Time</th><th>Batch</th><th>Transporter</th>
         <th style="text-align:right">Issued</th>
@@ -7487,12 +7560,12 @@ function renderSettings(){
         <div class="fs-ctrl">
           <button class="fs-btn" id="fs-btn-minus" onclick="changeFontSize(-${FS_STEP})" title="Decrease font size">A−</button>
           <div class="fs-divider"></div>
-          <div class="fs-label fs-lbl-all" id="fs-value-label">${getFontSize()}%</div>
+          <div class="fs-label fs-lbl-all" id="fs-value-label">${_fsLabel(getFontSize())}</div>
           <div class="fs-divider"></div>
           <button class="fs-btn" id="fs-btn-plus" onclick="changeFontSize(${FS_STEP})" title="Increase font size">A+</button>
         </div>
       </div>
-      <button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="resetFontSize()">↺ Reset to Default (100%)</button>
+      <button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="resetFontSize()">↺ Reset to Default (50%)</button>
       <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
         <div class="fl">Theme</div>
         <div class="theme-toggle">
@@ -7524,6 +7597,34 @@ function renderSettings(){
         <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">Hours in a standard shift. Used to detect overtime in Work Logs (e.g. 8 = any session exceeding 8 hours shows an OT flag).</div>
         <div id="shift-hours-msg" style="margin-top:6px"></div>
       </div>`:''}
+    </div>
+
+    </div>
+
+    <div class="sh">Dashboard Widgets</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">Choose which sections appear on your Dashboard. Hidden widgets still collect data — they are just not shown.</div>
+      ${[
+        {id:'alerts',        icon:'⚠️', label:'Alerts & Warnings'},
+        {id:'quickactions',  icon:'⚡', label:'Quick Actions'},
+        {id:'today',         icon:'📅', label:'Today Snapshot'},
+        {id:'commodities',   icon:'📦', label:'Commodities'},
+        {id:'inventory',     icon:'🗄️', label:'Inventory Balances'},
+        {id:'staff',         icon:'👷', label:'Staff Summary'},
+        {id:'activity',      icon:'🕐', label:'Recent Activity'},
+        {id:'books',         icon:'📚', label:'Recent Books'},
+      ].map(w=>{
+        const on=isDashWidgetOn(w.id);
+        return `<div class="dw-row">
+          <div class="dw-label"><span>${w.icon}</span>${w.label}</div>
+          <label class="dw-toggle">
+            <input type="checkbox" ${on?'checked':''} onchange="toggleDashWidget('${w.id}',this.checked)"/>
+            <div class="dw-toggle-track"></div>
+            <div class="dw-toggle-thumb"></div>
+          </label>
+        </div>`;
+      }).join('')}
+      <button class="btn bo bsm" style="width:100%;margin-top:12px" onclick="resetDashWidgets()">↺ Show All Widgets</button>
     </div>
 
     ${USER.role==='admin'?`
@@ -8450,15 +8551,13 @@ function _renderBioSection(){
 
 // ── FONT SIZE ─────────────────────────────────────────────────────────────────
 const FS_KEY='mdm_font_size';
-const FS_MIN=80, FS_MAX=130, FS_STEP=5, FS_DEFAULT=100;
+const FS_MIN=80, FS_MAX=150, FS_STEP=5, FS_DEFAULT=115;
 function getFontSize(){return parseInt(localStorage.getItem(FS_KEY)||FS_DEFAULT,10);}
+function _fsLabel(pct){ return Math.round((pct - FS_MIN) / (FS_MAX - FS_MIN) * 100) + '%'; }
 function applyFontSize(pct){
-  // Use CSS zoom — scales all px values, fonts, spacing uniformly
   document.body.style.zoom = pct / 100;
   localStorage.setItem(FS_KEY, pct);
-  // Update every label (settings full-size + mini pills in header/landing)
-  document.querySelectorAll('.fs-lbl-all, #fs-value-label').forEach(el => el.textContent = pct + '%');
-  // Disable buttons at limits
+  document.querySelectorAll('.fs-lbl-all, #fs-value-label').forEach(el => el.textContent = _fsLabel(pct));
   document.querySelectorAll('.fs-dec, #fs-btn-minus').forEach(btn => { btn.disabled = (pct <= FS_MIN); });
   document.querySelectorAll('.fs-inc, #fs-btn-plus').forEach(btn => { btn.disabled = (pct >= FS_MAX); });
 }
@@ -8627,7 +8726,7 @@ function attachTabListeners(){
   if(addGenRec)addGenRec.addEventListener('click',openGenRecForm);
   if(addGenIss)addGenIss.addEventListener('click',openGenIssForm);
   if(addGenSc)addGenSc.addEventListener('click',openGenStockCountForm);
-  ['inventory','issued','stockcount','summary','itemnames','pl'].forEach(t=>{
+  ['inventory','issued','stockcount','summary','itemnames','pl','cashflow','budget'].forEach(t=>{
     const el=document.getElementById('gtab-'+t);
     if(el)el.addEventListener('click',()=>{GTAB=t;render();});
   });
@@ -8638,7 +8737,7 @@ function attachTabListeners(){
   if(addMaizeRec)addMaizeRec.addEventListener('click',openMaizeRecForm);
   if(addMaizeIss)addMaizeIss.addEventListener('click',openMaizeIssForm);
   if(addStockCount)addStockCount.addEventListener('click',openStockCountForm);
-  ['received','issued','variance','summary'].forEach(t=>{
+  ['received','issued','variance','summary','transport','pl','cashflow','budget'].forEach(t=>{
     const el=document.getElementById('mtab-'+t);
     if(el)el.addEventListener('click',()=>{MTAB=t;render();});
   });
@@ -8661,11 +8760,6 @@ function attachTabListeners(){
   ['all','supplier','customer','supperf'].forEach(t=>{
     const el=document.getElementById('ctab-'+t);
     if(el)el.addEventListener('click',()=>{CTAB=t;render();});
-  });
-  // Budget & cashflow subtabs (inside General tab)
-  ['cashflow','budget'].forEach(t=>{
-    const el=document.getElementById('gtab-'+t);
-    if(el)el.addEventListener('click',()=>{GTAB=t;render();});
   });
   // Budget sub-subtabs
   ['set','report'].forEach(t=>{
