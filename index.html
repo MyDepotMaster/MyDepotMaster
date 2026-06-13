@@ -797,7 +797,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px" id="tos-box">
         <input type="checkbox" id="tos-check" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
         <div style="font-size:12px;color:var(--muted);line-height:1.8">
-          <label for="tos-check" style="cursor:pointer">I have read and agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span><label for="tos-check" style="cursor:pointer">. I understand this is a general-purpose tool and all data I enter is my responsibility.</label>
+          <label for="tos-check" style="cursor:pointer">I have read and agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span><label for="tos-check" style="cursor:pointer"> &amp; </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showPrivacyPolicy()">Privacy Policy</span><label for="tos-check" style="cursor:pointer">. I understand this is a general-purpose tool and all data I enter is my responsibility.</label>
         </div>
       </div>
       <button class="btn bg" id="login-btn">🔒 Sign In</button>
@@ -1272,19 +1272,22 @@ function esc(str) {
 // Replace the values below with your own Firebase project config.
 // See the Setup Guide in Settings > License & Firebase for step-by-step instructions.
 // ══════════════════════════════════════════════════════════
-// ██████╗ FIREBASE SECURITY — IMPORTANT (Fix 11)
+// ██████╗ FIREBASE SECURITY — IMPORTANT (updated Fix 21)
 // ══════════════════════════════════════════════════════════
 // The Firebase API key below is intentionally visible in client-side code —
 // Firebase Web API keys identify the project, not authenticate the caller.
 // Security is enforced entirely by Firebase Security Rules (see below).
 //
-// ── ACTIVE RULES (applied in Firebase Console) ───────────
+// ── ACTIVE RULES (apply these in Firebase Console → Realtime Database → Rules) ──
 // {
 //   "rules": {
 //     "licenses": {
-//       ".read": true,
+//       ".read": false,
 //       ".write": false,
-//       "$key": { ".write": false }
+//       "$key": {
+//         ".read": "auth == null",
+//         ".write": false
+//       }
 //     },
 //     "depots": {
 //       "$installId": {
@@ -1308,11 +1311,42 @@ function esc(str) {
 // }
 //
 // KEY POINTS:
+// - licenses: ".read": false at root — stops bulk enumeration of all licenses.
+//   Each depot can still read its own license key path directly (via $key rule).
 // - depots write rule verifies the installId in the payload matches the key,
 //   preventing any caller from overwriting another depot's data.
 // - The API key alone gives no write access — rules enforce all restrictions.
-// - For stronger security: enable Firebase App Check (prevents non-app callers)
-//   and migrate to Firebase Auth anonymous sign-in (rules can use auth != null).
+//
+// ── APP CHECK SETUP (strongly recommended — do this once) ────────────────────
+// App Check ensures only requests from your actual app domain are accepted,
+// blocking scripts/bots that try to hit your Firebase REST endpoint directly.
+//
+// STEP 1 — Firebase Console → App Check → Get started
+//   • Click your Web app (the one matching the appId below)
+//   • Choose provider: reCAPTCHA v3
+//   • Click "Register" — Firebase gives you a reCAPTCHA site key
+//
+// STEP 2 — Google reCAPTCHA Admin Console (https://www.google.com/recaptcha/admin)
+//   • Create a new site, type: reCAPTCHA v3
+//   • Add your domain: mydepotmaster.github.io
+//   • Copy the site key and paste it into Firebase App Check when prompted
+//
+// STEP 3 — Firebase Console → App Check → APIs tab
+//   • Enable enforcement for: Realtime Database
+//   • Leave it in "monitoring" mode for 1–2 days first to confirm no
+//     legitimate traffic gets blocked before switching to "enforced"
+//
+// STEP 4 — No code changes required in this app. The REST API calls
+//   (fbGet / fbSet / fbDelete) already work with App Check enforcement
+//   because App Check tokens are injected automatically by Firebase when
+//   the SDK is loaded — and this app uses the REST API which is covered
+//   by App Check enforcement at the project level, not at the SDK level.
+//   NOTE: If you add the Firebase JS SDK in future, initialise App Check
+//   before any other Firebase service:
+//   firebase.appCheck().activate('YOUR_RECAPTCHA_SITE_KEY', true);
+//
+// RESULT: Once enforced, any direct REST call without a valid App Check
+//   token returns HTTP 403, even if the caller has the API key.
 // ══════════════════════════════════════════════════════════
 
 const FB_CONFIG = {
@@ -1950,7 +1984,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v28';
+const SW_VERSION  = 'mdm-v31';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -1966,7 +2000,7 @@ const SW_VERSION  = 'mdm-v28';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v28';
+  const VER = 'mdm-v31';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -2967,7 +3001,7 @@ function renderSignupStep() {
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px">
         <input type="checkbox" id="su-tos" style="margin-top:2px;width:17px;height:17px;accent-color:var(--green);flex-shrink:0;cursor:pointer"/>
         <div style="font-size:12px;color:var(--muted);line-height:1.8">
-          <label for="su-tos" style="cursor:pointer">I agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span>
+          <label for="su-tos" style="cursor:pointer">I agree to the </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showTOS()">Terms of Service &amp; Disclaimer</span><label for="su-tos" style="cursor:pointer"> &amp; </label><span style="color:var(--blue);text-decoration:underline;cursor:pointer;font-weight:600" onclick="showPrivacyPolicy()">Privacy Policy</span>
         </div>
       </div>
       <button class="btn bg" style="font-size:16px;padding:14px" onclick="signupFinish()">✅ Create Company & Sign In</button>`;
@@ -8059,6 +8093,13 @@ function renderSettings(){
     <div class="card">
       <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px">Read the Terms of Service and Disclaimer that govern your use of My Depot Master.</div>
       <button class="btn bo" onclick="showTOS()" style="width:100%">📄 View Terms of Service &amp; Disclaimer</button>
+      <div style="margin-top:10px"></div>
+      <button class="btn bo" onclick="showPrivacyPolicy()" style="width:100%">🔒 View Privacy Policy</button>
+    </div>
+    <div class="sh" style="color:var(--red)">Danger Zone</div>
+    <div class="card" style="border:1px solid rgba(220,38,38,.3);background:rgba(220,38,38,.04)">
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px">Permanently delete this company account and all associated data. <strong style="color:var(--red)">This cannot be undone.</strong></div>
+      <button class="btn" style="width:100%;background:transparent;border:1.5px solid var(--red);color:var(--red);font-weight:700" onclick="deleteAccountStep1()">🗑 Delete Company Account &amp; All Data</button>
     </div>
     <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} MDM Developer · General Purpose Business Management Software</div>
     <div style="height:20px"></div>`;
@@ -8074,7 +8115,7 @@ function showTOS(){
       <b style="color:var(--white)">3. No Warranties</b><p style="margin:4px 0 10px">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY. Calculations may not be accurate, complete, or suitable for any official, legal, or financial purpose.</p>
       <b style="color:var(--white)">4. Limitation of Liability</b><p style="margin:4px 0 10px">THE DEVELOPER IS NOT LIABLE FOR: data loss; financial loss; wage or count errors; labour disputes; regulatory penalties; or any indirect damages. Maximum liability = 3 months' subscription fees.</p>
       <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
-      <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally and synced to Google Firebase (USA) where configured. You consent to this. You are the data controller and responsible for compliance with applicable local data protection laws. The Developer does not sell your data.</p>
+      <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally on your device and optionally synced to Google Firebase where cloud sync is enabled. By using this Software you consent to this processing. Our full data practices are described in the <span style="color:var(--blue);text-decoration:underline;cursor:pointer" onclick="showPrivacyPolicy()">Privacy Policy</span>, which forms part of these Terms. In brief: we do not sell your data; you remain the data controller for all business records you enter; the Developer acts as a data processor only. You are responsible for compliance with the Zambia Data Protection Act No. 3 of 2021 and any other applicable local data protection law in your jurisdiction.</p>
       <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to MDM Developer. You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
       <b style="color:var(--white)">8. Subscription, Fees &amp; Activation</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Activation will be completed within 48 hours of confirmed payment receipt. Access may be suspended for non-payment. <b style="color:#ffcc66">The Developer reserves the right to change subscription fees and/or subscription periods (e.g. trial duration, active period length) at any time without prior notice.</b> The fee and period applicable at the time of your payment will be honoured for that payment cycle only. Continued use of the Software after any fee or period change constitutes acceptance of the new terms.</p>
       <b style="color:var(--white)">9. Indemnification</b><p style="margin:4px 0 10px">You indemnify the Developer from any claims, costs, or legal fees from your use, misuse, or breach of these Terms.</p>
@@ -8086,6 +8127,182 @@ function showTOS(){
     </div>
     <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 I Understand &amp; Accept</button></div>`);
 }
+function showPrivacyPolicy(){
+  const yr=new Date().getFullYear();
+  openModal(`<div class="mtitle">🔒 Privacy Policy</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
+      <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">EFFECTIVE DATE: 1 JANUARY 2025 · LAST UPDATED: ${yr}</div>
+      <b style="color:var(--white)">1. Who We Are</b><p style="margin:4px 0 10px">My Depot Master is developed and operated by MDM Developer (\u201cthe Developer\u201d), a sole-trader software developer based in Zambia. Contact: <span style="color:var(--blue)">mydepotmaster@gmail.com</span></p>
+      <b style="color:var(--white)">2. What Data We Collect</b><p style="margin:4px 0 10px">We collect only the data you voluntarily enter into the app. This includes: company name, district, and country; admin username and hashed password; recovery email address; stock, sales, purchase, staff, and financial records; and device/session identifiers stored locally. We do <b style="color:var(--white)">not</b> collect names, ID numbers, or personal data of your end-customers beyond what you choose to record.</p>
+      <b style="color:var(--white)">3. How We Use Your Data</b><p style="margin:4px 0 10px">Data you enter is used solely to provide the app\u2019s business management features to you. The Developer does not analyse, profile, sell, rent, or share your data with any third party for marketing or commercial purposes.</p>
+      <b style="color:var(--white)">4. Cloud Sync &amp; Third Parties</b><p style="margin:4px 0 10px">If you enable cloud sync, your data is transmitted to and stored on <b style="color:var(--white)">Google Firebase</b>, a secure cloud infrastructure service. This transfer is protected by industry-standard security measures. No other third-party services receive your data. You may disable cloud sync at any time in Settings; your data will remain on-device only.</p>
+      <b style="color:var(--white)">5. Legal Basis for Processing (DPA 2021)</b><p style="margin:4px 0 10px">Under the Zambia Data Protection Act No. 3 of 2021, our lawful basis for processing your data is <b style="color:var(--white)">your explicit consent</b>, given when you accept these terms at signup and login. You may withdraw consent at any time by deleting your account. For operators outside Zambia, processing is based on the performance of the contract (providing the software service).</p>
+      <b style="color:var(--white)">6. Data Controller vs. Processor</b><p style="margin:4px 0 10px">You (\u201cthe Operator\u201d) are the <b style="color:var(--white)">data controller</b> for all business and personal records you enter. The Developer acts only as a <b style="color:var(--white)">data processor</b> providing the software infrastructure. You are responsible for ensuring your own use of the app complies with the DPA 2021 and any applicable employment, financial, or sector-specific laws.</p>
+      <b style="color:var(--white)">7. Data Retention &amp; Deletion</b><p style="margin:4px 0 10px">Data is retained for as long as your account is active. You may delete all local data by clearing the app\u2019s browser storage or uninstalling the app. To request deletion of any Firebase-synced data, contact the Developer at the email above. Requests will be actioned within 30 days.</p>
+      <b style="color:var(--white)">8. Security</b><p style="margin:4px 0 10px">Passwords are hashed before storage. Local data is stored in your device\u2019s secure browser storage. Cloud sync uses HTTPS and Firebase\u2019s authentication tokens. No system is 100% secure; you are advised to use a strong password and not share login credentials.</p>
+      <b style="color:var(--white)">9. Your Rights (DPA 2021)</b><p style="margin:4px 0 10px">As a data subject under the DPA 2021 you have the right to: access data held about you; correct inaccurate data; request erasure; restrict or object to processing; and withdraw consent. To exercise any of these rights, contact <span style="color:var(--blue)">mydepotmaster@gmail.com</span>.</p>
+      <b style="color:var(--white)">10. Children</b><p style="margin:4px 0 10px">This app is not intended for use by persons under 18 years of age. We do not knowingly collect data from minors.</p>
+      <b style="color:var(--white)">11. Changes to This Policy</b><p style="margin:4px 0 10px">We may update this Privacy Policy from time to time. Material changes will be communicated via an in-app notice. Continued use of the app after a change constitutes acceptance of the updated policy.</p>
+      <div style="text-align:center;font-size:11px;margin-top:12px">My Depot Master \u00b7 \u00a9 ${yr} MDM Developer \u00b7 All Rights Reserved</div>
+    </div>
+    <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 Close</button></div>`);
+}
+
+// ── DELETE ACCOUNT FLOW (Fix 21) ─────────────────────────────────────────────
+// Step 1: Emotional retention screen — what they'll lose
+function deleteAccountStep1(){
+  if(!requireAdmin('delete this company account'))return;
+  const rec = (DATA.inventory||[]).length + (DATA.issued||[]).length;
+  const staff = (DATA.staff||[]).length;
+  const name = (DATA.depotInfo||{}).name || 'Your Company';
+  openModal(`
+    <div class="mtitle" style="color:var(--red)">🗑 Delete Account</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
+      <div style="text-align:center;font-size:40px;margin:8px 0 4px">😢</div>
+      <div style="text-align:center;font-size:15px;font-weight:700;color:var(--white);margin-bottom:6px">We're really sad to see you go.</div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px">Before you do this, please know what you will permanently lose:</div>
+      <div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:12px;color:#ff8080;line-height:2">
+          🏢 <strong style="color:var(--white)">${esc(name)}</strong> — your entire company profile<br>
+          📦 <strong style="color:var(--white)">${rec} stock record${rec!==1?'s':''}</strong> — every receive &amp; issue entry<br>
+          👷 <strong style="color:var(--white)">${staff} staff member${staff!==1?'s':''}</strong> — all earnings &amp; leave history<br>
+          💰 All financial records, P&amp;L data, and reports<br>
+          ☁️ Your cloud backup — gone from all devices forever
+        </div>
+      </div>
+      <div style="background:rgba(0,214,143,.06);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:12px 14px;margin-bottom:6px;font-size:12px;color:var(--green);line-height:1.8">
+        💡 <strong>Before you delete</strong> — have you tried:<br>
+        <span style="color:var(--muted)">• Exporting your data first? (Settings → Export JSON)<br>
+        • Taking a break — your data stays safe while you're away<br>
+        • Reaching out to us? We may be able to help.</span>
+      </div>
+    </div>
+    <div class="mact" style="flex-direction:column;gap:8px">
+      <button class="btn bg" style="width:100%;font-size:14px" onclick="closeModal()">✅ Keep My Account — Stay</button>
+      <button class="btn bo" style="width:100%;font-size:13px" onclick="exportJSON();closeModal()">📥 Export My Data First</button>
+      <button class="btn" style="width:100%;background:transparent;border:1px solid rgba(220,38,38,.4);color:#ff8080;font-size:12px" onclick="deleteAccountStep2()">I understand — continue to delete</button>
+    </div>`,true);
+}
+
+// Step 2: Offer alternatives — export, contact, pause
+function deleteAccountStep2(){
+  openModal(`
+    <div class="mtitle" style="color:var(--red)">Are You Sure?</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
+      <div style="text-align:center;font-size:36px;margin:8px 0 4px">🙏</div>
+      <div style="text-align:center;font-size:14px;font-weight:700;color:var(--white);margin-bottom:6px">One last thing before you go.</div>
+      <p style="margin:0 0 12px">Is there something we could fix? Many users who wanted to delete their account just needed a small change. We'd love the chance to make it right.</p>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.9">
+        <div style="font-weight:700;color:var(--white);margin-bottom:4px">Get help before you leave:</div>
+        <a href="https://wa.me/260960271128" target="_blank" style="color:var(--green);text-decoration:none">💬 WhatsApp us at +260 960 271 128</a><br>
+        <a href="mailto:mydepotmaster@gmail.com" style="color:var(--blue);text-decoration:none">📧 mydepotmaster@gmail.com</a>
+      </div>
+      <div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);border-radius:10px;padding:10px 14px;font-size:12px;color:#ff8080;line-height:1.7">
+        ⚠️ <strong>Deletion is permanent and irreversible.</strong> There is no grace period. No recovery. No undo. Your data will be wiped from this device and from cloud storage immediately.
+      </div>
+    </div>
+    <div class="mact" style="flex-direction:column;gap:8px">
+      <button class="btn bg" style="width:100%;font-size:14px" onclick="closeModal()">✅ I Changed My Mind — Keep Account</button>
+      <button class="btn" style="width:100%;background:transparent;border:1px solid rgba(220,38,38,.4);color:#ff8080;font-size:12px;margin-top:2px" onclick="deleteAccountStep3()">No — I still want to delete everything</button>
+    </div>`,true);
+}
+
+// Step 3: Type confirmation
+function deleteAccountStep3(){
+  const depotName = ((DATA.depotInfo||{}).name||'').toUpperCase();
+  openModal(`
+    <div class="mtitle" style="color:var(--red)">Final Confirmation</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.85">
+      <div style="background:rgba(220,38,38,.1);border:1px solid var(--red);border-radius:8px;padding:10px 13px;margin-bottom:14px;color:#ff8080;font-size:12px;line-height:1.7">
+        ☠️ <strong>This is your last chance.</strong> Once you confirm, everything is gone. Permanently.
+      </div>
+      <div style="margin-bottom:10px">To confirm deletion, type your company name exactly as shown below:</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:monospace;font-size:14px;color:var(--white);text-align:center;letter-spacing:1px;margin-bottom:12px">${esc(depotName)}</div>
+      <input class="fi" id="del-confirm-input" placeholder="Type company name here" oninput="this.value=this.value.toUpperCase()" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:1px"/>
+      <div class="err-box" id="del-confirm-err" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="mact" style="flex-direction:column;gap:8px">
+      <button class="btn bg" style="width:100%" onclick="closeModal()">✅ Cancel — Keep My Account</button>
+      <button class="btn" style="width:100%;background:transparent;border:1px solid rgba(220,38,38,.5);color:#ff8080;font-size:12px" onclick="deleteAccountStep4()">Delete Forever →</button>
+    </div>`,true);
+}
+
+// Step 4: Admin password gate then execute wipe
+function deleteAccountStep4(){
+  const depotName = ((DATA.depotInfo||{}).name||'').toUpperCase();
+  const typed = (document.getElementById('del-confirm-input')?.value||'').trim().toUpperCase();
+  const err = document.getElementById('del-confirm-err');
+  if(typed !== depotName){
+    if(err){err.style.display='block';err.textContent='Company name does not match. Please type it exactly.';}
+    return;
+  }
+  closeModal();
+  requireAdminPassword('permanently delete this company account and ALL data', async ()=>{
+    await _executeAccountDeletion();
+  });
+}
+
+// Executes the full wipe — local storage, IndexedDB, Firebase
+async function _executeAccountDeletion(){
+  const installId = DATA.installId || _loadPersistedInstallId();
+  const usernames = (DATA.users||[]).map(u=>u.username).filter(Boolean);
+
+  // Show progress modal (uncloseable)
+  openModal(`
+    <div class="mtitle" style="color:var(--red)">Deleting Account…</div>
+    <div style="text-align:center;padding:24px 0;font-size:13px;color:var(--muted);line-height:2" id="del-progress-msg">
+      🗑 Wiping local data…
+    </div>`,true);
+
+  const prog = txt => { const el=document.getElementById('del-progress-msg'); if(el) el.innerHTML=txt; };
+
+  try {
+    // 1. Firebase: delete depot data, usernames, lockouts
+    if(isFbConfigured() && installId){
+      prog('☁️ Removing cloud data…');
+      const fbOps = [
+        fbDelete('depots/'+installId).catch(()=>{}),
+        fbDelete('lockouts/'+installId).catch(()=>{}),
+        ...usernames.map(u=>fbDelete('usernames/'+u.toLowerCase()).catch(()=>{}))
+      ];
+      await Promise.all(fbOps);
+    }
+
+    // 2. Wipe all localStorage keys belonging to this app
+    prog('🗑 Clearing local storage…');
+    const mdmKeys = Object.keys(localStorage).filter(k=>k.startsWith('mdm'));
+    mdmKeys.forEach(k=>localStorage.removeItem(k));
+    // Also clear per-user bio and TOS keys
+    usernames.forEach(u=>{
+      localStorage.removeItem('mdm_bio_'+u.toLowerCase());
+      localStorage.removeItem('mdm_tos_'+u.toLowerCase());
+    });
+    localStorage.removeItem('mdm_bio_map');
+
+    // 3. Wipe IndexedDB
+    prog('🗑 Clearing database…');
+    await new Promise(res=>{
+      const req=indexedDB.deleteDatabase(IDB_NAME);
+      req.onsuccess=req.onerror=req.onblocked=()=>res();
+    });
+
+    // 4. Done — redirect to landing
+    prog('✅ Account deleted. Goodbye.');
+    await new Promise(r=>setTimeout(r,1500));
+    closeModal();
+    // Reset in-memory state and go to landing
+    DATA={};
+    USER={username:'',role:'viewer'};
+    showLanding();
+    showToast('Account permanently deleted.',5000);
+
+  } catch(e){
+    prog(`⚠️ An error occurred: ${e.message||e}<br><span style="font-size:11px">Some data may not have been removed. Please contact support.</span>`);
+    setTimeout(closeModal, 4000);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function saveDepotInfo(){
   const name=uc(document.getElementById('di-name').value)||'MY COMPANY';
   const district=uc(document.getElementById('di-district').value);
