@@ -212,7 +212,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
     overflow-y:auto;
     background:var(--surface);
   }
-  /* Hide mobile-only branding on PC (hero panel replaces them) */
   #login-screen .login-logo,#login-screen .login-title,#login-screen .login-sub{display:none;}
   #recovery-screen .rec-logo,#recovery-screen .rec-title,#recovery-screen .rec-sub{display:none;}
   .login-card,.rec-card,.signup-step{max-width:100%;width:100%;}
@@ -226,7 +225,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .content{padding:24px 40px;padding-bottom:calc(24px + 68px + env(safe-area-inset-bottom,0px));}
   .hdr{padding:14px 40px;}
   .modal{max-width:640px;}
-  /* Wider form panel on very large screens */
   .login-pc-wrap{flex:0 0 480px;width:480px;padding:48px 44px;}
 }
 
@@ -255,10 +253,9 @@ body.light .qa-btn-purple{background:rgba(91,33,182,.08)!important;}
 .login-title{font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:4px;letter-spacing:-0.5px;}
 .login-sub{color:var(--muted);font-size:12px;margin-bottom:24px;text-align:center;line-height:1.7;}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:24px;width:100%;max-width:360px;box-shadow:var(--shadow-lg);}
-/* PC split layout helpers (activated by media query below) */
+/* PC split layout helpers — activated at ≥768px */
 .login-pc-wrap{display:contents;}
 .login-pc-hero{display:none;}
-.login-pc-form-col{display:contents;}
 
 /* Fields */
 .fl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
@@ -771,7 +768,6 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
   <!-- SIGN UP WIZARD -->
   <div id="signup-screen" style="display:none">
-    <!-- PC hero panel -->
     <div class="login-pc-hero">
       <div class="lph-logo">MDM</div>
       <div class="lph-title">Create Account</div>
@@ -783,7 +779,6 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
         <div class="lph-feat-item"><div class="lph-feat-icon">📊</div>P&amp;L, budgets and financial reports</div>
       </div>
     </div>
-    <!-- Form column -->
     <div class="login-pc-wrap">
       <div class="signup-step" id="signup-inner"><!-- injected by JS --></div>
     </div>
@@ -847,19 +842,17 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
   <!-- LOGIN -->
   <div id="login-screen" style="display:none">
-    <!-- PC hero panel (hidden on mobile via CSS) -->
     <div class="login-pc-hero">
       <div class="lph-logo">MDM</div>
       <div class="lph-title">My Depot Master</div>
       <div class="lph-sub">Smart depot management — stock, staff, earnings and inventory in one place.</div>
       <div class="lph-feat">
-        <div class="lph-feat-item"><div class="lph-feat-icon">📦</div>Track stock & inventory in real time</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">📦</div>Track stock &amp; inventory in real time</div>
         <div class="lph-feat-item"><div class="lph-feat-icon">👷</div>Manage staff, shifts and payroll</div>
         <div class="lph-feat-item"><div class="lph-feat-icon">☁️</div>Auto cloud sync — works offline too</div>
         <div class="lph-feat-item"><div class="lph-feat-icon">📊</div>P&amp;L, budgets and financial reports</div>
       </div>
     </div>
-    <!-- Form column (mobile: full screen, PC: right panel) -->
     <div class="login-pc-wrap">
     <div class="login-logo">MDM</div>
     <div class="login-title">My Depot Master</div>
@@ -888,7 +881,6 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
   <!-- RECOVERY SCREEN -->
   <div id="recovery-screen" style="display:none">
-    <!-- PC hero panel -->
     <div class="login-pc-hero">
       <div class="lph-logo">🔑</div>
       <div class="lph-title">Account Recovery</div>
@@ -899,7 +891,6 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
         <div class="lph-feat-item"><div class="lph-feat-icon">🛡️</div>All data stays private &amp; local</div>
       </div>
     </div>
-    <!-- Form column -->
     <div class="login-pc-wrap">
     <button id="rec-back-btn" onclick="hideRecovery()" style="position:absolute;top:max(16px,env(safe-area-inset-top,16px));left:16px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;touch-action:manipulation;z-index:1">← Sign In</button>
     <div class="rec-logo">🔑</div>
