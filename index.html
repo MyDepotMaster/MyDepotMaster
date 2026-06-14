@@ -173,9 +173,49 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .hdr{padding:12px 28px;}
   .movl{align-items:center;}
   .modal{border-radius:var(--radius-xl);max-width:560px;max-height:90vh;}
-  #login-screen{max-width:100%;}
   #license-banner,#trial-banner{max-width:100%;}
   .srow{grid-template-columns:repeat(4,1fr);}
+  /* ── PC Login / Signup / Recovery — two-column split ── */
+  #login-screen,#signup-screen,#recovery-screen{
+    flex-direction:row;
+    padding:0;
+    justify-content:stretch;
+    align-items:stretch;
+    overflow:hidden;
+  }
+  .login-pc-hero{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    flex:1 1 0;
+    padding:48px 40px;
+    background:radial-gradient(ellipse at 30% 40%,var(--surface2) 0%,var(--bg) 80%);
+    border-right:1px solid var(--border);
+    overflow:hidden;
+    gap:0;
+  }
+  .login-pc-hero .lph-logo{width:88px;height:88px;background:linear-gradient(135deg,var(--green),var(--green2));border-radius:22px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:28px;font-weight:800;color:#060d18;box-shadow:var(--glow-green),0 6px 28px rgba(0,0,0,.5);letter-spacing:-0.5px;margin-bottom:28px;}
+  .login-pc-hero .lph-title{font-family:var(--fh);font-size:32px;font-weight:800;color:var(--white);letter-spacing:-0.8px;margin-bottom:10px;text-align:center;}
+  .login-pc-hero .lph-sub{font-size:13px;color:var(--muted);text-align:center;line-height:1.8;max-width:300px;margin-bottom:36px;}
+  .login-pc-hero .lph-feat{display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;}
+  .login-pc-hero .lph-feat-item{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text);}
+  .login-pc-hero .lph-feat-icon{width:32px;height:32px;border-radius:8px;background:rgba(0,214,143,.10);border:1px solid rgba(0,214,143,.2);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .login-pc-wrap{
+    display:flex !important;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 420px;
+    width:420px;
+    padding:40px 36px;
+    overflow-y:auto;
+    background:var(--surface);
+  }
+  /* Hide mobile-only branding on PC (hero panel replaces them) */
+  #login-screen .login-logo,#login-screen .login-title,#login-screen .login-sub{display:none;}
+  #recovery-screen .rec-logo,#recovery-screen .rec-title,#recovery-screen .rec-sub{display:none;}
+  .login-card,.rec-card,.signup-step{max-width:100%;width:100%;}
 }
 
 /* ── Extra-wide PC (≥1200px): more breathing room ─────────── */
@@ -186,6 +226,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .content{padding:24px 40px;padding-bottom:calc(24px + 68px + env(safe-area-inset-bottom,0px));}
   .hdr{padding:14px 40px;}
   .modal{max-width:640px;}
+  /* Wider form panel on very large screens */
+  .login-pc-wrap{flex:0 0 480px;width:480px;padding:48px 44px;}
 }
 
 /* ── Small phones ──────────────────────────────────────────── */
@@ -213,6 +255,10 @@ body.light .qa-btn-purple{background:rgba(91,33,182,.08)!important;}
 .login-title{font-family:var(--fh);font-size:26px;font-weight:800;color:var(--white);margin-bottom:4px;letter-spacing:-0.5px;}
 .login-sub{color:var(--muted);font-size:12px;margin-bottom:24px;text-align:center;line-height:1.7;}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:24px;width:100%;max-width:360px;box-shadow:var(--shadow-lg);}
+/* PC split layout helpers (activated by media query below) */
+.login-pc-wrap{display:contents;}
+.login-pc-hero{display:none;}
+.login-pc-form-col{display:contents;}
 
 /* Fields */
 .fl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
@@ -725,7 +771,22 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
   <!-- SIGN UP WIZARD -->
   <div id="signup-screen" style="display:none">
-    <div class="signup-step" id="signup-inner"><!-- injected by JS --></div>
+    <!-- PC hero panel -->
+    <div class="login-pc-hero">
+      <div class="lph-logo">MDM</div>
+      <div class="lph-title">Create Account</div>
+      <div class="lph-sub">Set up your depot in minutes. Your data stays on your device and syncs securely to the cloud.</div>
+      <div class="lph-feat">
+        <div class="lph-feat-item"><div class="lph-feat-icon">📦</div>Track stock &amp; inventory in real time</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">👷</div>Manage staff, shifts and payroll</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">☁️</div>Auto cloud sync — works offline too</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">📊</div>P&amp;L, budgets and financial reports</div>
+      </div>
+    </div>
+    <!-- Form column -->
+    <div class="login-pc-wrap">
+      <div class="signup-step" id="signup-inner"><!-- injected by JS --></div>
+    </div>
   </div>
 
   <!-- LICENSE read-only banner -->
@@ -786,6 +847,20 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
   <!-- LOGIN -->
   <div id="login-screen" style="display:none">
+    <!-- PC hero panel (hidden on mobile via CSS) -->
+    <div class="login-pc-hero">
+      <div class="lph-logo">MDM</div>
+      <div class="lph-title">My Depot Master</div>
+      <div class="lph-sub">Smart depot management — stock, staff, earnings and inventory in one place.</div>
+      <div class="lph-feat">
+        <div class="lph-feat-item"><div class="lph-feat-icon">📦</div>Track stock & inventory in real time</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">👷</div>Manage staff, shifts and payroll</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">☁️</div>Auto cloud sync — works offline too</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">📊</div>P&amp;L, budgets and financial reports</div>
+      </div>
+    </div>
+    <!-- Form column (mobile: full screen, PC: right panel) -->
+    <div class="login-pc-wrap">
     <div class="login-logo">MDM</div>
     <div class="login-title">My Depot Master</div>
     <div class="login-sub"><span id="login-depot-sub">My Depot Master</span><br><span id="conn-status" style="color:var(--amber)">● Checking connection…</span></div>
@@ -808,11 +883,25 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       </button>
       <button onclick="showRecovery()" style="width:100%;background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:10px 0 2px;touch-action:manipulation">Forgot password? Recover account →</button>
     </div>
+    </div><!-- /.login-pc-wrap -->
   </div>
 
   <!-- RECOVERY SCREEN -->
   <div id="recovery-screen" style="display:none">
-    <button onclick="hideRecovery()" style="position:absolute;top:max(16px,env(safe-area-inset-top,16px));left:16px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;touch-action:manipulation;z-index:1">← Sign In</button>
+    <!-- PC hero panel -->
+    <div class="login-pc-hero">
+      <div class="lph-logo">🔑</div>
+      <div class="lph-title">Account Recovery</div>
+      <div class="lph-sub">Reset your password securely using your Recovery PIN or registered email — no third party needed.</div>
+      <div class="lph-feat">
+        <div class="lph-feat-item"><div class="lph-feat-icon">🔐</div>PIN-based instant reset</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">📧</div>Email recovery option</div>
+        <div class="lph-feat-item"><div class="lph-feat-icon">🛡️</div>All data stays private &amp; local</div>
+      </div>
+    </div>
+    <!-- Form column -->
+    <div class="login-pc-wrap">
+    <button id="rec-back-btn" onclick="hideRecovery()" style="position:absolute;top:max(16px,env(safe-area-inset-top,16px));left:16px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;touch-action:manipulation;z-index:1">← Sign In</button>
     <div class="rec-logo">🔑</div>
     <div class="rec-title">Account Recovery</div>
     <div class="rec-sub">Enter your Recovery PIN to reset your password.<br>Everything is handled automatically — no third party needed.</div>
@@ -824,6 +913,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <!-- Step 2: recovery options (injected by JS) -->
       <div id="rec-s2"></div>
     </div>
+    </div><!-- /.login-pc-wrap -->
   </div>
 
   <div class="nav" id="nav" style="display:none">
@@ -2435,6 +2525,7 @@ function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocal
 function cur(){return(DATA&&DATA.currency)||'';}
 function zm(n){const c=cur();return(c?c+' ':'')+Number(n||0).toFixed(2);}
 function zmFull(n){const c=cur()||'—';return c+' '+Number(n||0).toFixed(2);}
+function uc(s){return(s||'').toString().trim().toUpperCase();} // uppercase-trim helper
 
 // ── AGGREGATE MEMO CACHE (Fix 2) ────────────────────────────────────────────
 // filterPeriod and reduce-based aggregates are called 8+ times per dashboard
