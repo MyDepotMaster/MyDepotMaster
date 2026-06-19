@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="My Depot Master"/>
-<meta name="theme-color" content="#0a1628"/>
+<meta name="theme-color" content="#1A1A2E"/>
 <!-- ── SECURITY HEADERS ────────────────────────────────────────────────────── -->
 <!-- X-Content-Type-Options and X-Frame-Options must be HTTP response headers  -->
 <!-- to be enforced by browsers — meta http-equiv is ignored for these.        -->
@@ -43,9 +43,9 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
-  --bg:#080f1c;--surface:#0e1929;--surface2:#131f30;--border:#1a2d47;
-  --green:#00d68f;--green2:#00b87a;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;
-  --text:#c8ddf5;--muted:#4d6d8f;--white:#f0f7ff;
+  --bg:#1A1A2E;--surface:#16213E;--surface2:#0F3460;--border:#2C3E50;
+  --green:#27AE60;--green2:#82E0AA;--amber:#F39C12;--red:#E74C3C;--blue:#2E86C1;--purple:#A569BD;
+  --text:#E0E0E0;--muted:#A0A0A0;--white:#F8F9FA;
   --fh:'Syne','Arial Black','Arial',sans-serif;--fb:'DM Sans','Segoe UI','Helvetica Neue',Arial,sans-serif;--fm:'DM Mono','Courier New',monospace;
   --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;
   --shadow-sm:0 1px 3px rgba(0,0,0,.4);
@@ -75,15 +75,15 @@
    Solid whites, true blacks, zero glass effects.
    Maximum readability for all users in bright environments.   */
 body.light{
-  --bg:#f5f5f5;
+  --bg:#F8F9FA;
   --surface:#ffffff;
-  --surface2:#f0f0f0;
-  --border:#d0d0d0;
-  --text:#111111;
-  --muted:#666666;
+  --surface2:#ECF0F1;
+  --border:#D5D8DC;
+  --text:#2C3E50;
+  --muted:#7F8C8D;
   --white:#000000;
-  --green:#007a50;--green2:#005f3e;
-  --amber:#b35a00;--red:#b91c1c;--blue:#1a40b8;--purple:#5b21b6;
+  --green:#1E8449;--green2:#145A32;
+  --amber:#B9770E;--red:#C0392B;--blue:#21618C;--purple:#6C3483;
   --shadow-sm:0 1px 2px rgba(0,0,0,.10);
   --shadow-md:0 3px 10px rgba(0,0,0,.12);
   --shadow-lg:0 6px 24px rgba(0,0,0,.15);
@@ -268,8 +268,8 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:var(--radius-md);padding:12px 20px;font-family:var(--fh);font-size:20px;font-weight:700;letter-spacing:.3px;cursor:pointer;transition:all .15s;width:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .bg{background:linear-gradient(135deg,var(--green),var(--green2));color:#060d18;box-shadow:0 2px 12px rgba(0,214,143,.25);} .bg:active{transform:scale(.97);opacity:.9;}
 .bo{background:transparent;color:var(--text);border:1.5px solid var(--border);} .bo:active{border-color:var(--green);color:var(--green);}
-.ba{background:linear-gradient(135deg,#f59e0b,#d97706);color:#060d18;} .ba:active{opacity:.85;}
-.br{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;} .br:active{opacity:.85;}
+.ba{background:linear-gradient(135deg,#F39C12,#B9770E);color:#060d18;} .ba:active{opacity:.85;}
+.br{background:linear-gradient(135deg,#E74C3C,#C0392B);color:#fff;} .br:active{opacity:.85;}
 .bsm{padding:7px 13px;font-size:17px;width:auto;}
 
 /* Header */
@@ -414,7 +414,7 @@ select.fi option{text-transform:uppercase;}
 .land-cta{padding:0 18px 44px;display:flex;flex-direction:column;gap:10px;}
 .land-pricing{background:var(--surface);border:1px solid rgba(0,214,143,.2);border-radius:var(--radius-xl);padding:20px;margin-bottom:2px;text-align:center;position:relative;overflow:hidden;}
 .land-pricing::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(0,214,143,.08),transparent 70%);pointer-events:none;}
-.land-pricing-badge{display:inline-block;background:linear-gradient(90deg,var(--amber),#d97706);color:#060d18;font-family:var(--fh);font-size:15px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:20px;margin-bottom:10px;}
+.land-pricing-badge{display:inline-block;background:linear-gradient(90deg,var(--amber),#B9770E);color:#060d18;font-family:var(--fh);font-size:15px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:20px;margin-bottom:10px;}
 .land-pricing-price{font-family:var(--fh);font-size:41px;font-weight:800;color:var(--green);margin-bottom:2px;line-height:1;}
 .land-pricing-sub{font-size:16px;color:var(--muted);line-height:1.7;}
 .land-btn-primary{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,var(--green),var(--green2));color:#060d18;border:none;border-radius:var(--radius-lg);padding:15px;font-family:var(--fh);font-size:21px;font-weight:800;cursor:pointer;touch-action:manipulation;box-shadow:0 4px 20px rgba(0,214,143,.25);width:100%;}
@@ -601,24 +601,24 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 /* Light variables shared by both explicit light and auto-light */
 :root[data-theme="light"],
 :root[data-theme="auto-light"]{
-  --bg:#f5f5f5;--surface:#ffffff;--surface2:#f0f0f0;--border:#d0d0d0;
-  --text:#111111;--muted:#666666;--white:#000000;
-  --green:#007a50;--green2:#005f3e;--amber:#b35a00;--red:#b91c1c;--blue:#1a40b8;--purple:#5b21b6;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.10);--shadow-md:0 3px 10px rgba(0,0,0,.12);--shadow-lg:0 6px 24px rgba(0,0,0,.15);
-  --glow-green:none;--glow-blue:none;
-  --overlay-dark-1:#ebebeb;--overlay-dark-2:#e4e4e4;--overlay-dark-3:rgba(0,0,0,.40);
-  --overlay-light-1:#fafafa;--overlay-light-2:#f8f8f8;--overlay-light-3:#f5f5f5;
-  --overlay-light-4:#f2f2f2;--overlay-light-5:#efefef;--overlay-light-8:#eaeaea;
-  --overlay-light-10:#e6e6e6;--table-th-bg:#eeeeee;--table-td-border:#dddddd;
-  --table-row-hover:#f9f9f9;--fi-bg:#ffffff;--select-bg:#ffffff;--movl-bg:rgba(0,0,0,.50);
+  --bg:#F8F9FA;--surface:#ffffff;--surface2:#ECF0F1;--border:#D5D8DC;
+  --text:#2C3E50;--muted:#7F8C8D;--white:#000000;
+  --green:#1E8449;--green2:#145A32;--amber:#B9770E;--red:#C0392B;--blue:#21618C;--purple:#6C3483;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.10);--shadow-md:0 3px 10px rgba(0,0,0,.12);--shadow-lg:0 6px 24px rgba(0,0,0,.15);
+    --glow-green:none;--glow-blue:none;
+    --overlay-dark-1:#ebebeb;--overlay-dark-2:#e4e4e4;--overlay-dark-3:rgba(0,0,0,.40);
+    --overlay-light-1:#fafafa;--overlay-light-2:#f8f8f8;--overlay-light-3:#f5f5f5;
+    --overlay-light-4:#f2f2f2;--overlay-light-5:#efefef;--overlay-light-8:#eaeaea;
+    --overlay-light-10:#e6e6e6;--table-th-bg:#eeeeee;--table-td-border:#dddddd;
+    --table-row-hover:#f9f9f9;--fi-bg:#ffffff;--select-bg:#ffffff;--movl-bg:rgba(0,0,0,.50);
 }
 
 /* Auto mode: let the OS decide via media query (no explicit data-theme on :root) */
 @media (prefers-color-scheme:light){
   :root:not([data-theme]){
-    --bg:#f5f5f5;--surface:#ffffff;--surface2:#f0f0f0;--border:#d0d0d0;
-    --text:#111111;--muted:#666666;--white:#000000;
-    --green:#007a50;--green2:#005f3e;--amber:#b35a00;--red:#b91c1c;--blue:#1a40b8;--purple:#5b21b6;
+    --bg:#F8F9FA;--surface:#ffffff;--surface2:#ECF0F1;--border:#D5D8DC;
+    --text:#2C3E50;--muted:#7F8C8D;--white:#000000;
+    --green:#1E8449;--green2:#145A32;--amber:#B9770E;--red:#C0392B;--blue:#21618C;--purple:#6C3483;
     --shadow-sm:0 1px 2px rgba(0,0,0,.10);--shadow-md:0 3px 10px rgba(0,0,0,.12);--shadow-lg:0 6px 24px rgba(0,0,0,.15);
     --glow-green:none;--glow-blue:none;
     --overlay-dark-1:#ebebeb;--overlay-dark-2:#e4e4e4;--overlay-dark-3:rgba(0,0,0,.40);
@@ -831,7 +831,7 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
         <div style="font-family:monospace;font-size:19px;color:var(--blue);word-break:break-all" id="bs-depot-key">—</div>
       <div style="font-size:16px;color:var(--muted);margin-top:5px">Include this key when you message for activation.</div>
       </div>
-      <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;background:var(--green);color:#0a1628;border-radius:11px;padding:13px 20px;font-family:var(--fh);font-size:21px;font-weight:700;text-decoration:none;margin-bottom:10px;touch-action:manipulation">
+      <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;background:var(--green);color:#1A1A2E;border-radius:11px;padding:13px 20px;font-family:var(--fh);font-size:21px;font-weight:700;text-decoration:none;margin-bottom:10px;touch-action:manipulation">
         <span>💬</span> WhatsApp for Activation
       </a>
       <a href="tel:+260960271128" style="display:flex;align-items:center;justify-content:center;gap:10px;background:transparent;color:var(--text);border:1.5px solid var(--border);border-radius:11px;padding:12px 20px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-bottom:24px">
@@ -1093,18 +1093,18 @@ function _pdfPrint(htmlBody, title, filename) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 2.5px solid #00d68f;
+    border-bottom: 2.5px solid #1E8449;
     padding-bottom: 8px;
     margin-bottom: 18px;
   }
   .pdf-logo {
     font-size: 20pt;
     font-weight: 900;
-    color: #00d68f;
+    color: #1E8449;
     letter-spacing: -1px;
   }
   .pdf-meta { text-align: right; font-size: 9pt; color: #555; }
-  .pdf-title { font-size: 15pt; font-weight: 700; margin: 0 0 14px; color: #0a1628; }
+  .pdf-title { font-size: 15pt; font-weight: 700; margin: 0 0 14px; color: #1A1A2E; }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -1112,7 +1112,7 @@ function _pdfPrint(htmlBody, title, filename) {
     font-size: 10pt;
   }
   thead th {
-    background: #0a1628;
+    background: #1A1A2E;
     color: #fff;
     padding: 7px 9px;
     text-align: left;
@@ -1130,12 +1130,12 @@ function _pdfPrint(htmlBody, title, filename) {
     border-top: 1px solid #ddd;
     padding-top: 7px;
   }
-  .total-row td { font-weight: 700; background: #eafaf3; border-top: 2px solid #00d68f; }
+  .total-row td { font-weight: 700; background: #eafaf3; border-top: 2px solid #1E8449; }
   /* Payslip / summary specific overrides */
-  .payslip-company { font-size: 18pt; font-weight: 900; color: #0a1628; margin-bottom: 2px; }
+  .payslip-company { font-size: 18pt; font-weight: 900; color: #1A1A2E; margin-bottom: 2px; }
   .payslip-sub { font-size: 10pt; color: #555; margin-bottom: 10px; }
-  .pay-section-title { font-size: 12pt; font-weight: 700; margin: 14px 0 6px; color: #0a1628; border-left: 4px solid #00d68f; padding-left: 8px; }
-  .net-row td { font-size: 13pt; font-weight: 900; background: #eafaf3; color: #007a4d; border-top: 3px solid #00d68f; }
+  .pay-section-title { font-size: 12pt; font-weight: 700; margin: 14px 0 6px; color: #2C3E50; border-left: 4px solid #1E8449; padding-left: 8px; }
+  .net-row td { font-size: 13pt; font-weight: 900; background: #eafaf3; color: #1E8449; border-top: 3px solid #1E8449; }
   .sig-row { margin-top: 36px; display: flex; justify-content: space-between; }
   .sig-box { width: 42%; border-top: 1px solid #aaa; padding-top: 5px; font-size: 9.5pt; color: #555; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -1168,7 +1168,7 @@ function _pdfHeader(title){
   const loc=[di.district,di.province,di.country].filter(Boolean).join(', ');
   const now=new Date().toLocaleString('en-GB');
   return `<div class="pdf-header">
-    <div><div class="pdf-logo">MDM</div><div style="font-size:11pt;font-weight:700;color:#0a1628">${esc(co)}</div>${loc?`<div style="font-size:9pt;color:#555">${esc(loc)}</div>`:''}</div>
+    <div><div class="pdf-logo">MDM</div><div style="font-size:11pt;font-weight:700;color:#1A1A2E">${esc(co)}</div>${loc?`<div style="font-size:9pt;color:#555">${esc(loc)}</div>`:''}</div>
     <div class="pdf-meta">My Depot Master<br>${esc(now)}</div>
   </div>
   <div class="pdf-title">${esc(title)}</div>`;
@@ -2981,8 +2981,8 @@ function startSignUp() {
       <div style="text-align:center;margin-bottom:6px;font-size:41px">⚠️</div>
       <div style="font-family:var(--fh);font-size:25px;font-weight:800;color:var(--white);text-align:center;margin-bottom:6px">Before You Continue</div>
       <div style="font-size:18px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.6">Please read this carefully before creating your account.</div>
-      <div style="background:var(--surface);border:1.5px solid #f59e0b55;border-radius:12px;padding:16px 14px;margin-bottom:18px">
-        <div style="font-size:17px;font-weight:700;color:#f59e0b;letter-spacing:.06em;margin-bottom:10px">🔒 PERMANENT COMPANY DETAILS</div>
+      <div style="background:var(--surface);border:1.5px solid #F39C1255;border-radius:12px;padding:16px 14px;margin-bottom:18px">
+        <div style="font-size:17px;font-weight:700;color:#F39C12;letter-spacing:.06em;margin-bottom:10px">🔒 PERMANENT COMPANY DETAILS</div>
         <div style="font-size:18px;color:#c8d8e8;line-height:1.8">The following details <strong style="color:var(--white)">cannot be changed</strong> after your account is created. They form your unique company identity and license identifier:</div>
         <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;align-items:center;gap:10px;background:#0d1f35;border-radius:8px;padding:9px 12px">
@@ -3009,7 +3009,7 @@ function startSignUp() {
         </div>
       </div>
       <div style="font-size:17px;color:var(--muted);text-align:center;line-height:1.7;margin-bottom:20px">
-        Make sure all details are correct and spelled exactly as you want them — they <strong style="color:#f59e0b">cannot be edited later</strong>.
+        Make sure all details are correct and spelled exactly as you want them — they <strong style="color:#F39C12">cannot be edited later</strong>.
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <button id="swо-confirm-btn" style="background:var(--green);color:#000;border:none;border-radius:12px;padding:14px;font-size:20px;font-weight:700;cursor:pointer;letter-spacing:.02em">
@@ -7171,14 +7171,14 @@ function printStaffIdCard(id) {
   const location = [di.district, di.province, di.country].filter(Boolean).join(', ');
   const initials = s.name.split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
   const contractColor = {
-    permanent: '#007a50', casual: '#b35a00', seasonal: '#1a40b8', probation: '#5b21b6'
-  }[s.contractType || 'permanent'] || '#007a50';
+    permanent: '#1E8449', casual: '#B9770E', seasonal: '#21618C', probation: '#6C3483'
+  }[s.contractType || 'permanent'] || '#1E8449';
   const contractLabel = (s.contractType || 'PERMANENT').toUpperCase();
 
   // Status ribbon
-  const statusColors = { active:'#007a50', suspended:'#b35a00', resigned:'#555', terminated:'#b91c1c' };
+  const statusColors = { active:'#1E8449', suspended:'#B9770E', resigned:'#555', terminated:'#C0392B' };
   const statusLabel  = { active:'ACTIVE', suspended:'SUSPENDED', resigned:'RESIGNED', terminated:'TERMINATED' };
-  const stColor = statusColors[s.status||'active'] || '#007a50';
+  const stColor = statusColors[s.status||'active'] || '#1E8449';
   const stLabel = statusLabel[s.status||'active']  || 'ACTIVE';
 
   const html = `
@@ -7193,31 +7193,31 @@ function printStaffIdCard(id) {
   }
   /* FRONT */
   .card-front {
-    background: linear-gradient(135deg, #0a1628 0%, #0e2240 60%, #0a1628 100%);
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #1A1A2E 100%);
     color: #fff;
     display: flex; flex-direction: column;
   }
   .card-header {
-    background: linear-gradient(90deg, #00d68f, #00b87a);
+    background: linear-gradient(90deg, #27AE60, #1E8449);
     padding: 6px 12px;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .card-company { font-size: 9.5pt; font-weight: 900; color: #0a1628; letter-spacing: -.2px; }
-  .card-mdm-badge { font-size: 8pt; font-weight: 900; color: #0a1628; background: rgba(0,0,0,.15); border-radius: 4px; padding: 1px 5px; }
+  .card-company { font-size: 9.5pt; font-weight: 900; color: #1A1A2E; letter-spacing: -.2px; }
+  .card-mdm-badge { font-size: 8pt; font-weight: 900; color: #1A1A2E; background: rgba(0,0,0,.15); border-radius: 4px; padding: 1px 5px; }
   .card-body { flex: 1; display: flex; align-items: center; padding: 10px 12px; gap: 12px; }
   .card-avatar {
     width: 60px; height: 60px; border-radius: 50%;
-    background: linear-gradient(135deg, #1a3a5c, #0e2240);
-    border: 2.5px solid #00d68f;
+    background: linear-gradient(135deg, #1a3a5c, #16213E);
+    border: 2.5px solid #27AE60;
     display: flex; align-items: center; justify-content: center;
-    font-size: 20pt; font-weight: 900; color: #00d68f; flex-shrink: 0;
+    font-size: 20pt; font-weight: 900; color: #27AE60; flex-shrink: 0;
     letter-spacing: -1px;
   }
   .card-info { flex: 1; min-width: 0; }
   .card-name { font-size: 12pt; font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 3px; word-break: break-word; }
-  .card-role { font-size: 8pt; color: #00d68f; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+  .card-role { font-size: 8pt; color: #27AE60; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
   .card-detail { font-size: 7.5pt; color: #8ab0cc; line-height: 1.6; }
-  .card-detail strong { color: #c8ddf5; }
+  .card-detail strong { color: #E0E0E0; }
   .card-contract { display: inline-block; background: ${contractColor}22; border: 1px solid ${contractColor}88; border-radius: 4px; padding: 0px 5px; font-size: 7pt; font-weight: 800; color: ${contractColor}; margin-top: 2px; }
   .card-footer {
     background: rgba(0,0,0,.4); padding: 5px 12px;
@@ -7227,20 +7227,20 @@ function printStaffIdCard(id) {
   .card-status { font-size: 7pt; font-weight: 800; color: ${stColor}; letter-spacing: .3px; }
   /* BACK */
   .card-back {
-    background: linear-gradient(160deg, #0e2240 0%, #0a1628 100%);
+    background: linear-gradient(160deg, #16213E 0%, #1A1A2E 100%);
     color: #fff; display: flex; flex-direction: column;
   }
   .card-back-header {
-    background: linear-gradient(90deg, #00d68f, #00b87a);
+    background: linear-gradient(90deg, #27AE60, #1E8449);
     padding: 5px 12px; text-align: center;
-    font-size: 8.5pt; font-weight: 900; color: #0a1628; letter-spacing: .3px;
+    font-size: 8.5pt; font-weight: 900; color: #1A1A2E; letter-spacing: .3px;
   }
   .card-back-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 12px; gap: 4px; }
   .card-back-row { font-size: 7.5pt; color: #8ab0cc; line-height: 1.6; }
-  .card-back-row strong { color: #c8ddf5; }
+  .card-back-row strong { color: #E0E0E0; }
   .card-back-footer { padding: 6px 12px; border-top: 1px solid rgba(255,255,255,.08); }
   .card-sig-line { border-top: 1px solid rgba(255,255,255,.2); margin: 6px 0 2px; width: 120px; }
-  .card-sig-label { font-size: 6.5pt; color: #4d6d8f; }
+  .card-sig-label { font-size: 6.5pt; color: #A0A0A0; }
   .card-barcode { font-family: 'Courier New', monospace; font-size: 7pt; color: #2a5070; letter-spacing: 2px; word-break: break-all; }
   .print-label { font-size: 9pt; color: #555; text-align: center; }
   @media print {
@@ -7310,7 +7310,7 @@ function printStaffIdCard(id) {
 
 <div class="no-print" style="text-align:center;margin-top:20px;color:#555;font-size:10pt">
   Print on card stock (85.6 × 54 mm / credit card size) and laminate for best results.<br>
-  <button onclick="window.print()" style="margin-top:10px;padding:9px 24px;background:#00d68f;border:none;border-radius:8px;font-weight:700;font-size:11pt;cursor:pointer;color:#0a1628">🖨 Print Now</button>
+  <button onclick="window.print()" style="margin-top:10px;padding:9px 24px;background:#27AE60;border:none;border-radius:8px;font-weight:700;font-size:11pt;cursor:pointer;color:#1A1A2E">🖨 Print Now</button>
 </div>`;
 
   // Fix 10: use blob URL instead of document.write()
@@ -7471,7 +7471,7 @@ function generatePayslip(staffId, periodMonth, periodYear){
 <div class="pdf-header">
   <div>
     <div class="pdf-logo">MDM</div>
-    <div style="font-size:11pt;font-weight:700;color:#0a1628">${esc(di.name||'My Depot Master')}</div>
+    <div style="font-size:11pt;font-weight:700;color:#1A1A2E">${esc(di.name||'My Depot Master')}</div>
     ${[di.district,di.province,di.country].filter(Boolean).length?`<div style="font-size:9pt;color:#555">${[di.district,di.province,di.country].filter(Boolean).map(esc).join(', ')}</div>`:''}
   </div>
   <div class="pdf-meta">PAYSLIP<br>${today.toLocaleDateString('en-GB')}</div>
@@ -7496,7 +7496,7 @@ function generatePayslip(staffId, periodMonth, periodYear){
   <tbody>
     <tr class="net-row"><td>NET PAY</td><td class="num">${zm(net)}</td></tr>
     <tr><td style="color:#555">Already Paid</td><td class="num" style="color:#555">− ${zm(totalPaid)}</td></tr>
-    <tr style="font-weight:700;color:${unpaid>0?'#c00':'#007a4d'}"><td>${unpaid>0?'OUTSTANDING BALANCE':'✅ FULLY PAID'}</td><td class="num">${zm(Math.abs(unpaid))}</td></tr>
+    <tr style="font-weight:700;color:${unpaid>0?'#c00':'#1E8449'}"><td>${unpaid>0?'OUTSTANDING BALANCE':'✅ FULLY PAID'}</td><td class="num">${zm(Math.abs(unpaid))}</td></tr>
   </tbody>
 </table>
 <div class="sig-row">
@@ -7703,7 +7703,7 @@ function renderPaymentSection() {
       </div>
       <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
     </div>
-    <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#0a1628;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-top:4px">
+    <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#1A1A2E;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-top:4px">
       💬 WhatsApp for Activation
     </a>
   </div>`;
@@ -8154,7 +8154,7 @@ function renderSettings(){
         </div>
         <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
       </div>
-      <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#0a1628;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-top:6px">
+      <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#1A1A2E;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-top:6px">
         💬 WhatsApp for Activation
       </a>
     </div>
@@ -9105,7 +9105,7 @@ function applyTheme(pref){
   // Update theme-color meta tag (browser tab / mobile chrome colour)
   const isLight = pref === 'light' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme:light)').matches);
   const tc = document.querySelector('meta[name="theme-color"]');
-  if(tc) tc.content = isLight ? '#f5f5f5' : '#0a1628';
+  if(tc) tc.content = isLight ? '#F8F9FA' : '#1A1A2E';
 }
 
 // Called from Settings toggle pill
@@ -10737,7 +10737,7 @@ ${hasPrices?`<div class="pay-section-title">Financial Summary</div>
 <table>
   <tr><th>Total Purchases</th><td class="num">${c} ${cumPurchases.toFixed(2)}</td></tr>
   <tr><th>Total Sales Revenue</th><td class="num">${c} ${cumSales.toFixed(2)}</td></tr>
-  <tr class="total-row"><th>Gross Profit</th><td class="num" style="color:${cumProfit<0?'#c00':'#007a4d'}">${c} ${cumProfit.toFixed(2)}</td></tr>
+  <tr class="total-row"><th>Gross Profit</th><td class="num" style="color:${cumProfit<0?'#c00':'#1E8449'}">${c} ${cumProfit.toFixed(2)}</td></tr>
 </table>`:''}
 
 ${staffRows?`<div class="pay-section-title">Staff Payroll Summary</div>
@@ -11008,7 +11008,7 @@ function renderBudgetVsActual(){
   const totalVar=totalActual-totalBudget;
 
   return`
-    <div style="background:linear-gradient(135deg,#1a1000,#0a1e36);border:1.5px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+    <div style="background:linear-gradient(135deg,#2C1B0E,#0a1e36);border:1.5px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:12px">
       <div style="font-family:var(--fh);font-size:23px;font-weight:800;color:var(--white);margin-bottom:2px">🎯 Budget vs Actual</div>
       <div style="font-size:16px;color:var(--muted)">Set targets per item and track performance against them</div>
     </div>
@@ -11190,7 +11190,7 @@ function renderSupplierPerformance(){
   const avgRating=perf.filter(s=>s.rating>0).reduce((a,s,_,arr)=>a+s.rating/arr.length,0);
 
   return`
-    <div style="background:linear-gradient(135deg,#1a1000,#0a1628);border:1.5px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+    <div style="background:linear-gradient(135deg,#2C1B0E,#1A1A2E);border:1.5px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:12px">
       <div style="font-family:var(--fh);font-size:23px;font-weight:800;color:var(--white);margin-bottom:4px">⭐ Supplier Performance</div>
       <div style="font-size:16px;color:var(--muted)">Rankings · Defect Rates · Order History</div>
     </div>
