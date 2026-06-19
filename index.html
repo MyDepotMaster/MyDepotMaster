@@ -169,7 +169,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .nb.act{border-top-color:var(--green);border-left-color:transparent;background:rgba(0,214,143,.06);color:var(--green);}
   /* Main area (header + content) fills remaining height */
   #main-area{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;}
-  .content{flex:1;overflow-y:auto;padding:20px 28px;padding-bottom:calc(20px + 64px + env(safe-area-inset-bottom,0px));}
+  .content{flex:1;overflow-y:auto;padding:20px 28px;padding-bottom:max(96px, calc(84px + env(safe-area-inset-bottom, 16px)));}
   .hdr{padding:12px 28px;}
   .movl{align-items:center;}
   .modal{border-radius:var(--radius-xl);max-width:560px;max-height:90vh;}
@@ -222,7 +222,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .nav{min-height:68px;height:68px;}
   .nb{font-size:18px;flex:0 1 150px;max-width:160px;gap:8px;}
   .nb svg{width:20px;height:20px;}
-  .content{padding:24px 40px;padding-bottom:calc(24px + 68px + env(safe-area-inset-bottom,0px));}
+  .content{padding:24px 40px;padding-bottom:max(104px, calc(92px + env(safe-area-inset-bottom, 16px)));}
   .hdr{padding:14px 40px;}
   .modal{max-width:640px;}
   .login-pc-wrap{flex:0 0 480px;width:480px;padding:48px 44px;}
@@ -273,9 +273,50 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .bsm{padding:7px 13px;font-size:17px;width:auto;}
 
 /* Header */
-.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;backdrop-filter:blur(8px);}
-.htitle{font-family:var(--fh);font-size:23px;font-weight:800;color:var(--white);letter-spacing:-0.3px;}
-.hsub{font-size:15px;color:var(--muted);margin-top:1px;}
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;backdrop-filter:blur(8px);}
+.hdr-left{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;flex:1 1 auto;}
+.htitle{font-family:var(--fh);font-size:23px;font-weight:800;color:var(--white);letter-spacing:-0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.htitle-short{display:none;}
+@media (max-width:479px){
+  .htitle-full{display:none;}
+  .htitle-short{display:inline;}
+}
+.hsub{font-size:15px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Hamburger menu button (header) */
+.hdr-burger{background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px;margin:-6px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s;}
+.hdr-burger:active{background:var(--overlay-light-8);}
+
+/* Hamburger slide-out panel + dim overlay */
+#hdr-menu-ovl{display:none;position:fixed;inset:0;background:var(--overlay-dark-3);z-index:600;}
+#hdr-menu-ovl.open{display:block;}
+#hdr-menu{
+  position:fixed;top:0;left:0;bottom:0;
+  width:min(280px,78vw);
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  box-shadow:var(--shadow-lg);
+  z-index:601;
+  padding:18px 18px 24px;
+  padding-top:max(18px, env(safe-area-inset-top,0px));
+  transform:translateX(-100%);
+  transition:transform .25s ease;
+  display:flex;flex-direction:column;gap:6px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#hdr-menu.open{transform:translateX(0);}
+.hdr-menu-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.hdr-menu-title{font-family:var(--fh);font-size:21px;font-weight:800;color:var(--white);letter-spacing:-0.3px;}
+.hdr-menu-close{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:2px 6px;line-height:1;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.hdr-menu-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 0;border-bottom:1px solid var(--border);}
+.hdr-menu-lbl{font-size:16px;color:var(--text);font-weight:600;}
+.hdr-menu-section-lbl{font-size:13px;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;margin:14px 0 4px;}
+.hdr-menu-section-lbl:first-of-type{margin-top:4px;}
+.hdr-menu-navbtn{display:flex;align-items:center;gap:12px;width:100%;background:transparent;border:none;border-radius:var(--radius-sm);padding:11px 8px;font-family:var(--fb);font-size:17px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s;}
+.hdr-menu-navbtn:active{background:var(--overlay-light-8);}
+.hdr-menu-navbtn svg{flex-shrink:0;color:var(--muted);}
+.hdr-menu-navbtn.act{color:var(--green);}
+.hdr-menu-navbtn.act svg{color:var(--green);}
 .spill{display:flex;align-items:center;gap:5px;border-radius:20px;padding:5px 10px;font-size:15px;font-weight:700;border:1.5px solid;cursor:pointer;white-space:nowrap;touch-action:manipulation;font-family:var(--fb);}
 .sp-on{background:rgba(0,214,143,.08);color:var(--green);border-color:rgba(0,214,143,.3);}
 .sp-sy{background:rgba(59,130,246,.08);color:var(--blue);border-color:rgba(59,130,246,.3);}
@@ -284,7 +325,9 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .sp-er{background:rgba(239,68,68,.08);color:#f87171;border-color:rgba(239,68,68,.3);}
 
 /* Content */
-.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:calc(16px + 56px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch;}
+/* FIX: padding-bottom must always clear the fixed nav (56px min) + safe-area + breathing room.
+   Using max() so it works even when safe-area-inset-bottom resolves to 0. */
+.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:max(80px, calc(64px + env(safe-area-inset-bottom, 16px)));-webkit-overflow-scrolling:touch;}
 
 /* Nav */
 .nav{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px);min-height:56px;width:100%;backdrop-filter:blur(12px);position:fixed;bottom:0;left:0;right:0;z-index:500;}
@@ -982,26 +1025,79 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
   <!-- MAIN UI -->
   <div id="main-area">
   <div class="hdr" id="main-hdr" style="display:none">
-    <div>
-      <div class="htitle">My Depot Master</div>
-      <div class="hsub" id="hdr-sub">Loading…</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div class="fs-mini">
-        <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
-        <div class="fs-mini-sep"></div>
-        <div class="fs-mini-lbl fs-lbl-all">50%</div>
-        <div class="fs-mini-sep"></div>
-        <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
+    <div class="hdr-left">
+      <button class="hdr-burger" id="hdr-burger-btn" onclick="toggleHdrMenu()" aria-label="Open menu" aria-expanded="false" aria-controls="hdr-menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div style="min-width:0;overflow:hidden">
+        <div class="htitle"><span class="htitle-full">My Depot Master</span><span class="htitle-short">MDM</span></div>
+        <div class="hsub" id="hdr-sub">Loading…</div>
       </div>
-      <button class="spill sp-on" id="sync-pill" style="cursor:pointer">✅ Synced</button>
-      <button class="btn bo bsm" id="logout-btn" style="width:auto;padding:6px 12px">⏏ Out</button>
     </div>
+    <button class="spill sp-on" id="sync-pill" style="cursor:pointer;flex-shrink:0;max-width:38vw;overflow:hidden;text-overflow:ellipsis">✅ Synced</button>
   </div>
 
   <div class="content" id="content" style="display:none"></div>
   </div><!-- /#main-area -->
 
+</div>
+
+<!-- Header hamburger menu: dim overlay + slide-out panel -->
+<div id="hdr-menu-ovl" onclick="if(event.target===this) closeHdrMenu()"></div>
+<div id="hdr-menu" role="menu" aria-hidden="true">
+  <div class="hdr-menu-top">
+    <div class="hdr-menu-title">Menu</div>
+    <button class="hdr-menu-close" onclick="closeHdrMenu()" aria-label="Close menu">×</button>
+  </div>
+  <div class="hdr-menu-section-lbl">Go To</div>
+  <button class="hdr-menu-navbtn act" data-tab="dashboard" onclick="goToTabFromMenu('dashboard')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="hdr-menu-navbtn" data-tab="general" onclick="goToTabFromMenu('general')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    <span>General Inventory</span>
+  </button>
+  <button class="hdr-menu-navbtn" data-tab="maize" onclick="goToTabFromMenu('maize')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg>
+    <span>Commodities</span>
+  </button>
+  <button class="hdr-menu-navbtn" data-tab="staff" onclick="goToTabFromMenu('staff')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+    <span>Staff</span>
+  </button>
+  <button class="hdr-menu-navbtn" data-tab="books" onclick="goToTabFromMenu('books')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    <span>Books</span>
+  </button>
+  <button class="hdr-menu-navbtn" data-tab="contacts" onclick="goToTabFromMenu('contacts')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 11h6M19 8v6"/></svg>
+    <span>Contacts</span>
+  </button>
+  <button class="hdr-menu-navbtn" id="hdr-menu-settings-btn" data-tab="settings" onclick="goToTabFromMenu('settings')" style="display:none">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    <span>Settings</span>
+  </button>
+  <div class="hdr-menu-section-lbl">Quick Actions</div>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();openGlobalSearch()">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    <span>Search Everything</span>
+  </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();showFirstRunChecklist();">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+    <span>Setup Checklist</span>
+  </button>
+  <div class="hdr-menu-row">
+    <span class="hdr-menu-lbl">Text Size</span>
+    <div class="fs-mini">
+      <button class="fs-mini-btn fs-dec" onclick="changeFontSize(-5)" title="Smaller text">A−</button>
+      <div class="fs-mini-sep"></div>
+      <div class="fs-mini-lbl fs-lbl-all">50%</div>
+      <div class="fs-mini-sep"></div>
+      <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
+    </div>
+  </div>
+  <button class="btn br" id="logout-btn" style="margin-top:18px">⏏ Log Out</button>
 </div>
 
 <!-- Fix 28: Tooltip popup (singleton, positioned by JS) -->
@@ -2647,6 +2743,7 @@ function _hideMainUI() {
   const ns=document.getElementById('nb-settings'); if(ns) ns.style.display='none';
   const nb=document.getElementById('nb-books');    if(nb) nb.style.display='none';
   const fab=document.getElementById('gsearch-fab'); if(fab) fab.style.display='none';
+  const hms=document.getElementById('hdr-menu-settings-btn'); if(hms) hms.style.display='none';
   closeGlobalSearch();
 }
 
@@ -2658,6 +2755,7 @@ function showMainUI() {
   const nb=document.getElementById('nb-books');    if(nb) nb.style.display='flex';
   const ns=document.getElementById('nb-settings'); if(ns) ns.style.display= USER&&USER.role==='admin'?'flex':'none';
   const fab=document.getElementById('gsearch-fab'); if(fab) fab.style.display='flex';
+  const hms=document.getElementById('hdr-menu-settings-btn'); if(hms) hms.style.display= USER&&USER.role==='admin'?'flex':'none';
 }
 
 function showLanding() {
@@ -3747,7 +3845,12 @@ document.querySelectorAll('.nb').forEach(btn=>{
 function showTab(tab){
   TAB=tab;
   document.querySelectorAll('.nb').forEach(b=>b.classList.toggle('act',b.dataset.tab===tab));
+  document.querySelectorAll('.hdr-menu-navbtn[data-tab]').forEach(b=>b.classList.toggle('act',b.dataset.tab===tab));
   render();
+}
+function goToTabFromMenu(tab){
+  closeHdrMenu();
+  showTab(tab);
 }
 
 let _renderAttempts = 0; // Fix 6: guard against infinite retry on deterministic errors
@@ -7362,10 +7465,12 @@ function saveStaffWarning(id){
   if(isReadOnly()){alert('🔒 Read-only mode.');return;}
   const incident=uc(document.getElementById('wf-incident')?.value||'');
   if(!incident){alert('Describe the incident.');return;}
-  const w={id:uid(),staffId:id,date:document.getElementById('wf-date')?.value||today(),severity:document.getElementById('wf-severity')?.value||'verbal',incident,action:uc(document.getElementById('wf-action')?.value||''),time:nowTime()};
-  updateData(d=>({...d,staffWarnings:[...(d.staffWarnings||[]),w]}));
-  showToast('⚠️ Warning record saved.');
-  _renderWarningsModal(id);
+  requireAdminPassword('add this disciplinary record',()=>{
+    const w={id:uid(),staffId:id,date:document.getElementById('wf-date')?.value||today(),severity:document.getElementById('wf-severity')?.value||'verbal',incident,action:uc(document.getElementById('wf-action')?.value||''),time:nowTime()};
+    updateData(d=>({...d,staffWarnings:[...(d.staffWarnings||[]),w]}));
+    showToast('⚠️ Warning record saved.');
+    _renderWarningsModal(id);
+  });
 }
 function delStaffWarning(wid,staffId){
   if(isReadOnly()){alert('🔒 Read-only mode.');return;}
@@ -7592,18 +7697,22 @@ function setStaffStatus(id,status){
   if(!requireAdmin('change staff status'))return;
   const labels={suspended:'Suspend this staff member? They will remain in all records.',terminated:'Terminate this staff member? They will remain in all records.',resigned:'Mark this staff member as resigned? They will remain in all records.',expelled:'Mark this staff member as terminated? They will remain in all records.',active:'Reinstate this staff member?'};
   if(!confirm(labels[status]||'Change staff status?'))return;
-  const effectiveStatus=status==='expelled'?'terminated':status;
-  const statusDate=status!=='active'?today():null;
-  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status:effectiveStatus,statusDate,statusReason:''}:s)}));
+  requireAdminPassword(status==='active'?'reinstate this staff member':`mark this staff member as ${status}`,()=>{
+    const effectiveStatus=status==='expelled'?'terminated':status;
+    const statusDate=status!=='active'?today():null;
+    updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status:effectiveStatus,statusDate,statusReason:''}:s)}));
+  });
 }
 function setStaffStatusReason(id,status){
   if(!requireAdmin('change staff status'))return;
   const label=status==='resigned'?'Resignation':'Termination';
   const reason=prompt(`${label} reason (optional):`)||'';
   if(reason===null)return; // cancelled
-  const effectiveStatus=status;
-  const statusDate=today();
-  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status:effectiveStatus,statusDate,statusReason:reason}:s)}));
+  requireAdminPassword(`mark this staff member as ${status}`,()=>{
+    const effectiveStatus=status;
+    const statusDate=today();
+    updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,status:effectiveStatus,statusDate,statusReason:reason}:s)}));
+  });
 }
 function delStaff(id){requireAdminPassword('delete this staff member',()=>{updateData(d=>({...d,staff:d.staff.filter(s=>String(s.id)!==String(id))}));showToast('🗑 Staff member deleted.');});}
 
@@ -8181,10 +8290,10 @@ function renderSettings(){
     <div class="sh" style="color:var(--red)">Danger Zone</div>
     <div class="card" style="border:1px solid rgba(220,38,38,.3);background:rgba(220,38,38,.04)">
       <div style="font-size:18px;color:var(--muted);line-height:1.7;margin-bottom:12px">Permanently delete this company account and all associated data. <strong style="color:var(--red)">This cannot be undone.</strong></div>
-      <button class="btn" style="width:100%;background:transparent;border:1.5px solid var(--red);color:var(--red);font-weight:700" onclick="deleteAccountStep1()">🗑 Delete Company Account &amp; All Data</button>
+      <button class="btn" style="width:100%;background:transparent;border:1.5px solid var(--red);color:var(--red);font-weight:700;white-space:normal;line-height:1.3;min-height:48px;height:auto" onclick="deleteAccountStep1()">🗑 Delete Account &amp; Data</button>
     </div>
     <div style="text-align:center;padding:12px 0 4px;font-size:16px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} MDM Developer · General Purpose Business Management Software</div>
-    <div style="height:20px"></div>`;
+    <div style="height:60px"></div>`;
 }
 
 function showTOS(){
@@ -9078,6 +9187,38 @@ function changeFontSize(delta){
 }
 function resetFontSize(){applyFontSize(FS_DEFAULT);}
 
+// ── HEADER HAMBURGER MENU ──────────────────────────────────────────────────
+function toggleHdrMenu(){
+  const menu = document.getElementById('hdr-menu');
+  if (menu && menu.classList.contains('open')) closeHdrMenu();
+  else openHdrMenu();
+}
+function openHdrMenu(){
+  const menu = document.getElementById('hdr-menu');
+  const ovl  = document.getElementById('hdr-menu-ovl');
+  const btn  = document.getElementById('hdr-burger-btn');
+  if (!menu || !ovl) return;
+  menu.classList.add('open');
+  ovl.classList.add('open');
+  menu.setAttribute('aria-hidden','false');
+  if (btn) btn.setAttribute('aria-expanded','true');
+  if (typeof _pushNav==='function' && _currentNavLevel()<4) _pushNav(4,'hdr-menu');
+}
+function closeHdrMenu(){
+  const menu = document.getElementById('hdr-menu');
+  const ovl  = document.getElementById('hdr-menu-ovl');
+  const btn  = document.getElementById('hdr-burger-btn');
+  if (menu){ menu.classList.remove('open'); menu.setAttribute('aria-hidden','true'); }
+  if (ovl) ovl.classList.remove('open');
+  if (btn) btn.setAttribute('aria-expanded','false');
+}
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape'){
+    const menu = document.getElementById('hdr-menu');
+    if (menu && menu.classList.contains('open')) closeHdrMenu();
+  }
+});
+
 // ── THEME (Fix 13 + 14) ───────────────────────────────────────────────────────
 // Values: 'dark' | 'light' | 'auto' (follows OS)
 const THEME_KEY = 'mdm_theme';
@@ -9308,6 +9449,14 @@ window.addEventListener('popstate', function(e) {
   // Always re-push at least level 1 so we never fall below our own stack
   // (prevents the browser from popping into its own history and exiting).
   _pushNav(1, 'landing');
+
+  // Header hamburger menu is open — close it (highest priority)
+  const hdrMenu = document.getElementById('hdr-menu');
+  if (hdrMenu && hdrMenu.classList.contains('open')) {
+    closeHdrMenu();
+    _pushNav(3, 'main');
+    return;
+  }
 
   // Global search overlay is open — close it (highest priority)
   const gsearch = document.getElementById('gsearch-overlay');
