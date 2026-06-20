@@ -110,7 +110,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* ── BASE: Mobile portrait (default) ──────────────────────── */
 #app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);}
-#main-area{display:contents;}
+#main-area{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
 
 /* ── Mobile landscape (short viewport, e.g. phone rotated) ── */
 @media (orientation:landscape) and (max-height:500px){
@@ -118,7 +118,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   #login-screen,.modal,#license-banner,#trial-banner,#book-editor-screen{max-width:100%;}
   .nav{padding-bottom:0;min-height:44px;}
   .nb{padding:4px 1px;gap:1px;}
-  .content{padding:10px 14px;}
+  .content{padding:10px 14px;padding-bottom:max(54px, calc(44px + env(safe-area-inset-bottom, 10px)));}
   .hdr{padding:7px 14px;}
 }
 
@@ -9728,7 +9728,35 @@ const FS_MIN=80, FS_MAX=150, FS_STEP=5, FS_DEFAULT=115;
 function getFontSize(){return parseInt(localStorage.getItem(FS_KEY)||FS_DEFAULT,10);}
 function _fsLabel(pct){ return Math.round((pct - FS_MIN) / (FS_MAX - FS_MIN) * 100) + '%'; }
 function applyFontSize(pct){
-  document.body.style.zoom = pct / 100;
+  // Scope zoom to areas WITHOUT a competing fixed-position nav bar.
+  // Zooming body/html directly drags env(safe-area-inset-bottom)-based
+  // clearance out of sync with the fixed .nav bar's real on-screen size,
+  // causing content to slide under the nav at non-100% zoom levels.
+  // Fix: zoom each scrollable region independently; .nav, #license-banner,
+  // #trial-banner, #hdr-menu stay at true device scale always.
+  const zoomTargets = ['main-area', 'landing-screen', 'login-screen', 'recovery-screen'];
+  zoomTargets.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.zoom = pct / 100;
+  });
+  // .content's CSS padding-bottom is written in plain px (e.g. 80px) but now
+  // lives INSIDE the zoomed #main-area, so that padding visually scales with
+  // it too — while .nav's real height does not (it's outside the zoom).
+  // Compensate by measuring .nav's true on-screen height and writing an
+  // inline padding-bottom on .content equal to (navHeight / zoomFactor),
+  // so the reserved clearance always matches the nav's real size exactly,
+  // regardless of zoom level.
+  requestAnimationFrame(() => {
+    const nav = document.querySelector('.nav');
+    const contentEl = document.getElementById('content');
+    if (nav && contentEl) {
+      const navHeight = nav.getBoundingClientRect().height; // true device px
+      const zoomFactor = pct / 100;
+      const breathingRoom = 16; // extra clearance so content isn't flush against nav
+      const compensatedPadding = (navHeight / zoomFactor) + breathingRoom;
+      contentEl.style.paddingBottom = compensatedPadding + 'px';
+    }
+  });
   localStorage.setItem(FS_KEY, pct);
   document.querySelectorAll('.fs-lbl-all, #fs-value-label').forEach(el => el.textContent = _fsLabel(pct));
   document.querySelectorAll('.fs-dec, #fs-btn-minus').forEach(btn => { btn.disabled = (pct <= FS_MIN); });
