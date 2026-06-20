@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -615,21 +615,9 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 .fr-desc{font-size:17px;color:var(--muted);line-height:1.6;}
 .fr-prog-bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:16px;}
 .fr-prog-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--green2));border-radius:3px;transition:width .4s;}
-/* ── NAV CLOUD SYNC ICONS ──────────────────────────────────── */
-.nb{position:relative;}
-.nb-cloud-wrap{position:absolute;top:3px;right:3px;display:flex;gap:2px;opacity:0;transition:opacity .18s;pointer-events:none;}
-.nb:hover .nb-cloud-wrap,.nb.act .nb-cloud-wrap{opacity:1;pointer-events:auto;}
-.nb-cloud-btn{width:18px;height:18px;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:4px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .12s,color .12s;color:var(--muted);}
-.nb-cloud-btn:hover{background:rgba(255,255,255,.08);color:var(--green);}
-.nb-cloud-btn:active{background:rgba(0,214,143,.15);color:var(--green);}
-.nb-cloud-btn svg{width:11px;height:11px;pointer-events:none;}
-/* Always show cloud icons on active tab on mobile (no hover) */
-@media (hover:none){
-  .nb.act .nb-cloud-wrap{opacity:1;pointer-events:auto;}
-  .nb:not(.act) .nb-cloud-wrap{opacity:.45;pointer-events:auto;}
-}
-/* Spinning state for cloud sync */
-.nb-cloud-btn.syncing svg{animation:spin .8s linear infinite;}
+/* Spinning state for menu cloud sync buttons */
+#menu-cloud-upload-btn.syncing svg,
+#menu-cloud-download-btn.syncing svg{animation:spin .8s linear infinite;}
 /* ── THEME TOGGLE BUTTON (Fix 13) ──────────────────────────── */
 .theme-toggle{display:flex;align-items:center;justify-content:space-between;background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 4px 0 14px;height:44px;width:100%;cursor:pointer;transition:.15s;}
 .theme-toggle-label{font-size:19px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
@@ -708,11 +696,11 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       </div>
       <div class="land-stat">
         <div class="land-stat-num">Free</div>
-        <div class="land-stat-lbl">1-Month<br>Trial</div>
+        <div class="land-stat-lbl">Plan<br>Forever</div>
       </div>
       <div class="land-stat">
-        <div class="land-stat-num">K300</div>
-        <div class="land-stat-lbl">Per<br>Month</div>
+        <div class="land-stat-num" id="land-stat-from-num">K150+</div>
+        <div class="land-stat-lbl" id="land-stat-from-lbl">Starting<br>At</div>
       </div>
     </div>
 
@@ -780,13 +768,12 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
     <!-- Pricing & CTA -->
     <div class="land-cta">
       <div class="land-pricing">
-        <div class="land-pricing-badge">🎁 1-MONTH FREE TRIAL</div>
-        <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin-bottom:4px">
-          <div class="land-pricing-price">K300</div>
-          <div style="font-size:20px;color:#6a88a8;font-weight:500">/ month</div>
-        </div>
-        <div class="land-pricing-sub">No payment needed to start your free trial.<br>Pay via <strong style="color:var(--white)">Airtel Money</strong>, <strong style="color:var(--white)">MTN MoMo</strong>, or <strong style="color:var(--white)">card</strong> to continue.</div>
+        <div class="land-pricing-badge">🎁 1-MONTH FREE TRIAL OF PRO</div>
+        <div style="font-family:var(--fh);font-size:21px;font-weight:800;color:var(--white);margin-bottom:6px">Start free — no card needed</div>
+        <div class="land-pricing-sub">Try every Pro feature for 30 days. Afterwards, stay on the <strong style="color:var(--white)">Free plan</strong> forever, or pick a paid plan below.</div>
       </div>
+
+      <div id="land-tier-ladder" style="display:flex;flex-direction:column;gap:8px;margin-bottom:2px"><!-- injected by JS: renderLandingPricing() --></div>
 
       <button class="land-btn-primary" onclick="startSignUp()">
         🚀 Start Free — 1 Month Trial
@@ -829,9 +816,9 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
   <!-- LICENSE read-only banner -->
   <div id="license-banner">
-    <span class="lb-icon">🔒</span>
+    <span class="lb-icon" id="lb-icon">🔒</span>
     <span class="lb-text" id="license-banner-msg">This account is suspended. Contact your administrator.</span>
-    <span class="lb-tag">READ ONLY</span>
+    <span class="lb-tag" id="lb-tag">READ ONLY</span>
   </div>
 
   <!-- Trial/subscription warning banner (shown when ≤10 days left) -->
@@ -841,7 +828,9 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
     <span class="tb-tag" id="trial-banner-tag">TRIAL</span>
   </div>
 
-  <!-- Blocked / Expired screen (trial_expired or expired) -->
+  <!-- Terminal block screen — only for: pending_approval (awaiting admin approval).
+       suspended uses the license-banner strip, not this screen.
+       trial_expired and expired now degrade silently to the free tier. -->
   <div id="blocked-screen">
     <div style="text-align:center;margin-bottom:24px;padding-top:12px">
       <div style="font-size:57px;margin-bottom:12px" id="bs-icon">🔒</div>
@@ -849,33 +838,13 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <div style="font-size:18px;color:var(--muted);line-height:1.8;max-width:320px;margin:0 auto" id="bs-msg">Your trial period has ended.</div>
     </div>
     <div style="width:100%;max-width:400px">
-      <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">💳 Make Payment To Activate</div>
-      <div style="font-size:17px;color:var(--muted);margin-bottom:14px;line-height:1.7">Subscribe for <strong style="color:var(--white)">K300/month</strong> via <strong style="color:var(--text)">Airtel Money</strong>, <strong style="color:var(--text)">MTN MoMo</strong>, <strong style="color:var(--text)">Zamtel</strong>, or <strong style="color:var(--text)">card</strong>. Your account activates instantly after payment.</div>
-      <div class="pay-method">
-        <span class="pm-icon">🔴</span>
-        <div class="pm-info">
-          <div class="pm-label">Airtel Money</div>
-          <div class="pm-num">+260 970 962 902</div>
-          <div class="pm-name">MDM Developer</div>
-        </div>
-        <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
-      </div>
-      <div class="pay-method">
-        <span class="pm-icon">🟡</span>
-        <div class="pm-info">
-          <div class="pm-label">MTN Mobile Money</div>
-          <div class="pm-num">+260 960 271 128</div>
-          <div class="pm-name">MDM Developer</div>
-        </div>
-        <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
-      </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
         <div style="font-size:16px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">Your Company License Key</div>
         <div style="font-family:monospace;font-size:19px;color:var(--blue);word-break:break-all" id="bs-depot-key">—</div>
-      <div style="font-size:16px;color:var(--muted);margin-top:5px">Include this key when you message for activation.</div>
+      <div style="font-size:16px;color:var(--muted);margin-top:5px">Include this key when you message us.</div>
       </div>
       <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;background:var(--green);color:#1A1A2E;border-radius:11px;padding:13px 20px;font-family:var(--fh);font-size:21px;font-weight:700;text-decoration:none;margin-bottom:10px;touch-action:manipulation">
-        <span>💬</span> WhatsApp for Activation
+        <span>💬</span> WhatsApp to Follow Up
       </a>
       <a href="tel:+260960271128" style="display:flex;align-items:center;justify-content:center;gap:10px;background:transparent;color:var(--text);border:1.5px solid var(--border);border-radius:11px;padding:12px 20px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-bottom:24px">
         <span>📞</span> Call Developer
@@ -953,69 +922,21 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
   <div class="nav" id="nav" style="display:none">
     <button class="nb act" id="nb-dash" data-tab="dashboard">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Dashboard</span>
-      <span class="nb-cloud-wrap">
-        <button class="nb-cloud-btn" id="nb-cloud-up-dashboard" onclick="tabCloudUpload('dashboard',event)" title="Upload to cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-        <button class="nb-cloud-btn" id="nb-cloud-dn-dashboard" onclick="tabCloudDownload('dashboard',event)" title="Download from cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-      </span>
     </button>
     <button class="nb" id="nb-gen" data-tab="general">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>General</span>
-      <span class="nb-cloud-wrap">
-        <button class="nb-cloud-btn" id="nb-cloud-up-general" onclick="tabCloudUpload('general',event)" title="Upload to cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-        <button class="nb-cloud-btn" id="nb-cloud-dn-general" onclick="tabCloudDownload('general',event)" title="Download from cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-      </span>
     </button>
     <button class="nb" id="nb-maize" data-tab="maize">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 00-6.88 17.28M12 2a10 10 0 016.88 17.28M12 2v20M4 12h16"/></svg><span>Commodities</span>
-      <span class="nb-cloud-wrap">
-        <button class="nb-cloud-btn" id="nb-cloud-up-maize" onclick="tabCloudUpload('maize',event)" title="Upload to cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-        <button class="nb-cloud-btn" id="nb-cloud-dn-maize" onclick="tabCloudDownload('maize',event)" title="Download from cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-      </span>
     </button>
     <button class="nb" id="nb-staff" data-tab="staff">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Staff</span>
-      <span class="nb-cloud-wrap">
-        <button class="nb-cloud-btn" id="nb-cloud-up-staff" onclick="tabCloudUpload('staff',event)" title="Upload to cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-        <button class="nb-cloud-btn" id="nb-cloud-dn-staff" onclick="tabCloudDownload('staff',event)" title="Download from cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-      </span>
     </button>
     <button class="nb" id="nb-books" data-tab="books">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg><span>Books</span>
-      <span class="nb-cloud-wrap">
-        <button class="nb-cloud-btn" id="nb-cloud-up-books" onclick="tabCloudUpload('books',event)" title="Upload to cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-        <button class="nb-cloud-btn" id="nb-cloud-dn-books" onclick="tabCloudDownload('books',event)" title="Download from cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-      </span>
     </button>
     <button class="nb" id="nb-contacts" data-tab="contacts">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg><span>Contacts</span>
-      <span class="nb-cloud-wrap">
-        <button class="nb-cloud-btn" id="nb-cloud-up-contacts" onclick="tabCloudUpload('contacts',event)" title="Upload to cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-        <button class="nb-cloud-btn" id="nb-cloud-dn-contacts" onclick="tabCloudDownload('contacts',event)" title="Download from cloud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z" stroke-width="1.8"/></svg>
-        </button>
-      </span>
     </button>
     <button class="nb" id="nb-settings" data-tab="settings" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span>
@@ -1087,6 +1008,60 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
     <span>Setup Checklist</span>
   </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();showTab('staff');setTimeout(()=>openClockInForm(),80)">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M3 21v-2a7 7 0 0114 0v2"/><path d="M21 12v4M19 14h4"/></svg>
+    <span>Staff Clock In</span>
+  </button>
+  <div class="hdr-menu-section-lbl">Reports &amp; Records</div>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();TAB='general';GTAB='pl';showTab('general')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+    <span>General P&amp;L</span>
+  </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();TAB='general';GTAB='cashflow';showTab('general')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+    <span>General Cash Flow</span>
+  </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();TAB='general';GTAB='budget';showTab('general')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+    <span>General Budget</span>
+  </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();TAB='maize';MTAB='pl';showTab('maize')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+    <span>Commodities P&amp;L</span>
+  </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();TAB='maize';MTAB='cashflow';showTab('maize')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+    <span>Commodities Cash Flow</span>
+  </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();TAB='maize';MTAB='budget';showTab('maize')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+    <span>Commodities Budget</span>
+  </button>
+  <button class="hdr-menu-navbtn" onclick="closeHdrMenu();viewAuditLog()">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 7v4l3 2"/></svg>
+    <span>Audit Log</span>
+  </button>
+  <div class="hdr-menu-section-lbl">Today at a Glance</div>
+  <div class="hdr-menu-row" style="border-bottom:none;padding-bottom:0">
+    <div id="hdr-menu-quickstats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">
+      <div style="background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--green)" id="hdr-qs-in">0</div>
+        <div style="font-size:13px;color:var(--muted)">Received Today</div>
+      </div>
+      <div style="background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--amber)" id="hdr-qs-out">0</div>
+        <div style="font-size:13px;color:var(--muted)">Issued Today</div>
+      </div>
+      <div style="background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--blue)" id="hdr-qs-shifts">0</div>
+        <div style="font-size:13px;color:var(--muted)">Active Shifts</div>
+      </div>
+      <div style="background:var(--overlay-dark-1);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--purple)" id="hdr-qs-staff">0</div>
+        <div style="font-size:13px;color:var(--muted)">Staff Logged</div>
+      </div>
+    </div>
+  </div>
   <div class="hdr-menu-row">
     <span class="hdr-menu-lbl">Text Size</span>
     <div class="fs-mini">
@@ -1097,6 +1072,23 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
       <button class="fs-mini-btn fs-inc" onclick="changeFontSize(5)" title="Larger text">A+</button>
     </div>
   </div>
+  <div class="hdr-menu-row" style="margin-top:6px">
+    <span class="hdr-menu-lbl">App Version</span>
+    <span style="font-size:15px;color:var(--muted);font-family:var(--fb)" id="hdr-menu-appver">—</span>
+  </div>
+  <div class="hdr-menu-row">
+    <span class="hdr-menu-lbl">Last Synced</span>
+    <span style="font-size:15px;color:var(--muted);font-family:var(--fb)" id="hdr-menu-syncinfo">—</span>
+  </div>
+  <div class="hdr-menu-section-lbl">Cloud Sync</div>
+  <button class="hdr-menu-navbtn" id="menu-cloud-upload-btn" onclick="closeHdrMenu();tabCloudUpload(TAB||'dashboard',{stopPropagation:()=>{}})">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V8M9 11l3-3 3 3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z"/></svg>
+    <span>Upload to Cloud</span>
+  </button>
+  <button class="hdr-menu-navbtn" id="menu-cloud-download-btn" onclick="closeHdrMenu();tabCloudDownload(TAB||'dashboard',{stopPropagation:()=>{}})">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v8M9 13l3 3 3-3"/><path d="M7 18a5 5 0 01-1-9.9A7 7 0 1117.9 13H17a3 3 0 010 6H7z"/></svg>
+    <span>Download from Cloud</span>
+  </button>
   <button class="btn br" id="logout-btn" style="margin-top:18px">⏏ Log Out</button>
 </div>
 
@@ -1538,7 +1530,7 @@ const FB_CONFIG = {
 // ═══════════════════════════════════════════════════════════
 
 // ── LICENSE STATE ─────────────────────────────────────────
-let LICENSE = { status: 'active', effectiveStatus: 'active', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 30, activeSince: 0, payments: [] };
+let LICENSE = { status: 'active', effectiveStatus: 'active', tier: 'pro', suspendedMsg: '', checkedAt: 0, trialStart: 0, activeUntil: 0, trialDaysLeft: 30, activeSince: 0, payments: [] };
 const LICENSE_CACHE_KEY = 'mdm_license_cache';
 const LICENSE_GRACE_MS  = 7 * 24 * 60 * 60 * 1000; // 7-day offline grace
 const TRIAL_MS          = 30 * 24 * 60 * 60 * 1000; // 30-day trial (1 month)
@@ -1556,10 +1548,19 @@ function initFirebase() {
   fbConfigured = isFbConfigured();
 }
 
+// Wrap a fetch promise with a timeout so a stalled connection never hangs the UI forever.
+function _fetchWithTimeout(url, opts, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+    .finally(() => clearTimeout(t));
+}
+const _FB_TIMEOUT_MS = 10000; // 10s — generous for slow mobile connections, still bounded
+
 // Firebase Realtime Database REST API helpers (no SDK needed)
 async function fbGet(path) {
   const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/' + path + '.json';
-  const res = await fetch(url);
+  const res = await _fetchWithTimeout(url, {}, _FB_TIMEOUT_MS);
   if (!res.ok) {
     const body = await res.text().catch(()=>'');
     throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
@@ -1569,11 +1570,11 @@ async function fbGet(path) {
 
 async function fbSet(path, data) {
   const url = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/' + path + '.json';
-  const res = await fetch(url, {
+  const res = await _fetchWithTimeout(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  });
+  }, _FB_TIMEOUT_MS);
   if (!res.ok) {
     const body = await res.text().catch(()=>'');
     throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
@@ -1589,14 +1590,14 @@ async function fbSetIfNotExists(path, data) {
   // Firebase REST returns HTTP 412 if the node already exists, eliminating
   // the read-then-write race that allowed duplicate usernames under concurrent signups.
   const base = FB_CONFIG.databaseURL.replace(/\/+$/, '');
-  const res = await fetch(base + '/' + path + '.json', {
+  const res = await _fetchWithTimeout(base + '/' + path + '.json', {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'If-None-Match': '*'
     },
     body: JSON.stringify(data)
-  });
+  }, _FB_TIMEOUT_MS);
   if (res.status === 412) {
     // Node already exists — treat as duplicate (same semantics as before)
     const e = new Error('ALREADY_EXISTS');
@@ -1884,7 +1885,185 @@ function depotKey() {
   return DATA.installId;
 }
 
-// Compute effective status from raw Firebase data
+// ══════════════════════════════════════════════════════════════════════════════
+// TIER FEATURE SPEC — single source of truth for the tiered licensing system.
+//
+// Tiers (low → high):
+//   free      — permanent free plan after trial ends; core data entry only
+//   starter   — first paid tier; same feature set as free, but with higher
+//               numeric caps (staff/commodity/contacts/history — enforced
+//               separately, not via TIER_FEATURES). No new unlocks here.
+//   growth    — small depot / single operator; unlocks exports + cloud sync
+//   pro       — full-featured; unlocks reports, payslips, staff management
+//   multisite — multiple depots under one account (future / enterprise)
+//
+// trial is treated as pro-equivalent access (all features on) for 30 days.
+// suspended / pending_approval are handled separately by applyLicenseMode().
+//
+// HOW TO ADD A NEW GATE:
+//   1. Add a feature key here under the tiers that should have it.
+//   2. Call hasFeature('your_key') at the function entry point.
+//   3. On false → call showUpgradePrompt('your_key') and return early.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const TIER_FEATURES = {
+
+  // ── FREE ─────────────────────────────────────────────────────────────────
+  // Core data-entry that makes the app useful even without payment.
+  // If a feature is listed here it is also implicitly in all higher tiers.
+  free: [
+    'inventory_receive',         // Record stock received (General tab)
+    'inventory_issue',           // Record stock issued (General tab)
+    'inventory_stock_count',     // Physical stock count / variance
+    'commodity_receive',         // Commodity (maize etc.) receive
+    'commodity_issue',           // Commodity issue
+    'commodity_stock_count',     // Commodity stock count
+    'transport_log',             // Vehicle / transport log entries
+    'staff_clock_in',            // Staff clock-in / clock-out
+    'staff_roster',              // View staff list
+    'contacts_view',             // View contacts / suppliers (view only — no add/edit on Free)
+    'books_view',                // View saved books / notes
+    'dashboard_view',            // Dashboard summary (read-only stats)
+    'settings_basic',            // Currency, depot name, display prefs
+  ],
+
+  // ── STARTER ──────────────────────────────────────────────────────────────
+  // Starter unlocks contact editing (capped — see TIER_CAPS below) but still
+  // no cloud sync, exports, or reports. No new unlocks beyond contacts_edit.
+  starter: [
+    'contacts_edit',             // Add / edit contacts (capped at TIER_CAPS.starter.contacts)
+  ],
+
+  // ── GROWTH ───────────────────────────────────────────────────────────────
+  // Small operators who need to get data out of the app.
+  growth: [
+    'cloud_sync',                // Manual upload / download to Firebase
+    'export_csv',                // CSV exports across all tabs
+    'export_pdf_summary',        // Print-to-PDF period summary report
+    'books_edit',                // Create / edit books & spreadsheets
+    'supplier_performance',      // Supplier performance report tab
+    'budget_vs_actual',          // Budget vs Actual report
+    'global_search',             // Cross-tab global search (FAB)
+    'contacts_full',             // Full contact management (delete, export)
+  ],
+
+  // ── PRO ──────────────────────────────────────────────────────────────────
+  // Full-featured depot management — current K300/mo equivalent.
+  pro: [
+    'payslip_generate',          // Generate & print staff payslips (PDF)
+    'staff_id_card',             // Print staff ID cards (PDF)
+    'staff_warnings',            // Staff disciplinary warnings log
+    'staff_leave',               // Leave management
+    'staff_multi_user',          // Add extra login users beyond the admin
+    'audit_log',                 // View & export the audit log
+    'export_json_backup',        // Full JSON data export/import backup
+    'profit_loss',               // P&L report (General + Commodities)
+    'cash_flow',                 // Cash flow report
+    'dashboard_customize',       // Toggle / reorder dashboard widgets
+    'biometric_login',           // Fingerprint / Face ID login
+    'setup_checklist',           // First-run onboarding checklist
+  ],
+
+  // ── MULTISITE ────────────────────────────────────────────────────────────
+  // Future: multiple depots / branches under one subscription.
+  // Kept here as a placeholder — no gates wired yet (Step 5e).
+  multisite: [
+    'multi_depot',               // Switch between depot accounts
+    'depot_consolidation',       // Consolidated reports across depots
+    'branch_user_isolation',     // Per-branch user access control
+  ],
+};
+
+// Tiers ordered low → high. Used for "upgrade to at least X" prompts.
+const TIER_ORDER = ['free', 'starter', 'growth', 'pro', 'multisite'];
+
+// Trial gets full pro-equivalent access.
+const TRIAL_TIER = 'pro';
+
+// Human-readable tier labels and monthly prices (ZMW).
+// Update prices here only — all UI reads from this object.
+const TIER_META = {
+  free:      { label: 'Free',      price: 0,   currency: 'ZMW', desc: 'Core data entry, always free' },
+  starter:   { label: 'Starter',   price: 90,   currency: 'ZMW', desc: 'Higher limits — same features as Free' },
+  growth:    { label: 'Growth',    price: 150,  currency: 'ZMW', desc: 'Exports, cloud sync, reports' },
+  pro:       { label: 'Pro',       price: 300,  currency: 'ZMW', desc: 'Full features — current plan' },
+  multisite: { label: 'Multi-Site',price: 600,  currency: 'ZMW', desc: 'Multiple depots, enterprise' },
+};
+
+// ── Compute the flat feature set for a given tier (includes all lower tiers)
+function _tierFeatureSet(tier) {
+  const idx = TIER_ORDER.indexOf(tier);
+  if (idx === -1) return new Set(TIER_FEATURES.free);
+  const features = new Set();
+  for (let i = 0; i <= idx; i++) {
+    (TIER_FEATURES[TIER_ORDER[i]] || []).forEach(f => features.add(f));
+  }
+  return features;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TIER CAPS — numeric ceilings per tier, separate from the boolean TIER_FEATURES.
+// null  = unlimited.
+// These are enforced at the point of creation (staff, commodities, inventory
+// items, contacts) and at the point of display (history window). Growth and
+// above are unlimited on every cap. inventoryItems (General tab) is a
+// separate, independent cap from commodities (Commodity tab) — the two tabs
+// have parallel but distinct item-type lists, so each gets its own ceiling.
+// ══════════════════════════════════════════════════════════════════════════════
+const TIER_CAPS = {
+  free:      { staff: 1,    commodities: 1,    inventoryItems: 1,    contacts: 0,   historyDays: 30 },
+  starter:   { staff: 5,    commodities: 3,    inventoryItems: 3,    contacts: 50,  historyDays: 90 },
+  growth:    { staff: null, commodities: null, inventoryItems: null, contacts: null, historyDays: null },
+  pro:       { staff: null, commodities: null, inventoryItems: null, contacts: null, historyDays: null },
+  multisite: { staff: null, commodities: null, inventoryItems: null, contacts: null, historyDays: null },
+};
+
+// Returns the cap object for the depot's current effective tier.
+function currentCaps() {
+  return TIER_CAPS[currentTier()] || TIER_CAPS.free;
+}
+
+// Generic over-cap checker. capKey is one of 'staff'|'commodities'|'contacts'.
+// currentCount is the number of existing records BEFORE adding the new one.
+// Returns true if adding one more would exceed the cap (i.e. should block).
+function isAtCap(capKey, currentCount) {
+  const cap = currentCaps()[capKey];
+  if (cap === null || cap === undefined) return false; // unlimited
+  return currentCount >= cap;
+}
+
+// Shows a cap-reached modal (distinct from showUpgradePrompt — this is about
+// a numeric ceiling, not a missing feature, so the copy is tailored).
+function showCapReachedPrompt(capKey, label) {
+  const tier      = currentTier();
+  const cap       = currentCaps()[capKey];
+  const nextTier  = TIER_ORDER[TIER_ORDER.indexOf(tier) + 1] || 'starter';
+  const nextTM    = TIER_META[nextTier] || TIER_META.starter;
+  const key       = (typeof depotKey === 'function') ? depotKey() : (DATA.installId || '—');
+  const waText    = encodeURIComponent(`Hi, I'd like to upgrade My Depot Master.\nCompany Key: ${key}\nRequested plan: ${nextTM.label}`);
+  const waLink    = `https://wa.me/260960271128?text=${waText}`;
+  openModal(`
+    <div class="mtitle" style="font-size:21px;margin-bottom:6px">📈 ${esc(label)} Limit Reached</div>
+    <div style="font-size:15px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+      Your <strong>${esc(TIER_META[tier].label)} plan</strong> allows up to
+      <strong style="color:var(--text)">${cap}</strong> ${esc(label.toLowerCase())}.
+      Upgrade to <strong style="color:var(--green)">${esc(nextTM.label)}</strong>
+      (${nextTM.price === 0 ? 'Free' : `K${nextTM.price}/mo`}) for more room.
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:3px">Your Company Key — include when upgrading:</div>
+      <div style="font-family:monospace;font-size:16px;color:var(--blue);word-break:break-all;user-select:all">${esc(key)}</div>
+    </div>
+    <a href="${waLink}" target="_blank"
+      style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;background:var(--green);color:#111;border-radius:8px;padding:10px 16px;font-family:var(--fh);font-size:17px;font-weight:800;text-decoration:none;touch-action:manipulation">
+      💬 Upgrade to ${esc(nextTM.label)} via WhatsApp
+    </a>
+    <div class="mact" style="margin-top:0">
+      <button class="btn bo" style="flex:1" onclick="closeModal()">Maybe Later</button>
+    </div>`);
+}
+
+// ── Compute effective status from raw Firebase data
 function computeEffectiveStatus(raw, trialStart, activeUntil) {
   if (raw === 'suspended') return 'suspended';
   if (raw === 'pending_approval') return 'pending_approval';
@@ -1928,11 +2107,15 @@ function checkLicense(callback) {
     const msElapsed = now - trialStart;
     const trialOver = msElapsed > TRIAL_MS;
     const daysLeft = Math.max(0, Math.ceil((TRIAL_MS - msElapsed) / (24*60*60*1000)));
+    // Resolve tier: trial → pro-equivalent; expired trial → free (degraded, not blocked)
+    const fallbackTier = trialOver ? 'free' : TRIAL_TIER;
     if (trialOver) {
-      LICENSE = { status: 'trial_expired', effectiveStatus: 'trial_expired', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: 0 };
+      LICENSE = { status: 'trial_expired', effectiveStatus: 'trial_expired', tier: fallbackTier, suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: 0 };
     } else {
-      LICENSE = { status: 'trial', effectiveStatus: 'trial', suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
+      LICENSE = { status: 'trial', effectiveStatus: 'trial', tier: fallbackTier, suspendedMsg: '', checkedAt: now, trialStart, activeUntil: 0, trialDaysLeft: daysLeft };
     }
+    // Keep DATA.tier in sync with resolved tier
+    if (DATA.tier !== fallbackTier) { DATA.tier = fallbackTier; sv(DATA); }
     saveCachedLicense(LICENSE);
     applyLicenseMode();
     if (callback) callback();
@@ -1962,15 +2145,30 @@ function checkLicense(callback) {
                       : eff === 'active' ? activeDaysRemaining(activeUntil)
                       : 0;
 
+    // Resolve tier:
+    //   - Firebase may store an explicit tier (set by admin panel for paying customers)
+    //   - Trial → pro-equivalent; expired trial → free; active subscription → stored tier or pro
+    //   - Suspended / pending → keep whatever tier was stored (read-only enforced separately)
+    const resolvedTier = (() => {
+      if (eff === 'trial') return TRIAL_TIER;
+      if (eff === 'trial_expired' || eff === 'trial_grace') return 'free';
+      if (eff === 'active' || eff === 'expired_grace') return lic.tier || DATA.tier || 'pro';
+      if (eff === 'expired') return 'free';
+      return lic.tier || DATA.tier || 'free'; // suspended, pending, unknown → safe default
+    })();
+
     LICENSE = {
       status: raw,
       effectiveStatus: eff,
+      tier: resolvedTier,
       suspendedMsg: lic.suspendedMsg || '',
       checkedAt: now,
       trialStart: licTrial,
       activeUntil,
       trialDaysLeft: daysLeft || 0
     };
+    // Keep DATA.tier in sync so it persists across offline sessions
+    if (DATA.tier !== resolvedTier) { DATA.tier = resolvedTier; sv(DATA); }
     saveCachedLicense(LICENSE);
     applyLicenseMode();
     if (callback) callback();
@@ -1982,6 +2180,8 @@ function checkLicense(callback) {
 function applyLicenseMode() {
   const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
   const banner   = document.getElementById('license-banner');
+  const lbIcon   = document.getElementById('lb-icon');
+  const lbTag    = document.getElementById('lb-tag');
   const msg      = document.getElementById('license-banner-msg');
   const trialBnr = document.getElementById('trial-banner');
   const trialMsg = document.getElementById('trial-banner-msg');
@@ -1997,6 +2197,9 @@ function applyLicenseMode() {
   if (banner)   banner.style.display  = 'none';
   if (trialBnr) trialBnr.style.display= 'none';
   if (blocked)  blocked.style.display = 'none';
+  // Reset banner to default (warning) appearance
+  if (lbIcon) lbIcon.textContent = '🔒';
+  if (lbTag)  { lbTag.textContent = 'READ ONLY'; lbTag.style.background = ''; }
 
   if (eff === 'pending_approval') {
     if (bsIcon)  bsIcon.textContent  = '⏳';
@@ -2021,12 +2224,12 @@ function applyLicenseMode() {
     if (trialTag) { trialTag.textContent = `${graceDaysLeft}D LEFT`; trialTag.style.background='var(--red)'; }
 
   } else if (eff === 'trial_expired') {
-    document.body.classList.add('readonly-mode');
-    if (bsIcon)  bsIcon.textContent  = '⏳';
-    if (bsTitle) bsTitle.textContent = 'Trial Period Ended';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your <strong>1-month free trial</strong> has ended.<br><br>Subscribe for <strong style="color:var(--green)">K300/month</strong> to continue adding data. You can still view all your records.';
-    if (bsKey)   bsKey.textContent   = depotKey();
-    if (blocked) blocked.style.display = 'flex';
+    // Trial ended — app keeps working in free tier. Show a soft persistent banner
+    // (reusing the license-banner strip, not the full blocked screen).
+    if (lbIcon) lbIcon.textContent = '⭐';
+    if (lbTag)  { lbTag.textContent = 'FREE'; lbTag.style.background = 'var(--blue)'; }
+    if (banner) banner.style.display = 'flex';
+    if (msg) msg.innerHTML = 'Trial ended — you\'re on the <strong>Free plan</strong>. Upgrade to unlock exports, cloud sync &amp; more.';
 
   } else if (eff === 'expired_grace') {
     // 3-day grace after subscription expiry — read-only with countdown banner
@@ -2039,12 +2242,11 @@ function applyLicenseMode() {
     if (trialTag) { trialTag.textContent = `${graceDaysLeft}D LEFT`; trialTag.style.background='var(--red)'; }
 
   } else if (eff === 'expired') {
-    document.body.classList.add('readonly-mode');
-    if (bsIcon)  bsIcon.textContent  = '🔒';
-    if (bsTitle) bsTitle.textContent = 'Subscription Expired';
-    if (bsMsg)   bsMsg.innerHTML     = 'Your subscription has ended.<br><br>Renew for <strong style="color:var(--green)">K300/month</strong> to continue adding data. All your records are safe and visible.';
-    if (bsKey)   bsKey.textContent   = depotKey();
-    if (blocked) blocked.style.display = 'flex';
+    // Subscription lapsed — app keeps working in free tier. Soft banner only.
+    if (lbIcon) lbIcon.textContent = '⭐';
+    if (lbTag)  { lbTag.textContent = 'FREE'; lbTag.style.background = 'var(--blue)'; }
+    if (banner) banner.style.display = 'flex';
+    if (msg) msg.innerHTML = 'Subscription ended — you\'re on the <strong>Free plan</strong>. Renew to restore full access.';
 
   } else if (eff === 'trial') {
     const daysLeft = LICENSE.trialDaysLeft || trialDaysRemaining(LICENSE.trialStart || 0);
@@ -2052,7 +2254,7 @@ function applyLicenseMode() {
     if (daysLeft <= 10 && trialBnr) {
       document.body.classList.add('trial-mode');
       trialBnr.style.display = 'flex';
-      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Subscribe for K300/month to keep access.`;
+      if (trialMsg) trialMsg.textContent = `Trial ends in ${daysLeft} day${daysLeft===1?'':'s'}. Upgrade to keep full access — plans from K150/month.`;
       if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
     }
 
@@ -2065,7 +2267,8 @@ function applyLicenseMode() {
       if (daysLeft <= 10 && daysLeft > 0 && trialBnr) {
         document.body.classList.add('trial-mode');
         trialBnr.style.display = 'flex';
-        if (trialMsg) trialMsg.textContent = `Subscription expires in ${daysLeft} day${daysLeft===1?'':'s'}. Renew for K300/month.`;
+        const renewTM = TIER_META[currentTier()] || TIER_META.pro;
+        if (trialMsg) trialMsg.textContent = `Subscription expires in ${daysLeft} day${daysLeft===1?'':'s'}. Renew ${renewTM.label} for K${renewTM.price}/month.`;
         if (trialTag) trialTag.textContent = `${daysLeft}D LEFT`;
       }
     }
@@ -2083,13 +2286,221 @@ function applyLicenseMode() {
 // checkLicense() always re-fetches from Firebase first.
 function isReadOnly() {
   const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
-  // Read-only for: pending approval, suspended, both grace periods, and fully expired states
-  return ['pending_approval','suspended','trial_grace','trial_expired','expired_grace','expired'].includes(eff);
+  // Read-only only for terminal states: pending approval, suspended, and the 3-day
+  // grace countdown banners. trial_expired and expired now degrade silently to the
+  // free tier (full data entry, feature-gated) rather than blocking the app.
+  return ['pending_approval','suspended','trial_grace','expired_grace'].includes(eff);
 }
 
-// Role enforcement — always check server-side (in-memory USER object),
-// never rely on UI visibility alone. A non-admin who calls these from
-// DevTools console is blocked here.
+// ── TIER HELPERS ─────────────────────────────────────────────────────────────
+// currentTier() — resolves the effective tier the depot is operating on.
+//   • Trial is pro-equivalent, so it returns TRIAL_TIER ('pro').
+//   • Active subscription returns LICENSE.tier (set by admin panel or checkLicense).
+//   • Anything else (expired, suspended, pending) falls back to 'free' —
+//     isReadOnly() separately blocks writes for suspended/pending; tier only
+//     controls feature visibility, not data integrity.
+//
+// hasFeature(name) — the single chokepoint every gate calls.
+//   Returns true if the current tier (and all tiers below it) include the
+//   named feature. Call this at the top of any function you want to gate.
+//
+// Usage:
+//   if (!hasFeature('payslip_generate')) { showUpgradePrompt('payslip_generate'); return; }
+// ─────────────────────────────────────────────────────────────────────────────
+
+function currentTier() {
+  const eff = LICENSE.effectiveStatus || LICENSE.status || 'active';
+  // Trial always gets full pro-equivalent access
+  if (eff === 'trial') return TRIAL_TIER;
+  // Active subscription (and its 3-day grace): use the stored tier
+  if (eff === 'active' || eff === 'expired_grace') return LICENSE.tier || DATA.tier || 'pro';
+  // Trial ended / subscription lapsed → free tier. The app keeps working; only
+  // premium features are gated. (suspended / pending are blocked by isReadOnly().)
+  if (eff === 'trial_expired' || eff === 'expired') return 'free';
+  // Anything else (suspended, pending) → free tier; isReadOnly() handles the block.
+  return 'free';
+}
+
+function hasFeature(featureName) {
+  return _tierFeatureSet(currentTier()).has(featureName);
+}
+
+// ── UPGRADE PROMPT ───────────────────────────────────────────────────────────
+// Called by every feature gate when hasFeature() returns false.
+// Step 6 will expand this into a full tier-ladder modal with pricing.
+// For now: a clean modal explaining which tier unlocks the feature.
+const _FEATURE_LABEL = {
+  contacts_edit:      { name: 'Add & Edit Contacts',        tier: 'starter'},
+  cloud_sync:         { name: 'Cloud Backup & Sync',      tier: 'growth' },
+  export_csv:         { name: 'CSV / PDF Exports',         tier: 'growth' },
+  export_pdf_summary: { name: 'PDF Summary Reports',       tier: 'growth' },
+  books_edit:         { name: 'Books & Spreadsheets',      tier: 'growth' },
+  supplier_performance:{ name: 'Supplier Performance',     tier: 'growth' },
+  budget_vs_actual:   { name: 'Budget vs Actual',          tier: 'growth' },
+  global_search:      { name: 'Global Search',             tier: 'growth' },
+  contacts_full:      { name: 'Contact Delete & Export',   tier: 'growth' },
+  payslip_generate:   { name: 'Payslip Generator',         tier: 'pro'    },
+  staff_id_card:      { name: 'Staff ID Cards',            tier: 'pro'    },
+  staff_warnings:     { name: 'Disciplinary Records',      tier: 'pro'    },
+  staff_leave:        { name: 'Leave Management',          tier: 'pro'    },
+  staff_multi_user:   { name: 'Multi-User Logins',         tier: 'pro'    },
+  audit_log:          { name: 'Audit Log',                 tier: 'pro'    },
+  export_json_backup: { name: 'JSON Data Backup',          tier: 'pro'    },
+  profit_loss:        { name: 'Profit & Loss Report',      tier: 'pro'    },
+  cash_flow:          { name: 'Cash Flow Report',          tier: 'pro'    },
+  dashboard_customize:{ name: 'Dashboard Customisation',   tier: 'pro'    },
+  biometric_login:    { name: 'Fingerprint / Face Login',  tier: 'pro'    },
+  setup_checklist:    { name: 'Setup Checklist',           tier: 'pro'    },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STEP 6 — UPGRADE PROMPT UI
+// showUpgradePrompt(featureName) — called by every hasFeature() gate.
+// Renders a full-screen modal with:
+//   • The locked feature highlighted at the top
+//   • A tier ladder (Free → Growth → Pro → Multi-Site) with feature bullets
+//   • Current plan indicated; required plan highlighted
+//   • WhatsApp CTA pre-filled with depot key
+// _upgradeGateCard(featureName) — inline card for render-function gates (P&L etc.)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Feature bullets shown on each tier card in the upgrade modal.
+// Each entry: [emoji, label]
+const _TIER_BULLETS = {
+  free: [
+    ['📦','Stock receive & issue'],
+    ['🌽','Commodity tracking'],
+    ['🚛','Transport log'],
+    ['👤','Staff clock-in / out'],
+    ['📋','Contacts & suppliers (view)'],
+    ['📊','Dashboard summary'],
+  ],
+  starter: [
+    ['👥','Up to 5 staff profiles'],
+    ['📦','Up to 3 inventory item types'],
+    ['🌽','Up to 3 commodity types'],
+    ['🗓️','90 days visible history'],
+    ['📋','Edit up to 50 contacts'],
+  ],
+  growth: [
+    ['☁️','Cloud backup & sync'],
+    ['⬇️','CSV & PDF exports'],
+    ['📚','Books & spreadsheets'],
+    ['📈','Budget vs Actual report'],
+    ['🏭','Supplier performance'],
+    ['🔍','Global cross-tab search'],
+    ['🗑️','Contact delete & export'],
+  ],
+  pro: [
+    ['🧾','Payslip generator (PDF)'],
+    ['🪪','Staff ID cards (PDF)'],
+    ['⚠️','Disciplinary records'],
+    ['🏖️','Leave management'],
+    ['👥','Multi-user logins'],
+    ['📋','Audit log & export'],
+    ['💾','Full JSON data backup'],
+    ['💰','Profit & Loss report'],
+    ['💧','Cash flow report'],
+    ['👆','Fingerprint / Face ID login'],
+    ['🚀','Setup checklist'],
+  ],
+  multisite: [
+    ['🏢','Multiple depot accounts'],
+    ['📊','Consolidated reports'],
+    ['🔐','Per-branch access control'],
+    ['🔜','Coming soon'],
+  ],
+};
+
+function showUpgradePrompt(featureName) {
+  const meta     = _FEATURE_LABEL[featureName] || { name: featureName, tier: 'growth' };
+  const reqTier  = meta.tier;                          // tier that unlocks this feature
+  const curTier  = currentTier();                      // user's current effective tier
+  const reqIdx   = TIER_ORDER.indexOf(reqTier);
+  const curIdx   = TIER_ORDER.indexOf(curTier);
+  const key      = (typeof depotKey === 'function') ? depotKey() : (DATA.installId || '—');
+  const waText   = encodeURIComponent(`Hi, I'd like to upgrade My Depot Master.\nCompany Key: ${key}\nRequested plan: ${TIER_META[reqTier].label}`);
+  const waLink   = `https://wa.me/260960271128?text=${waText}`;
+
+  // Build a card for each tier
+  const tierCards = TIER_ORDER.filter(t => t !== 'free').map(t => {
+    const tm       = TIER_META[t];
+    const tIdx     = TIER_ORDER.indexOf(t);
+    const isCur    = t === curTier;
+    const isReq    = t === reqTier;
+    const isLocked = tIdx < reqIdx;   // tier exists but doesn't have this feature (shouldn't happen, but safety)
+    const bullets  = [
+      ...(_TIER_BULLETS[t] || []),
+    ];
+    // Accent colour per tier
+    const accent = t === 'starter' ? 'var(--amber)' : t === 'growth' ? 'var(--blue)' : t === 'pro' ? 'var(--green)' : '#a78bfa';
+    const badge  = isCur ? `<span style="background:${accent};color:#111;font-size:13px;font-family:var(--fh);font-weight:800;border-radius:20px;padding:2px 10px;margin-left:8px;letter-spacing:.4px">CURRENT</span>`
+                 : isReq ? `<span style="background:${accent};color:#111;font-size:13px;font-family:var(--fh);font-weight:800;border-radius:20px;padding:2px 10px;margin-left:8px;letter-spacing:.4px">REQUIRED</span>`
+                 : '';
+    const border = isReq ? `2px solid ${accent}` : isCur ? `1px solid ${accent}` : '1px solid var(--border)';
+    const bg     = isReq ? `background:color-mix(in srgb,${accent} 10%,var(--surface2))` : `background:var(--surface2)`;
+    return `<div style="border:${border};border-radius:12px;padding:14px 16px;margin-bottom:10px;${bg}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-family:var(--fh);font-size:19px;font-weight:800;color:var(--text)">
+          ${esc(tm.label)} ${badge}
+        </div>
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:${accent}">
+          ${tm.price === 0 ? 'Free' : `K${tm.price}`}<span style="font-size:13px;font-weight:500;color:var(--muted)">/mo</span>
+        </div>
+      </div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:8px">${esc(tm.desc)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 10px">
+        ${bullets.map(([e,l])=>`<div style="font-size:14px;color:var(--text);opacity:.9;white-space:nowrap">${e} ${esc(l)}</div>`).join('')}
+      </div>
+      ${isReq && !isCur ? `<a href="${waLink}" target="_blank"
+        style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;background:${accent};color:#111;border-radius:8px;padding:10px 16px;font-family:var(--fh);font-size:17px;font-weight:800;text-decoration:none;touch-action:manipulation">
+        💬 Upgrade to ${esc(tm.label)} via WhatsApp
+      </a>` : ''}
+    </div>`;
+  }).join('');
+
+  openModal(`
+    <div class="mtitle" style="font-size:21px;margin-bottom:6px">🔒 ${esc(meta.name)}</div>
+    <div style="font-size:15px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+      This feature requires the
+      <strong style="color:var(--green)">${esc(TIER_META[reqTier].label)} plan</strong>.
+      You're on <strong>${esc(TIER_META[curTier] ? TIER_META[curTier].label : 'Free')}</strong>.
+    </div>
+
+    ${tierCards}
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-top:4px;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:3px">Your Company Key — include when upgrading:</div>
+      <div style="font-family:monospace;font-size:16px;color:var(--blue);word-break:break-all;user-select:all">${esc(key)}</div>
+    </div>
+
+    <div class="mact" style="margin-top:0">
+      <button class="btn bo" style="flex:1" onclick="closeModal()">Maybe Later</button>
+    </div>`);
+}
+
+// Returns an inline locked-card for render functions that return HTML strings
+// (P&L, Cash Flow, Budget vs Actual, Supplier Performance).
+function _upgradeGateCard(featureName) {
+  const meta   = _FEATURE_LABEL[featureName] || { name: featureName, tier: 'growth' };
+  const tier   = TIER_META[meta.tier] || TIER_META.growth;
+  const price  = tier.price === 0 ? 'Free' : `K${tier.price}`;
+  const accent = meta.tier === 'starter' ? 'var(--amber)' : meta.tier === 'growth' ? 'var(--blue)' : meta.tier === 'pro' ? 'var(--green)' : '#a78bfa';
+  return `<div class="card" style="text-align:center;padding:44px 28px;max-width:440px;margin:24px auto">
+    <div style="font-size:44px;margin-bottom:14px">🔒</div>
+    <div style="font-family:var(--fh);font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px">${esc(meta.name)}</div>
+    <div style="font-size:16px;color:var(--muted);margin-bottom:6px;line-height:1.7">
+      Available on the
+      <strong style="color:${accent}">${esc(tier.label)} plan</strong>
+    </div>
+    <div style="font-family:var(--fh);font-size:26px;font-weight:800;color:${accent};margin-bottom:20px">${price}<span style="font-size:15px;font-weight:500;color:var(--muted)">/month</span></div>
+    <button class="btn bg" style="font-size:18px;padding:13px 32px;border-radius:10px" onclick="showUpgradePrompt('${featureName}')">
+      🔓 See Upgrade Options
+    </button>
+  </div>`;
+}
+
+
 function isAdmin() {
   return USER && USER.role === 'admin';
 }
@@ -2161,7 +2572,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v31';
+const SW_VERSION  = 'mdm-v34';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2394,6 +2805,7 @@ const DEFAULT={
   transportLog:[],      // {id,date,time,vehicleReg,driverName,commodity,batchName,qty,unit,origin,destination,notes,status}
   installId:'',
   trialStart:0,
+  tier:'trial',   // 'trial' | 'free' | 'growth' | 'pro' | 'multisite'
   _v:0
 };
 
@@ -2627,32 +3039,46 @@ function _memoSet(key, val) {
   return val;
 }
 
+// Clamps a list of date-bearing items to the depot's tier history-visibility
+// window (TIER_CAPS.<tier>.historyDays). null cap = unlimited, no-op.
+function _historyClamp(items, f) {
+  const days = currentCaps().historyDays;
+  if (days === null || days === undefined) return items;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  cutoff.setHours(0, 0, 0, 0);
+  return items.filter(item => {
+    const d = new Date(item[f] + 'T00:00:00');
+    return d >= cutoff;
+  });
+}
+
 function filterPeriod(items,period,f='date',tab){
-  if(period==='all')return items;
+  if(period==='all')return _historyClamp(items, f);
   if(period==='range'){
     const dr=(tab&&DATE_RANGE[tab])||{};
     const from=dr.from?new Date(dr.from+'T00:00:00'):null;
     const to=dr.to?new Date(dr.to+'T23:59:59'):null;
-    if(!from&&!to)return items;
-    return items.filter(item=>{
+    if(!from&&!to)return _historyClamp(items, f);
+    return _historyClamp(items.filter(item=>{
       const d=new Date(item[f]+'T00:00:00');
       if(from&&d<from)return false;
       if(to&&d>to)return false;
       return true;
-    });
+    }), f);
   }
-  const key=_memoKey('fp',period,f,items.length,(items[0]||{}).id||'');
+  const key=_memoKey('fp',period,f,items.length,(items[0]||{}).id||'',currentTier());
   const cached=_memoGet(key);
   if(cached!==undefined)return cached;
   const now=new Date();
-  const result=items.filter(item=>{
+  const result=_historyClamp(items.filter(item=>{
     const d=new Date(item[f]+'T00:00:00');
     if(period==='daily')return item[f]===today();
     if(period==='weekly'){const s=new Date(now);s.setDate(now.getDate()-7);return d>=s;}
     if(period==='monthly')return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
     if(period==='yearly')return d.getFullYear()===now.getFullYear();
     return true;
-  });
+  }), f);
   return _memoSet(key, result);
 }
 
@@ -2758,9 +3184,47 @@ function showMainUI() {
   const hms=document.getElementById('hdr-menu-settings-btn'); if(hms) hms.style.display= USER&&USER.role==='admin'?'flex':'none';
 }
 
+// Builds the landing-page "starting at" stat and tier-ladder cards straight
+// from TIER_META / TIER_ORDER / _TIER_BULLETS — the same single source of
+// truth every other price/tier display in the app reads from. Update prices
+// in TIER_META only; this (and everywhere else) follows automatically.
+function renderLandingPricing() {
+  const fromNum = document.getElementById('land-stat-from-num');
+  const fromLbl = document.getElementById('land-stat-from-lbl');
+  const cheapestPaid = TIER_ORDER.find(t => t !== 'free' && t !== 'multisite' && TIER_META[t].price > 0) || 'growth';
+  if (fromNum) fromNum.textContent = `K${TIER_META[cheapestPaid].price}+`;
+  if (fromLbl) fromLbl.innerHTML = 'Starting<br>At';
+
+  const ladder = document.getElementById('land-tier-ladder');
+  if (!ladder) return;
+  const visibleTiers = TIER_ORDER.filter(t => t !== 'multisite'); // Multi-Site not publicly sold yet — see Settings tierOpts
+  ladder.innerHTML = visibleTiers.map(t => {
+    const tm     = TIER_META[t];
+    const acc    = t === 'starter' ? 'var(--amber)' : t === 'growth' ? 'var(--blue)' : t === 'pro' ? 'var(--green)' : 'var(--muted)';
+    const isPro  = t === 'pro';
+    const priceHtml = tm.price === 0
+      ? `<span style="color:${acc}">Free</span>`
+      : `<span style="color:${acc}">K${tm.price}</span><span style="font-size:13px;font-weight:500;color:var(--muted)">/mo</span>`;
+    const bullets = (_TIER_BULLETS[t] || []).slice(0, 4);
+    return `
+    <div style="border:1px solid ${isPro ? acc : 'rgba(255,255,255,.08)'};border-radius:14px;padding:14px 16px;background:${isPro ? 'color-mix(in srgb,'+acc+' 6%,var(--surface))' : 'var(--surface)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px">
+        <div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--white)">
+          ${esc(tm.label)}${isPro?` <span style="font-size:12px;background:${acc};color:#111;border-radius:20px;padding:2px 8px;margin-left:2px;font-weight:800;letter-spacing:.3px">MOST POPULAR</span>`:''}
+        </div>
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;flex-shrink:0">${priceHtml}</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px 10px">
+        ${bullets.map(([e,l])=>`<span style="font-size:14px;color:var(--text);opacity:.85">${e} ${esc(l)}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function showLanding() {
   _hideAllOverlays();
   _hideMainUI();
+  renderLandingPricing();
   document.getElementById('landing-screen').style.display = 'flex';
   // Always show signup button — multiple accounts allowed on one device
   const getStartedBtn = document.querySelector('#landing-screen button[onclick="startSignUp()"]');
@@ -4362,6 +4826,7 @@ function filterTable(tableId, q){
 
 // ── GLOBAL SEARCH ────────────────────────────────────────────────────────────
 function openGlobalSearch(){
+  if(!hasFeature('global_search')){ showUpgradePrompt('global_search'); return; }
   const el=document.getElementById('gsearch-overlay');
   if(el){
     el.style.display='flex';
@@ -5075,15 +5540,22 @@ function renderGenItemNamesTab(){
         <button class="delbtn" onclick="removeInvItem(${i})">🗑</button>
       </div>`).join('')}</div>`
     :`<div style="color:var(--muted);font-size:18px;margin-bottom:12px">No items defined yet. Add items below.</div>`;
+  const atCap = isAtCap('inventoryItems', items.length);
+  const addFormHtml = atCap
+    ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;margin-top:4px">
+        <div style="font-size:15px;color:var(--muted);margin-bottom:10px">You've reached the ${currentCaps().inventoryItems} inventory-item limit on your <strong style="color:var(--text)">${esc(TIER_META[currentTier()].label)} plan</strong>.</div>
+        <button class="btn bg" onclick="showCapReachedPrompt('inventoryItems','Inventory Items')">📈 See Upgrade Options</button>
+      </div>`
+    : `<div style="display:flex;gap:8px;margin-top:4px">
+        <input class="fi" id="new-inv-item" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItem()">+ ADD</button>
+      </div>`;
   return `
     <div class="card">
       <div class="ctitle">📋 Inventory Item Names</div>
       <div style="font-size:17px;color:var(--muted);margin-bottom:12px;line-height:1.7">Define item names that appear in the General Inventory dropdown. Ensures consistent naming across all entries and reports.</div>
       ${listHtml}
-      <div style="display:flex;gap:8px;margin-top:4px">
-        <input class="fi" id="new-inv-item" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
-        <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItem()">+ ADD</button>
-      </div>
+      ${addFormHtml}
     </div>`;
 }
 
@@ -6139,17 +6611,25 @@ function renderManageCommoditiesModal(){
         <button class="delbtn" onclick="deleteCommodity('${c.id}')">🗑</button>
       </div>
     </div>`}).join('');
+  const atCap = isAtCap('commodities', coms.length);
+  const addFormHtml = atCap
+    ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:15px;color:var(--muted);margin-bottom:10px">You've reached the ${currentCaps().commodities} commodity-type limit on your <strong style="color:var(--text)">${esc(TIER_META[currentTier()].label)} plan</strong>.</div>
+        <button class="btn bg" onclick="closeModal();showCapReachedPrompt('commodities','Commodity Types')">📈 See Upgrade Options</button>
+      </div>`
+    : `<div class="fw"><div class="fl">Name</div><input class="fi" id="nc-name" placeholder="e.g. Wheat, Soya, Rice…"/></div>
+    <div class="fw"><div class="fl">Icon (emoji)</div><input class="fi" id="nc-icon" placeholder="🌾" maxlength="4" style="font-size:27px;text-align:center"/></div>
+    <div class="fw"><div class="fl">Unit (singular)</div><input class="fi" id="nc-unit" placeholder="bags, tonnes, litres…"/></div>
+    <div class="mact"><button class="btn bo" onclick="closeModal()">Close</button><button class="btn bg" onclick="addCommodity()">+ Add</button></div>`;
   openModal(`
     <div class="mtitle">⚙️ Manage Commodities</div>
     <div style="margin-bottom:12px">${rows||'<div class="empty">No commodities yet.</div>'}</div>
     <div class="sh" style="margin-top:16px;margin-bottom:8px">Add New Commodity</div>
-    <div class="fw"><div class="fl">Name</div><input class="fi" id="nc-name" placeholder="e.g. Wheat, Soya, Rice…"/></div>
-    <div class="fw"><div class="fl">Icon (emoji)</div><input class="fi" id="nc-icon" placeholder="🌾" maxlength="4" style="font-size:27px;text-align:center"/></div>
-    <div class="fw"><div class="fl">Unit (singular)</div><input class="fi" id="nc-unit" placeholder="bags, tonnes, litres…"/></div>
-    <div class="mact"><button class="btn bo" onclick="closeModal()">Close</button><button class="btn bg" onclick="addCommodity()">+ Add</button></div>`);
+    ${addFormHtml}`);
 }
 function addCommodity(){
   if(!requireAdmin('add commodities'))return;
+  if (isAtCap('commodities', (DATA.commodities||[]).length)) { closeModal(); showCapReachedPrompt('commodities', 'Commodity Types'); return; }
   const name=document.getElementById('nc-name').value.trim();
   const icon=document.getElementById('nc-icon').value.trim()||'📦';
   const unit=document.getElementById('nc-unit').value.trim()||'units';
@@ -6207,15 +6687,22 @@ function renderManageInventoryModal(){
         <button class="delbtn" style="margin-top:6px" onclick="removeInvItemModal(${i})">🗑 Remove</button>
       </div>`).join('')
     :`<div style="color:var(--muted);font-size:18px;margin-bottom:12px">No items defined yet. Add items below.</div>`;
+  const atCap = isAtCap('inventoryItems', items.length);
+  const addFormHtml = atCap
+    ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:15px;color:var(--muted);margin-bottom:10px">You've reached the ${currentCaps().inventoryItems} inventory-item limit on your <strong style="color:var(--text)">${esc(TIER_META[currentTier()].label)} plan</strong>.</div>
+        <button class="btn bg" onclick="closeModal();showCapReachedPrompt('inventoryItems','Inventory Items')">📈 See Upgrade Options</button>
+      </div>`
+    : `<div style="display:flex;gap:8px">
+      <input class="fi" id="new-inv-item-modal" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
+      <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItemModal()">+ ADD</button>
+    </div>`;
   openModal(`
     <div class="mtitle">⚙️ Manage Inventory Items</div>
     <div style="font-size:17px;color:var(--muted);margin-bottom:12px;line-height:1.7">Set <strong style="color:var(--text)">Min Stock</strong> for low-stock alerts. Set <strong style="color:var(--text)">Reserved Qty</strong> to hold stock aside (e.g. for contracts).</div>
     <div style="margin-bottom:12px">${listHtml}</div>
     <div class="sh" style="margin-top:16px;margin-bottom:8px">Add New Item</div>
-    <div style="display:flex;gap:8px">
-      <input class="fi" id="new-inv-item-modal" placeholder="E.G. FERTILIZER, BAGS…" style="flex:1" oninput="this.value=this.value.toUpperCase()"/>
-      <button class="btn bg" style="width:auto;padding:10px 16px" onclick="addInvItemModal()">+ ADD</button>
-    </div>
+    ${addFormHtml}
     <div class="mact"><button class="btn bo" onclick="closeModal()">Close</button></div>`);
 }
 function _setInvMinStock(idx,val){
@@ -6237,6 +6724,8 @@ function _setInvReserved(idx,val){
 }
 function addInvItemModal(){
   if(!requireAdmin('add inventory items'))return;
+  const items0=(DATA.inventoryItems||[]).map(x=>typeof x==='string'?{name:x,minStock:0,reservedQty:0}:x);
+  if (isAtCap('inventoryItems', items0.length)) { closeModal(); showCapReachedPrompt('inventoryItems', 'Inventory Items'); return; }
   const val=document.getElementById('new-inv-item-modal').value.trim().toUpperCase();
   if(!val){alert('Enter an item name.');return;}
   const items=(DATA.inventoryItems||[]).map(x=>typeof x==='string'?{name:x,minStock:0,reservedQty:0}:x);
@@ -6534,6 +7023,7 @@ function renderEarnings(){
 }
 
 function openStaffForm(){
+  if (isAtCap('staff', (DATA.staff||[]).length)) { showCapReachedPrompt('staff', 'Staff Profiles'); return; }
   const roleOpts=allRoleNames().map(r=>`<option>${r}</option>`).join('');
   openModal(`
     <div class="mtitle">👤 Register Staff</div>
@@ -6549,6 +7039,7 @@ function openStaffForm(){
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveStaff()">✓ Register</button></div>`);
 }
 function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
+  if (isAtCap('staff', (DATA.staff||[]).length)) { closeModal(); showCapReachedPrompt('staff', 'Staff Profiles'); return; }
   const name=uc(document.getElementById('sf-name').value);
   if(!name){alert('Enter staff name.');return;}
   const joined=document.getElementById('sf-joined').value;
@@ -7267,6 +7758,7 @@ function saveEditStaffDetails(id){
 // the print dialog works on all devices; cards are centred.
 // ══════════════════════════════════════════════════════════
 function printStaffIdCard(id) {
+  if(!hasFeature('staff_id_card')){ showUpgradePrompt('staff_id_card'); return; }
   const s = DATA.staff.find(x => String(x.id) === String(id));
   if (!s) { alert('Staff member not found.'); return; }
   const di = DATA.depotInfo || {};
@@ -7428,6 +7920,7 @@ function printStaffIdCard(id) {
 }
 // ══ END FIX 29 ════════════════════════════════════════════
 function openStaffWarnings(id){
+  if(!hasFeature('staff_warnings')){ showUpgradePrompt('staff_warnings'); return; }
   if(!requireAdmin('view disciplinary records'))return;
   const s=DATA.staff.find(x=>String(x.id)===String(id));
   if(!s){alert('Staff member not found.');return;}
@@ -7520,6 +8013,7 @@ function delPayment(id){const _r=(DATA.staffPayments||[]).find(p=>String(p.id)==
 
 // ── PAYSLIP GENERATOR (Fix 5) ────────────────────────────────────────────────
 function generatePayslip(staffId, periodMonth, periodYear){
+  if(!hasFeature('payslip_generate')){ showUpgradePrompt('payslip_generate'); return; }
   const s=DATA.staff.find(x=>String(x.id)===String(staffId));
   if(!s){alert('Staff not found.');return;}
   const di=DATA.depotInfo||{};
@@ -7742,10 +8236,12 @@ function renderLeave(){
   return `<div style="background:#0d2a4a;border:1px solid var(--blue);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:17px;color:var(--blue);line-height:1.6">ℹ️ Leave tracking — Annual entitlement set to <strong>${stdAnnual} days</strong>.</div>${USER.role==='admin'?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bg bsm" onclick="openLeaveEntryForm()">+ Log Leave / Absence</button></div>`:''}<div class="card" style="padding:0"><div class="ctitle" style="padding:14px 16px;margin-bottom:0">🏖 Leave Balances (Active Staff)</div><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th style="text-align:right">Entitlement</th><th style="text-align:right">Used</th><th style="text-align:right">Balance</th><th style="text-align:right;color:var(--blue)">Sick</th><th style="text-align:right;color:var(--red)">Absences</th><th></th></tr></thead><tbody>${rows.length===0?`<tr><td colspan="8" class="empty">No active staff</td></tr>`:tableRows}</tbody></table></div></div>${recentEntries.length>0?`<div class="card" style="padding:0"><div class="ctitle" style="padding:14px 16px;margin-bottom:0">📋 Recent Leave Log</div><div class="tw"><table><thead><tr><th>Date</th><th>Staff</th><th>Type</th><th style="text-align:right">Days</th><th>Note</th><th></th></tr></thead><tbody>${recentRows}</tbody></table></div></div>`:''}`;
 }
 function openLeaveEntryForm(preselectId){
+  if(!hasFeature('staff_leave')){ showUpgradePrompt('staff_leave'); return; }
   const opts=DATA.staff.filter(s=>!s.status||s.status==='active').map(s=>`<option value="${s.id}"${String(s.id)===String(preselectId)?' selected':''}>${esc(s.name)} (${esc(s.role)})</option>`).join('');
   openModal(`<div class="mtitle">🏖 Log Leave / Absence</div><div class="fw"><div class="fl">Staff Member</div><select class="fi" id="lv-staff">${opts}</select></div><div class="fw"><div class="fl">Type</div><select class="fi" id="lv-type"><option value="leave">Annual Leave</option><option value="sick">Sick Day</option><option value="absent">Absent (Unexcused)</option></select></div><div class="fw"><div class="fl">Date</div><input class="fi" type="date" id="lv-date" value="${today()}"/></div><div class="fw"><div class="fl">Days</div><input class="fi" type="number" id="lv-days" value="1" min="0.5" step="0.5" inputmode="decimal"/></div><div class="fw"><div class="fl">Note (optional)</div><input class="fi" id="lv-note" placeholder="E.G. APPROVED BY MANAGEMENT"/></div><div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveLeaveEntry()">✓ Save</button></div>`);
 }
 function saveLeaveEntry(){
+  if(!hasFeature('staff_leave')){ showUpgradePrompt('staff_leave'); return; }
   if(isReadOnly()){alert('🔒 Read-only mode.');return;}
   const staffId=document.getElementById('lv-staff').value;
   const type=document.getElementById('lv-type').value;
@@ -7791,9 +8287,45 @@ function renderRolesRatesTab(){
 
 // ── LICENSE STATUS CARD ───────────────────────────────────────────────────────
 function renderPaymentSection() {
+  const key     = depotKey();
+  const curTier = currentTier();
+  // Pre-filled WhatsApp messages per tier
+  const waMsg = t => encodeURIComponent(`Hi, I'd like to upgrade My Depot Master to the ${TIER_META[t].label} plan (K${TIER_META[t].price}/month).\nCompany Key: ${key}`);
+
+  // Tier option cards — Starter, Growth and Pro (Multisite is future)
+  const tierOpts = ['starter','growth','pro'].map(t => {
+    const tm    = TIER_META[t];
+    const isCur = t === curTier;
+    const acc   = t === 'starter' ? 'var(--amber)' : t === 'growth' ? 'var(--blue)' : 'var(--green)';
+    const bullets = _TIER_BULLETS[t] || [];
+    return `
+    <div style="border:${isCur?`2px solid ${acc}`:`1px solid var(--border)`};border-radius:10px;padding:12px 14px;margin-bottom:10px;background:${isCur?`color-mix(in srgb,${acc} 10%,var(--surface2))`:'var(--surface2)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--white)">
+          ${esc(tm.label)}${isCur?' <span style="font-size:13px;background:'+acc+';color:#111;border-radius:20px;padding:1px 8px;margin-left:4px">CURRENT</span>':''}
+        </div>
+        <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:${acc}">K${tm.price}<span style="font-size:13px;font-weight:500;color:var(--muted)">/mo</span></div>
+      </div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:8px">${esc(tm.desc)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px 8px;margin-bottom:${isCur?'0':'10px'}">
+        ${bullets.slice(0,4).map(([e,l])=>`<span style="font-size:13px;color:var(--text);opacity:.85">${e} ${esc(l)}</span>`).join('')}
+        ${bullets.length>4?`<span style="font-size:13px;color:var(--muted)">+${bullets.length-4} more…</span>`:''}
+      </div>
+      ${!isCur ? `<a href="https://wa.me/260960271128?text=${waMsg(t)}" target="_blank"
+        style="display:flex;align-items:center;justify-content:center;gap:6px;background:${acc};color:#111;border-radius:8px;padding:9px 14px;font-family:var(--fh);font-size:16px;font-weight:800;text-decoration:none;touch-action:manipulation">
+        💬 Upgrade to ${esc(tm.label)} via WhatsApp
+      </a>` : ''}
+    </div>`;
+  }).join('');
+
   return `
   <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
-    <div style="font-size:17px;color:var(--muted);margin-bottom:12px;line-height:1.7">Send payment via Airtel Money or MTN Mobile Money, then WhatsApp your <strong style="color:var(--text)">Company License Key</strong> to confirm activation.</div>
+    <div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--white);margin-bottom:4px">Upgrade Your Plan</div>
+    <div style="font-size:16px;color:var(--muted);margin-bottom:14px;line-height:1.6">Pay via <strong style="color:var(--text)">Airtel Money</strong> or <strong style="color:var(--text)">MTN MoMo</strong>. Send your Company Key with payment — activation is instant.</div>
+
+    ${tierOpts}
+
+    <!-- Payment numbers -->
     <div class="pay-method">
       <span class="pm-icon">🔴</span>
       <div class="pm-info">
@@ -7812,11 +8344,13 @@ function renderPaymentSection() {
       </div>
       <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
     </div>
-    <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#1A1A2E;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-top:4px">
-      💬 WhatsApp for Activation
+    <a href="https://wa.me/260960271128" target="_blank"
+      style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#1A1A2E;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:19px;font-weight:700;text-decoration:none;margin-top:4px">
+      💬 WhatsApp for Help or Activation
     </a>
   </div>`;
 }
+
 
 function renderLicenseCard(){
   const configured = isFbConfigured();
@@ -7839,11 +8373,11 @@ function renderLicenseCard(){
     statusLabel = `⏳ TRIAL`;
     statusDetail = `<div style="font-size:17px;color:var(--muted);margin-top:6px;line-height:1.6"><strong style="color:${statusColor}">${d} day${d===1?'':'s'} remaining</strong> of 1-month free trial</div>`;
   } else if (eff === 'trial_expired') {
-    statusColor = 'var(--red)'; statusLabel = '⏳ TRIAL EXPIRED';
-    statusDetail = `<div style="font-size:17px;color:var(--red);margin-top:6px">Your 1-month trial has ended. Subscribe for K300/month.</div>`;
+    statusColor = 'var(--muted)'; statusLabel = '⭐ FREE PLAN';
+    statusDetail = `<div style="font-size:17px;color:var(--muted);margin-top:6px">Trial ended — you're on the Free plan. Core features remain available. <strong style="color:var(--green)">Upgrade anytime</strong> to unlock exports, cloud sync and more.</div>`;
   } else if (eff === 'expired') {
-    statusColor = 'var(--red)'; statusLabel = '🔒 EXPIRED';
-    statusDetail = `<div style="font-size:17px;color:var(--red);margin-top:6px">Your subscription has expired. Renew to continue.</div>`;
+    statusColor = 'var(--muted)'; statusLabel = '⭐ FREE PLAN';
+    statusDetail = `<div style="font-size:17px;color:var(--muted);margin-top:6px">Subscription lapsed — you're on the Free plan. <strong style="color:var(--green)">Renew</strong> to restore full access.</div>`;
   } else if (eff === 'suspended') {
     statusColor = 'var(--red)'; statusLabel = '🔒 SUSPENDED';
     statusDetail = `<div class="warn" style="margin-top:10px">🔒 ${LICENSE.suspendedMsg||'Company suspended.'}</div>`;
@@ -7855,18 +8389,42 @@ function renderLicenseCard(){
     ? `<span style="background:#003d2e;color:var(--green);border-radius:6px;padding:2px 8px;font-size:15px;font-weight:800">CONFIGURED</span>`
     : `<span style="background:#3d2a00;color:var(--amber);border-radius:6px;padding:2px 8px;font-size:15px;font-weight:800">NOT CONFIGURED</span>`;
 
-  const showPayment = ['trial','trial_expired','expired'].includes(eff);
+  // Show upgrade/payment section for free and expired states
+  const showPayment = ['trial','trial_expired','expired','free'].includes(eff) || currentTier() === 'free';
 
   // ── Subscription status panel ─────────────────────────────────────────────
   const fmt = ts => ts ? new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
 
-  // Plan name row
-  const planName = eff === 'active' ? 'Monthly Subscription'
-                 : eff === 'trial' || eff === 'trial_grace' ? '1-Month Free Trial'
-                 : eff === 'trial_expired' ? '1-Month Free Trial (Ended)'
-                 : eff === 'expired' || eff === 'expired_grace' ? 'Monthly Subscription (Expired)'
-                 : eff === 'suspended' ? 'Suspended'
-                 : 'Free Trial';
+  // Tier-aware plan display
+  const activeTier  = currentTier();                       // 'free','starter','growth','pro','multisite'
+  const activeTM    = TIER_META[activeTier] || TIER_META.free;
+  const tierAccent  = activeTier === 'starter' ? 'var(--amber)'
+                    : activeTier === 'growth' ? 'var(--blue)'
+                    : activeTier === 'pro'    ? 'var(--green)'
+                    : activeTier === 'multisite' ? '#a78bfa'
+                    : 'var(--muted)';
+  const tierPrice   = activeTM.price === 0 ? 'Free'
+                    : eff === 'trial'       ? 'Free Trial'
+                    : `K${activeTM.price}/mo`;
+  const planName    = eff === 'active'                           ? activeTM.label + ' Plan'
+                    : eff === 'trial' || eff === 'trial_grace'   ? '1-Month Free Trial'
+                    : eff === 'trial_expired'                    ? 'Free Plan (Trial Ended)'
+                    : eff === 'expired' || eff === 'expired_grace'? 'Free Plan (Lapsed)'
+                    : eff === 'suspended'                        ? 'Suspended'
+                    : 'Free Plan';
+
+  // Tier ladder mini-display (for the plan header)
+  const tierLadderHtml = TIER_ORDER.filter(t => t !== 'multisite').map(t => {
+    const tm   = TIER_META[t];
+    const isCur = t === activeTier || (eff === 'trial' && t === 'pro');
+    const acc  = t === 'starter' ? 'var(--amber)' : t === 'growth' ? 'var(--blue)' : t === 'pro' ? 'var(--green)' : 'var(--muted)';
+    return `<div style="flex:1;text-align:center;padding:7px 4px;border-radius:8px;background:${isCur?`color-mix(in srgb,${acc} 15%,var(--surface))`:'transparent'};border:${isCur?`1px solid ${acc}`:'1px solid transparent'}">
+      <div style="font-family:var(--fh);font-size:14px;font-weight:800;color:${isCur?acc:'var(--muted)'}">
+        ${esc(tm.label)}${isCur?' ✓':''}
+      </div>
+      <div style="font-size:13px;color:var(--muted)">${tm.price===0?'Free':`K${tm.price}`}</div>
+    </div>`;
+  }).join('');
 
   // Key dates
   const trialStartFmt  = fmt(DATA.trialStart || LICENSE.trialStart);
@@ -7889,24 +8447,31 @@ function renderLicenseCard(){
     : `<div style="text-align:center;padding:14px 0;color:var(--muted);font-size:17px">No payment records yet</div>`;
 
   const subPanel = `
-  <div class="sh" style="margin-top:14px">My Subscription</div>
-  <div class="card" style="border-color:${statusColor};padding:0">
+  <div class="sh" style="margin-top:14px">My Plan</div>
+  <div class="card" style="border-color:${tierAccent};padding:0">
     <!-- Plan header -->
     <div style="background:linear-gradient(135deg,var(--surface2) 0%,var(--surface) 100%);border-radius:12px 12px 0 0;padding:16px;border-bottom:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div>
-          <div style="font-size:16px;color:var(--muted);font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin-bottom:3px">Current Plan</div>
+          <div style="font-size:15px;color:var(--muted);font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin-bottom:3px">Current Plan</div>
           <div style="font-family:var(--fh);font-size:21px;font-weight:800;color:var(--white)">${planName}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-family:var(--fh);font-size:27px;font-weight:900;color:${statusColor}">K300</div>
-          <div style="font-size:16px;color:var(--muted)">per month</div>
+          <div style="font-family:var(--fh);font-size:24px;font-weight:900;color:${tierAccent}">${tierPrice}</div>
+          ${activeTM.price > 0 && eff !== 'trial' ? '<div style="font-size:14px;color:var(--muted)">per month</div>' : ''}
         </div>
       </div>
-      <div style="margin-top:10px">
+      <!-- Status badge -->
+      <div style="margin-bottom:12px">
         <span style="background:${statusColor};color:${eff==='active'?'#060d18':'#fff'};border-radius:20px;padding:3px 12px;font-size:16px;font-weight:800;letter-spacing:.5px">${statusLabel}</span>
       </div>
+      <!-- Tier ladder -->
+      <div style="display:flex;gap:4px;margin-top:2px">
+        ${tierLadderHtml}
+      </div>
     </div>
+    <!-- Status detail -->
+    ${statusDetail ? `<div style="padding:12px 14px;border-bottom:1px solid var(--border)">${statusDetail}</div>` : ''}
     <!-- Key dates grid -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)">
       <div style="background:var(--surface);padding:12px 14px">
@@ -7935,10 +8500,10 @@ function renderLicenseCard(){
     <div style="padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2);border-radius:0 0 12px 12px">
       <div style="font-size:15px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px">Company License Key</div>
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="flex:1;font-family:monospace;font-size:17px;color:var(--blue);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;word-break:break-all">${depotId}</div>
+        <div style="flex:1;font-family:monospace;font-size:17px;color:var(--blue);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;word-break:break-all;user-select:all">${depotId}</div>
         <button class="pm-copy" style="flex-shrink:0" onclick="copyNum('${depotId}')">Copy</button>
       </div>
-      <div style="font-size:16px;color:var(--muted);margin-top:6px;line-height:1.5">Send this key with your payment to confirm activation instantly.</div>
+      <div style="font-size:16px;color:var(--muted);margin-top:6px;line-height:1.5">Include this key when contacting us about your plan.</div>
     </div>
   </div>`;
 
@@ -8242,31 +8807,6 @@ function renderSettings(){
       </div>
     </div>
 
-
-    <div class="card">
-      <div style="font-size:17px;color:var(--muted);margin-bottom:12px;line-height:1.7">Subscription fee: <strong style="color:var(--white)">K300/month</strong>. Pay via Airtel Money, MTN MoMo, Zamtel, or card. Your account activates instantly after payment.</div>
-      <div class="pay-method">
-        <span class="pm-icon">🔴</span>
-        <div class="pm-info">
-          <div class="pm-label">Airtel Money</div>
-          <div class="pm-num" style="font-size:22px">+260 970 962 902</div>
-          <div class="pm-name">MDM Developer</div>
-        </div>
-        <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
-      </div>
-      <div class="pay-method">
-        <span class="pm-icon">🟡</span>
-        <div class="pm-info">
-          <div class="pm-label">MTN Mobile Money</div>
-          <div class="pm-num" style="font-size:22px">+260 960 271 128</div>
-          <div class="pm-name">MDM Developer</div>
-        </div>
-        <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
-      </div>
-      <a href="https://wa.me/260960271128" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#1A1A2E;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:20px;font-weight:700;text-decoration:none;margin-top:6px">
-        💬 WhatsApp for Activation
-      </a>
-    </div>
     <div class="sh">Help & Documentation</div>
     <div class="card">
       <button class="btn bo" style="width:100%;margin-bottom:10px" onclick="showFirstRunChecklist()">🚀 Setup Checklist — View Progress</button>
@@ -8292,7 +8832,7 @@ function renderSettings(){
       <div style="font-size:18px;color:var(--muted);line-height:1.7;margin-bottom:12px">Permanently delete this company account and all associated data. <strong style="color:var(--red)">This cannot be undone.</strong></div>
       <button class="btn" style="width:100%;background:transparent;border:1.5px solid var(--red);color:var(--red);font-weight:700;white-space:normal;line-height:1.3;min-height:48px;height:auto" onclick="deleteAccountStep1()">🗑 Delete Account &amp; Data</button>
     </div>
-    <div style="text-align:center;padding:12px 0 4px;font-size:16px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} MDM Developer · General Purpose Business Management Software</div>
+    <div style="text-align:center;padding:12px 0 4px;font-size:16px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Digital Frontier Technologies) · General Purpose Business Management Software</div>
     <div style="height:60px"></div>`;
 }
 
@@ -8301,20 +8841,20 @@ function showTOS(){
   openModal(`<div class="mtitle">📄 Terms of Service</div>
     <div style="font-size:17px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
       <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">PLEASE READ BEFORE USING THIS APPLICATION.</div>
-      <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with MDM Developer ("the Developer").</p>
+      <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with NEXLITE-DIGITAL-SOLUTIONS-LIMITED, trading as Digital Frontier Technologies ("the Developer"), the NAPSA-registered company operating My Depot Master.</p>
       <b style="color:var(--white)">2. General-Purpose Tool — No Official Affiliation</b><p style="margin:4px 0 10px">My Depot Master is a <b>general-purpose business management tool</b> for internal record-keeping. It is <b>NOT</b> an official government system and is NOT affiliated with any government agency, ministry, PACRA, ZRA, or any regulatory authority.</p>
       <b style="color:var(--white)">3. No Warranties</b><p style="margin:4px 0 10px">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY. Calculations may not be accurate, complete, or suitable for any official, legal, or financial purpose.</p>
       <b style="color:var(--white)">4. Limitation of Liability</b><p style="margin:4px 0 10px">THE DEVELOPER IS NOT LIABLE FOR: data loss; financial loss; wage or count errors; labour disputes; regulatory penalties; or any indirect damages. Maximum liability = 3 months' subscription fees.</p>
       <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
       <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally on your device and optionally synced to Google Firebase where cloud sync is enabled. By using this Software you consent to this processing. Our full data practices are described in the <span style="color:var(--blue);text-decoration:underline;cursor:pointer" onclick="showPrivacyPolicy()">Privacy Policy</span>, which forms part of these Terms. In brief: we do not sell your data; you remain the data controller for all business records you enter; the Developer acts as a data processor only. You are responsible for compliance with the Zambia Data Protection Act No. 3 of 2021 and any other applicable local data protection law in your jurisdiction.</p>
-      <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to MDM Developer. You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
+      <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to NEXLITE-DIGITAL-SOLUTIONS-LIMITED (trading as Digital Frontier Technologies). You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
       <b style="color:var(--white)">8. Subscription, Fees &amp; Activation</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Activation will be completed within 48 hours of confirmed payment receipt. Access may be suspended for non-payment. <b style="color:#ffcc66">The Developer reserves the right to change subscription fees and/or subscription periods (e.g. trial duration, active period length) at any time without prior notice.</b> The fee and period applicable at the time of your payment will be honoured for that payment cycle only. Continued use of the Software after any fee or period change constitutes acceptance of the new terms.</p>
       <b style="color:var(--white)">9. Indemnification</b><p style="margin:4px 0 10px">You indemnify the Developer from any claims, costs, or legal fees from your use, misuse, or breach of these Terms.</p>
       <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of the country in which the operator is registered. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
       <b style="color:var(--white)">11. Modifications</b><p style="margin:4px 0 10px">Terms may be updated at any time. Continued use = acceptance.</p>
       <b style="color:var(--white)">12. Age &amp; Legal Capacity</b><p style="margin:4px 0 10px">By using this Software you confirm you are at least 18 years old and legally capable of entering a binding agreement under applicable local law. Minors may not use this Software.</p>
       <div style="background:rgba(220,38,38,.12);border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#ff8080"><b>\u26a0\ufe0f IMPORTANT:</b> This is a general-purpose admin tool only — NOT legal, financial, or accounting advice. All figures must be independently verified.</div>
-      <div style="text-align:center;font-size:16px">My Depot Master \u00b7 \u00a9 ${yr} MDM Developer \u00b7 All Rights Reserved</div>
+      <div style="text-align:center;font-size:16px">My Depot Master \u00b7 \u00a9 ${yr} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Digital Frontier Technologies) \u00b7 All Rights Reserved</div>
     </div>
     <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 I Understand &amp; Accept</button></div>`);
 }
@@ -8323,7 +8863,7 @@ function showPrivacyPolicy(){
   openModal(`<div class="mtitle">🔒 Privacy Policy</div>
     <div style="font-size:17px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
       <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">EFFECTIVE DATE: 1 JANUARY 2025 · LAST UPDATED: ${yr}</div>
-      <b style="color:var(--white)">1. Who We Are</b><p style="margin:4px 0 10px">My Depot Master is developed and operated by MDM Developer (\u201cthe Developer\u201d), a sole-trader software developer based in Zambia. Contact: <span style="color:var(--blue)">mydepotmaster@gmail.com</span></p>
+      <b style="color:var(--white)">1. Who We Are</b><p style="margin:4px 0 10px">My Depot Master is developed and operated by NEXLITE-DIGITAL-SOLUTIONS-LIMITED, trading as Digital Frontier Technologies (\u201cthe Developer\u201d), a NAPSA-registered software company based in Zambia. Contact: <span style="color:var(--blue)">mydepotmaster@gmail.com</span></p>
       <b style="color:var(--white)">2. What Data We Collect</b><p style="margin:4px 0 10px">We collect only the data you voluntarily enter into the app. This includes: company name, district, and country; admin username and hashed password; recovery email address; stock, sales, purchase, staff, and financial records; and device/session identifiers stored locally. We do <b style="color:var(--white)">not</b> collect names, ID numbers, or personal data of your end-customers beyond what you choose to record.</p>
       <b style="color:var(--white)">3. How We Use Your Data</b><p style="margin:4px 0 10px">Data you enter is used solely to provide the app\u2019s business management features to you. The Developer does not analyse, profile, sell, rent, or share your data with any third party for marketing or commercial purposes.</p>
       <b style="color:var(--white)">4. Cloud Sync &amp; Third Parties</b><p style="margin:4px 0 10px">If you enable cloud sync, your data is transmitted to and stored on <b style="color:var(--white)">Google Firebase</b>, a secure cloud infrastructure service. This transfer is protected by industry-standard security measures. No other third-party services receive your data. You may disable cloud sync at any time in Settings; your data will remain on-device only.</p>
@@ -8334,7 +8874,7 @@ function showPrivacyPolicy(){
       <b style="color:var(--white)">9. Your Rights (DPA 2021)</b><p style="margin:4px 0 10px">As a data subject under the DPA 2021 you have the right to: access data held about you; correct inaccurate data; request erasure; restrict or object to processing; and withdraw consent. To exercise any of these rights, contact <span style="color:var(--blue)">mydepotmaster@gmail.com</span>.</p>
       <b style="color:var(--white)">10. Children</b><p style="margin:4px 0 10px">This app is not intended for use by persons under 18 years of age. We do not knowingly collect data from minors.</p>
       <b style="color:var(--white)">11. Changes to This Policy</b><p style="margin:4px 0 10px">We may update this Privacy Policy from time to time. Material changes will be communicated via an in-app notice. Continued use of the app after a change constitutes acceptance of the updated policy.</p>
-      <div style="text-align:center;font-size:16px;margin-top:12px">My Depot Master \u00b7 \u00a9 ${yr} MDM Developer \u00b7 All Rights Reserved</div>
+      <div style="text-align:center;font-size:16px;margin-top:12px">My Depot Master \u00b7 \u00a9 ${yr} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Digital Frontier Technologies) \u00b7 All Rights Reserved</div>
     </div>
     <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 Close</button></div>`);
 }
@@ -8679,6 +9219,7 @@ async function changePw(){
 }
 function addUser(){
   if(!requireAdmin('add users'))return;
+  if(!hasFeature('staff_multi_user')){ showUpgradePrompt('staff_multi_user'); return; }
   openModal(`
     <div class="mtitle">👤 Add User</div>
     <div id="au-err" class="err-box" style="display:none"></div>
@@ -8786,6 +9327,7 @@ function removeUser(username){
 }
 function addInvItem(){
   if(!requireAdmin('manage inventory items'))return;
+  if (isAtCap('inventoryItems', (DATA.inventoryItems||[]).length)) { showCapReachedPrompt('inventoryItems', 'Inventory Items'); return; }
   const val=uc(document.getElementById('new-inv-item')?.value);
   if(!val){alert('Enter an item name.');return;}
   if((DATA.inventoryItems||[]).includes(val)){alert('Item already exists.');return;}
@@ -8798,6 +9340,7 @@ function removeInvItem(idx){
 }
 function exportJSON(){
   if(!requireAdmin('export data'))return;
+  if(!hasFeature('export_json_backup')){ showUpgradePrompt('export_json_backup'); return; }
   // Fix 9: strip password hashes before export — hashes are sensitive and
   // not needed to restore the backup (they will be re-migrated on next login).
   const exportData = JSON.parse(JSON.stringify(DATA));
@@ -8813,6 +9356,7 @@ function exportJSON(){
 // ── Fix 26: Audit Log Export ──────────────────────────────────────────────────
 function exportAuditLog(){
   if(!requireAdmin('export audit log'))return;
+  if(!hasFeature('audit_log')){ showUpgradePrompt('audit_log'); return; }
   const log=DATA.auditLog||[];
   if(log.length===0){alert('No audit events recorded yet. Events are captured from this point forward whenever records are created, edited, or deleted.');return;}
   const headers=['Date / Time','User','Role','Action','Area','Detail'];
@@ -8828,6 +9372,7 @@ function exportAuditLog(){
 // ── Fix 26: Audit Log Viewer ──────────────────────────────────────────────────
 function viewAuditLog(){
   if(!requireAdmin('view audit log'))return;
+  if(!hasFeature('audit_log')){ showUpgradePrompt('audit_log'); return; }
   const log=(DATA.auditLog||[]).slice().sort((a,b)=>b.ts.localeCompare(a.ts)).slice(0,100);
   const actionColor={CREATE:'var(--green)',EDIT:'var(--amber)',DELETE:'var(--red)'};
   const rows=log.length===0
@@ -8854,6 +9399,7 @@ function viewAuditLog(){
 
 function importJSON(){
   if(!requireAdmin('import data'))return;
+  if(!hasFeature('export_json_backup')){ showUpgradePrompt('export_json_backup'); return; }
   const inp = document.getElementById('import-file-input');
   if (inp) { inp.value=''; inp.click(); }
 }
@@ -9055,6 +9601,7 @@ function bioRemove(username){
 
 // Called from Settings — set up fingerprint for current user
 async function bioSetupAndRefresh(){
+  if(!hasFeature('biometric_login')){ showUpgradePrompt('biometric_login'); return; }
   const btn=document.getElementById('bio-setup-btn');
   const msg=document.getElementById('bio-setup-msg');
   if(!_bioSupported()){
@@ -9202,7 +9749,40 @@ function openHdrMenu(){
   ovl.classList.add('open');
   menu.setAttribute('aria-hidden','false');
   if (btn) btn.setAttribute('aria-expanded','true');
+  refreshHdrMenuQuickStats();
   if (typeof _pushNav==='function' && _currentNavLevel()<4) _pushNav(4,'hdr-menu');
+}
+function refreshHdrMenuQuickStats(){
+  try{
+    if (typeof DATA === 'undefined' || !DATA) return;
+    const todayStr = today();
+    const allCRec = DATA.commodityReceived || {};
+    const allCIss = DATA.commodityIssued || {};
+    const coms = DATA.commodities || [];
+    let todayIn = 0, todayOut = 0;
+    coms.forEach(c=>{
+      const recs=[...(allCRec[c.id]||[]),...(c.id==='maize'?DATA.maizeReceived||[]:[])];
+      const iss=[...(allCIss[c.id]||[]),...(c.id==='maize'?DATA.maizeIssued||[]:[])];
+      todayIn += recs.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
+      todayOut += iss.filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
+    });
+    todayIn += (DATA.generalInventory||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
+    todayOut += (DATA.generalIssued||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
+    const activeShifts = (DATA.staffLogs||[]).filter(x=>x.status==='open').length;
+    const staffLogged = (DATA.staffLogs||[]).filter(x=>x.date===todayStr).length;
+    const setTxt=(id,val)=>{const el=document.getElementById(id); if(el) el.textContent=val;};
+    setTxt('hdr-qs-in', todayIn.toLocaleString());
+    setTxt('hdr-qs-out', todayOut.toLocaleString());
+    setTxt('hdr-qs-shifts', activeShifts);
+    setTxt('hdr-qs-staff', staffLogged);
+    const verEl = document.getElementById('hdr-menu-appver');
+    if (verEl) verEl.textContent = (typeof SW_VERSION!=='undefined' ? SW_VERSION : '—');
+    const syncEl = document.getElementById('hdr-menu-syncinfo');
+    if (syncEl){
+      const lastSync = DATA._lastFbSync || 0;
+      syncEl.textContent = lastSync ? fmtAgo(Date.now()-lastSync) + ' ago' : 'Not yet synced';
+    }
+  }catch(e){ /* fail silently — menu still usable without stats */ }
 }
 function closeHdrMenu(){
   const menu = document.getElementById('hdr-menu');
@@ -9693,6 +10273,7 @@ function renderBooks() {
 
 // ── OPEN EDITOR (new) ─────────────────────────────────────
 function newBookEditor(type) {
+  if(!hasFeature('books_edit')){ showUpgradePrompt('books_edit'); return; }
   if(isReadOnly()){alert('🔒 Account is in read-only mode.');return;}
   _beBookId = null;
   _beType   = type;
@@ -9702,6 +10283,7 @@ function newBookEditor(type) {
 
 // ── OPEN EDITOR (existing) ────────────────────────────────
 function openBookEditor(id) {
+  if(!hasFeature('books_edit')){ showUpgradePrompt('books_edit'); return; }
   const book = (DATA.books||[]).find(b=>b.id===id);
   if(!book){alert('Document not found.');return;}
   _beBookId = id;
@@ -10416,6 +10998,7 @@ function exportCSV_StaffRoster(){
 
 // Master export dispatcher — call with tab & subtab context
 function exportCurrentTabCSV(){
+  if (!hasFeature('export_csv')) { showUpgradePrompt('export_csv'); return; }
   if(TAB==='general'){
     if(GTAB==='inventory')return exportCSV_GenReceived();
     if(GTAB==='issued')return exportCSV_GenIssued();
@@ -10541,7 +11124,12 @@ function renderContacts(){
 }
 
 function openContactForm(id){
-  const existing=id?(DATA.contacts||[]).find(c=>String(c.id)===String(id)):null;
+  const isNew = !id || typeof id === 'object'; // button listener passes the click event, not an id
+  if (isNew) {
+    if (!hasFeature('contacts_edit')) { showUpgradePrompt('contacts_edit'); return; }
+    if (isAtCap('contacts', (DATA.contacts||[]).length)) { showCapReachedPrompt('contacts', 'Contacts'); return; }
+  }
+  const existing=(!isNew && id)?(DATA.contacts||[]).find(c=>String(c.id)===String(id)):null;
   const v=existing||{type:'supplier',name:'',phone:'',email:'',address:'',balance:'',notes:''};
   const isSupplier=(v.type==='supplier');
   openModal(`
@@ -10584,7 +11172,7 @@ function openContactForm(id){
     <div id="ci-err" style="color:var(--red);font-size:17px;display:none;margin-bottom:8px"></div>
     <div class="mact">
       <button class="btn bo" onclick="closeModal()">Cancel</button>
-      <button class="btn bg" onclick="saveContact('${id||''}')">💾 Save</button>
+      <button class="btn bg" onclick="saveContact('${isNew?'':id}')">💾 Save</button>
     </div>`);
 }
 function _toggleSupplierFields(type){
@@ -10594,6 +11182,10 @@ function _toggleSupplierFields(type){
 function editContact(id){openContactForm(id);}
 
 function saveContact(id){
+  if (!id) {
+    if (!hasFeature('contacts_edit')) { closeModal(); showUpgradePrompt('contacts_edit'); return; }
+    if (isAtCap('contacts', (DATA.contacts||[]).length)) { closeModal(); showCapReachedPrompt('contacts', 'Contacts'); return; }
+  }
   const name=(document.getElementById('ci-name').value||'').trim();
   const errEl=document.getElementById('ci-err');
   if(!name){errEl.textContent='Name is required.';errEl.style.display='block';return;}
@@ -10627,6 +11219,7 @@ function saveContact(id){
 }
 
 function deleteContact(id){
+  if(!hasFeature('contacts_full')){ showUpgradePrompt('contacts_full'); return; }
   const c=(DATA.contacts||[]).find(x=>String(x.id)===String(id));
   if(!c)return;
   requireAdminPassword('delete contact "'+c.name+'"',()=>{
@@ -10639,6 +11232,7 @@ function deleteContact(id){
 // PROFIT & LOSS VIEW (Fix 20)
 // ══════════════════════════════════════════════════════════
 function renderProfitLoss(){
+  if(!hasFeature('profit_loss')) return _upgradeGateCard('profit_loss');
   const items=filterPeriod(DATA.generalIssued, PERIOD.general, 'date', 'general');
   const recItems=filterPeriod(DATA.generalInventory, PERIOD.general, 'date', 'general');
   const staffLogs=filterPeriod(DATA.staffLogs, PERIOD.general, 'date', 'general');
@@ -10908,6 +11502,7 @@ ${_pdfFooter('This report must be verified by management before use.')}
 // FIX 21 — Cash Flow Statement
 // ══════════════════════════════════════════════════════════
 function renderCashFlow(){
+  if(!hasFeature('cash_flow')) return _upgradeGateCard('cash_flow');
   const period=PERIOD.general;
 
   // ── Aggregate money IN ────────────────────────────────────
@@ -11065,6 +11660,7 @@ function renderCashFlow(){
 // FIX 22 — Budget vs Actual
 // ══════════════════════════════════════════════════════════
 function renderBudgetVsActual(){
+  if(!hasFeature('budget_vs_actual')) return _upgradeGateCard('budget_vs_actual');
   const budgets=DATA.budgets||[];
   const period=PERIOD.general;
 
@@ -11257,6 +11853,7 @@ function deleteBudget(id){
 // FIX 23 — Supplier Performance Module
 // ══════════════════════════════════════════════════════════
 function renderSupplierPerformance(){
+  if(!hasFeature('supplier_performance')) return _upgradeGateCard('supplier_performance');
   const suppliers=(DATA.contacts||[]).filter(c=>c.type==='supplier');
 
   if(suppliers.length===0){
@@ -11371,10 +11968,10 @@ function renderSupplierPerformance(){
 // ══════════════════════════════════════════════════════════
 async function tabCloudUpload(tab, evt) {
   if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  if (!hasFeature('cloud_sync')) { showUpgradePrompt('cloud_sync'); return; }
   if (!isFbConfigured()) { showToast('⚠️ Firebase not configured'); return; }
   if (!navigator.onLine) { showToast('⚠️ You are offline — upload queued'); scheduleFbSync(); return; }
-  const btnId = 'nb-cloud-up-' + tab;
-  const btn = document.getElementById(btnId);
+  const btn = document.getElementById('menu-cloud-upload-btn');
   if (btn) btn.classList.add('syncing');
   try {
     await doFbSync();
@@ -11388,12 +11985,12 @@ async function tabCloudUpload(tab, evt) {
 
 async function tabCloudDownload(tab, evt) {
   if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  if (!hasFeature('cloud_sync')) { showUpgradePrompt('cloud_sync'); return; }
   if (!isFbConfigured()) { showToast('⚠️ Firebase not configured'); return; }
   if (!navigator.onLine) { showToast('⚠️ No internet connection'); return; }
   const key = DATA.installId || _loadPersistedInstallId();
   if (!key || key === 'MDM-????-????-????') { showToast('❌ No depot key found'); return; }
-  const btnId = 'nb-cloud-dn-' + tab;
-  const btn = document.getElementById(btnId);
+  const btn = document.getElementById('menu-cloud-download-btn');
   if (btn) btn.classList.add('syncing');
   try {
     const val = await fbGet('depots/' + key + '/data');
@@ -11489,6 +12086,7 @@ function renderFirstRunSteps(){
 }
 
 function showFirstRunChecklist(){
+  if(!hasFeature('setup_checklist')){ showUpgradePrompt('setup_checklist'); return; }
   const overlay = document.getElementById('first-run-overlay');
   if(!overlay) return;
   renderFirstRunSteps();
@@ -11508,6 +12106,7 @@ function dismissFirstRunForever(){
 
 function maybeShowFirstRun(){
   // Only show to admin, only when not permanently dismissed, only if setup not complete
+  if(!hasFeature('setup_checklist')) return;
   if(!USER || USER.role !== 'admin') return;
   if((DATA.depotInfo||{}).firstRunDismissed) return;
   if(_frDoneCount() === FR_STEPS.length) return; // all done — don't nag

@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5"/>
-<title>My Company Master — Smart Business Management for Africa</title>
-<meta name="description" content="Track stock, manage staff, monitor earnings and run your business smarter. Works offline. K300/month."/>
-<meta property="og:title" content="My Company Master"/>
-<meta property="og:description" content="The smarter way to run your company or business."/>
+<title>My Depot Master — Smart Business Management for Africa</title>
+<meta name="description" content="Track stock, manage staff, monitor earnings and run your business smarter. Works offline. Plans from K90/month."/>
+<meta property="og:title" content="My Depot Master"/>
+<meta property="og:description" content="The smarter way to run your depot or business."/>
 <meta property="og:image" content="https://mydepotmaster.github.io/MyDepotMaster/icon-512.png"/>
 <link rel="icon" href="https://mydepotmaster.github.io/MyDepotMaster/icon-192.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -289,11 +289,11 @@ h1.hero-h1 .accent{
 /* ── PRICING ── */
 .pricing{padding:var(--gap) 5%;}
 .pricing-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);
+  display:grid;grid-template-columns:repeat(4,1fr);
   gap:1px;background:var(--ruled);
   border:1px solid var(--ruled);
   border-radius:2px;overflow:hidden;
-  max-width:1100px;margin:0 auto;
+  max-width:1280px;margin:0 auto;
 }
 .price-card{
   background:var(--ink2);
@@ -454,7 +454,7 @@ footer{
   .how-grid{grid-template-columns:repeat(2,1fr);}
   .how-step:nth-child(2n){border-right:none;}
   .how-step:nth-child(n+3){border-top:1px solid var(--ruled);}
-  .pricing-grid{grid-template-columns:1fr;}
+  .pricing-grid{grid-template-columns:repeat(2,1fr);}
   .download-grid{grid-template-columns:1fr;}
   .sec-header{flex-direction:column;gap:8px;}
   .sec-rule{display:none;}
@@ -468,6 +468,7 @@ footer{
   .how-grid{grid-template-columns:1fr;}
   .how-step{border-right:none;border-top:1px solid var(--ruled);}
   .how-step:first-child{border-top:none;}
+  .pricing-grid{grid-template-columns:1fr;}
   footer{grid-template-columns:1fr;text-align:center;}
   .footer-copy{text-align:center;}
   .footer-links{justify-content:center;}
@@ -480,7 +481,7 @@ footer{
 <nav>
   <div class="nav-logo">
     <div class="nav-logo-icon">MDM</div>
-    MY COMPANY MASTER
+    MY DEPOT MASTER
   </div>
   <div class="nav-links">
     <a href="#features">Features</a>
@@ -514,8 +515,8 @@ footer{
       <div class="ticker-lbl">Free Trial</div>
     </div>
     <div class="ticker-cell">
-      <div class="ticker-val">K300</div>
-      <div class="ticker-lbl">Per Month</div>
+      <div class="ticker-val">K90</div>
+      <div class="ticker-lbl">From / Per Month</div>
     </div>
     <div class="ticker-cell">
       <div class="ticker-val">1</div>
@@ -647,7 +648,7 @@ footer{
     </div>
     <div class="how-step reveal">
       <div class="how-step-title">Subscribe & Keep Going</div>
-      <div class="how-step-body">After your trial, subscribe for <strong style="color:var(--white)">K300/month</strong> via Airtel Money, MTN MoMo, Zamtel or card. Payment is automatic — your account stays active.</div>
+      <div class="how-step-body">After your trial, pick a plan from <strong style="color:var(--white)">K90/month</strong>, pay via Airtel Money or MTN MoMo, and send your Company Key on WhatsApp. Activation is confirmed within 48 hours — or stay on the Free plan, always.</div>
     </div>
   </div>
 </section>
@@ -661,46 +662,65 @@ footer{
   </div>
   <div class="pricing-grid">
     <div class="price-card reveal">
-      <div class="price-plan">Free Trial</div>
+      <div class="price-plan">Free</div>
       <div class="price-amount">K0</div>
-      <div class="price-period">1 month — no credit card needed</div>
+      <div class="price-period">Core data entry, always free</div>
       <ul class="price-features">
-        <li>Full access to all features</li>
-        <li>Unlimited records</li>
-        <li>Cloud sync included</li>
-        <li>Up to 3 users</li>
-        <li class="dim">Read-only after trial ends</li>
+        <li>Stock receive & issue</li>
+        <li>Commodity tracking</li>
+        <li>Transport log</li>
+        <li>Staff clock-in / out</li>
+        <li class="dim">Contacts — view only</li>
+        <li class="dim">No cloud backup or exports</li>
       </ul>
-      <a href="https://mydepotmaster.github.io/MyDepotMaster/" class="price-btn">Start Free Trial</a>
+      <a href="https://mydepotmaster.github.io/MyDepotMaster/" class="price-btn">Start Free</a>
+    </div>
+    <div class="price-card reveal">
+      <div class="price-plan">Starter</div>
+      <div class="price-amount">K90 <span class="per">/ mo</span></div>
+      <div class="price-period">Higher limits — same features as Free</div>
+      <ul class="price-features">
+        <li>Up to 5 staff profiles</li>
+        <li>Up to 3 inventory item types</li>
+        <li>Up to 3 commodity types</li>
+        <li>90 days visible history</li>
+        <li>Edit up to 50 contacts</li>
+        <li class="dim">No cloud backup or exports</li>
+      </ul>
+      <a href="https://mydepotmaster.github.io/MyDepotMaster/" class="price-btn">Get Starter</a>
     </div>
     <div class="price-card popular reveal">
       <span class="popular-badge">★ Most Popular</span>
-      <div class="price-plan">Monthly Subscription</div>
-      <div class="price-amount">K300 <span class="per">/ mo</span></div>
-      <div class="price-period">Auto-renews. Cancel anytime.</div>
+      <div class="price-plan">Growth</div>
+      <div class="price-amount">K150 <span class="per">/ mo</span></div>
+      <div class="price-period">Exports, cloud sync, reports</div>
       <ul class="price-features">
-        <li>Everything in Free Trial</li>
-        <li>Auto-activation on payment</li>
-        <li>Airtel Money & MTN MoMo</li>
-        <li>Zamtel & card payments</li>
-        <li>WhatsApp support</li>
+        <li>Cloud backup & sync</li>
+        <li>CSV & PDF exports</li>
+        <li>Books & spreadsheets</li>
+        <li>Budget vs Actual report</li>
+        <li>Supplier performance</li>
+        <li>Contact delete & export</li>
       </ul>
-      <a href="https://mydepotmaster.github.io/MyDepotMaster/" class="price-btn">Get Started</a>
+      <a href="https://mydepotmaster.github.io/MyDepotMaster/" class="price-btn">Get Growth</a>
     </div>
     <div class="price-card reveal">
-      <div class="price-plan">Annual Plan</div>
-      <div class="price-amount">K3,000 <span class="per">/ yr</span></div>
-      <div class="price-period">Save K600 vs monthly billing</div>
+      <div class="price-plan">Pro</div>
+      <div class="price-amount">K300 <span class="per">/ mo</span></div>
+      <div class="price-period">Full features — everything unlocked</div>
       <ul class="price-features">
-        <li>Everything in Monthly</li>
-        <li>2 months free (10 = 12)</li>
-        <li>Priority support</li>
-        <li>Free feature updates</li>
-        <li>Multiple company accounts</li>
+        <li>Payslip generator (PDF)</li>
+        <li>Staff ID cards & leave</li>
+        <li>Audit log & full JSON backup</li>
+        <li>P&amp;L and cash flow reports</li>
+        <li>Fingerprint / Face ID login</li>
       </ul>
-      <a href="https://mydepotmaster.github.io/MyDepotMaster/" class="price-btn">Get Annual</a>
+      <a href="https://mydepotmaster.github.io/MyDepotMaster/" class="price-btn">Get Pro</a>
     </div>
   </div>
+  <p style="text-align:center;font-family:var(--fm);font-size:11px;color:var(--muted);margin-top:28px;letter-spacing:.3px">
+    All plans start with a 1-month free trial. Pay via Airtel Money or MTN MoMo — activation confirmed within 48 hours.
+  </p>
 </section>
 
 <!-- DOWNLOAD -->
@@ -735,7 +755,7 @@ footer{
 <footer>
   <div class="footer-logo">
     <div class="nav-logo-icon">MDM</div>
-    My Company Master
+    My Depot Master
   </div>
   <div class="footer-links">
     <a href="https://mydepotmaster.github.io/MyDepotMaster/">Open App</a>
@@ -743,7 +763,7 @@ footer{
     <a href="#pricing">Pricing</a>
     <a href="#download">Get Started</a>
   </div>
-  <div class="footer-copy">© 2026 My Depot Master. All rights reserved.</div>
+  <div class="footer-copy">My Depot Master · © 2026 NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Digital Frontier Technologies). All rights reserved.</div>
 </footer>
 
 <script>

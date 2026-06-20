@@ -25,6 +25,39 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v31 changes (2026-06-20):
+//   - General-tab inventory item types now capped, in parallel with (but
+//     independent from) the existing Commodity tab cap: Free = 1 item type,
+//     Starter = 3, Growth+ = unlimited. Enforced at both entry points that
+//     write to DATA.inventoryItems — the Manage Inventory Items modal and
+//     the General tab's Item Names subtab — each swapping the add-form for
+//     an upgrade card when the depot is at its limit.
+//
+// v30 changes (2026-06-20):
+//   - Numeric tier caps now enforced (previously labels only). Free: 1 staff,
+//     1 commodity type, 30-day visible history, contacts view-only (removed
+//     contacts_edit from Free — was incorrectly granted before this release).
+//     Starter: 5 staff, 3 commodity types, 90-day history, contacts editable
+//     up to 50. Growth/Pro/Multi-Site remain unlimited on all four. Checked
+//     at the point of creation (staff/commodity/contact add) with a
+//     dedicated "limit reached" upgrade prompt, and at the point of display
+//     for history (filterPeriod now clamps every period — including "All"
+//     and custom date ranges — to the tier's visible-history window).
+//
+// v29 changes (2026-06-20):
+//   - New Starter tier (K90/mo) inserted between Free and Growth in the
+//     tiered licensing system. Same feature set as Free (no cloud sync,
+//     exports, or reports) — raises numeric ceilings only: 5 staff profiles,
+//     3 commodity types, 90-day visible history, edit up to 50 contacts.
+//     Cap enforcement itself is not yet wired up; this release only adds
+//     the tier to TIER_ORDER/TIER_META/_TIER_BULLETS and updates every
+//     tier-aware UI surface (landing pricing ladder, upgrade modal, admin
+//     payment panel, account status screen) to display and price it.
+//   - Legal/identity update: Terms of Service, Privacy Policy, and the
+//     Settings screen footer now name the NAPSA-registered company,
+//     NEXLITE-DIGITAL-SOLUTIONS-LIMITED (trading as Digital Frontier
+//     Technologies), as the operating entity in place of "MDM Developer."
+//
 // v28 changes (2026-06-12):
 //   - Price per month updated from K100 to K300.
 //   - Fix 13: Cross-tab logout synchronisation via BroadcastChannel (with
@@ -150,7 +183,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v28';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v31';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
