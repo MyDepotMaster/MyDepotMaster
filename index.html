@@ -663,6 +663,9 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 </style>
 </head>
 <body>
+<button id="global-fullscreen-btn" onclick="toggleAppFullscreen()" title="Full screen" aria-label="Toggle full screen" style="position:fixed;top:max(10px,env(safe-area-inset-top,10px));right:10px;z-index:5000;background:var(--surface,#16213E);border:1px solid var(--border,#2C3E50);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--muted,#8a93a6);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;opacity:.85;box-shadow:0 2px 8px rgba(0,0,0,.3);">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3"/></svg>
+</button>
 <div id="app">
 
 
@@ -9822,9 +9825,16 @@ function toggleAppFullscreen(){
 }
 function _updateFullscreenLabel(){
   const lbl = document.getElementById('hdr-menu-fullscreen-lbl');
-  if (!lbl) return;
   const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-  lbl.textContent = isFs ? 'Exit Full Screen' : 'Full Screen';
+  if (lbl) lbl.textContent = isFs ? 'Exit Full Screen' : 'Full Screen';
+  const gbtn = document.getElementById('global-fullscreen-btn');
+  if (gbtn){
+    gbtn.title = isFs ? 'Exit full screen' : 'Full screen';
+    gbtn.setAttribute('aria-label', gbtn.title);
+    gbtn.innerHTML = isFs
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v3a2 2 0 01-2 2H4M15 3v3a2 2 0 002 2h3M9 21v-3a2 2 0 00-2-2H4M15 21v-3a2 2 0 012-2h3"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3"/></svg>';
+  }
 }
 document.addEventListener('fullscreenchange', _updateFullscreenLabel);
 document.addEventListener('webkitfullscreenchange', _updateFullscreenLabel);
