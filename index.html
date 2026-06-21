@@ -1165,6 +1165,10 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
 <script>
 
+// TEMP DEBUG: add ?acdebug=1 to the URL to see App Check token diagnostics as toasts.
+// Remove this block once the App Check issue is resolved.
+window._AC_DEBUG = /[?&]acdebug=1/.test(location.search);
+
 // ══════════════════════════════════════════════════════════
 // ██  PDF PRINT ENGINE  ████████████████████████████████████
 // Universal PDF download: opens a styled print window.
@@ -1585,11 +1589,15 @@ async function _getAppCheckToken() {
     if (_acTokenCache && Date.now() < _acTokenCache.expireMs - 60000) {
       return _acTokenCache.token;
     }
-    if (typeof grecaptcha === 'undefined' || !grecaptcha.execute) return null;
+    if (typeof grecaptcha === 'undefined' || !grecaptcha.execute) {
+      if (window._AC_DEBUG) showToast('🐞 AC: grecaptcha not loaded');
+      return null;
+    }
     // Bound the reCAPTCHA call with a timeout — grecaptcha.ready()'s callback
     // can simply never fire on a stalled/flaky connection, which would hang
     // this whole function (and everything awaiting it, including login)
     // forever with no error and no feedback.
+    const _acStart = Date.now();
     const rcToken = await Promise.race([
       new Promise((res, rej) => {
         grecaptcha.ready(() => {
@@ -1598,18 +1606,25 @@ async function _getAppCheckToken() {
       }),
       new Promise((_, rej) => setTimeout(() => rej(new Error('reCAPTCHA timeout')), _FB_TIMEOUT_MS))
     ]);
+    if (window._AC_DEBUG) showToast('🐞 AC: rcToken ok in ' + (Date.now()-_acStart) + 'ms');
     const url = `https://firebaseappcheck.googleapis.com/v1/projects/${_AC_PROJECT}/apps/${FB_CONFIG.appId}:exchangeRecaptchaV3Token`;
+    const _exStart = Date.now();
     const resp = await _fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recaptcha_v3_token: rcToken })
     }, _FB_TIMEOUT_MS);
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      if (window._AC_DEBUG) { const t = await resp.text().catch(()=>''); showToast('🐞 AC: exchange HTTP ' + resp.status + ' in ' + (Date.now()-_exStart) + 'ms: ' + t.slice(0,80)); }
+      return null;
+    }
     const { token, ttl } = await resp.json();
+    if (window._AC_DEBUG) showToast('🐞 AC: token ok in ' + (Date.now()-_exStart) + 'ms');
     const ttlMs = ttl ? parseInt(ttl) * 1000 : 3600000;
     _acTokenCache = { token, expireMs: Date.now() + ttlMs };
     return token;
-  } catch {
+  } catch (e) {
+    if (window._AC_DEBUG) showToast('🐞 AC: threw — ' + (e.message||e));
     return null; // degrade gracefully — Firebase rules still protect via installId
   }
 }
