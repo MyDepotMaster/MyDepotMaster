@@ -2206,7 +2206,7 @@ function checkLicense(callback) {
   }
 
   const fbUrl = FB_CONFIG.databaseURL.replace(/\/+$/, '') + '/licenses/' + key + '.json';
-  fetch(fbUrl).then(async res => {
+  _fetchWithTimeout(fbUrl, {}, _FB_TIMEOUT_MS).then(async res => {
     if (!res.ok) { applyLocalFallback(); return; }
     const lic = await res.json();
     if (!lic) {
