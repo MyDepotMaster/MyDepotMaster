@@ -1582,6 +1582,13 @@ function initFirebase() {
 const _AC_SITE_KEY = '6LcLhystAAAAHClIZK1fQf1AbgAYJdDLwUNX9XT';
 const _AC_PROJECT  = 'realtime-database-be871';
 let _acTokenCache  = null; // { token, expireMs }
+// Negative cache: if the token exchange fails, remember that for a short
+// window so a single login attempt (which can make 5-6 sequential Firebase
+// calls) doesn't re-pay the full reCAPTCHA+exchange timeout cost on every
+// one of those calls. 30s is long enough to cover one login/action, short
+// enough that a transient blip self-heals quickly once it clears.
+let _acFailedUntil = 0;
+const _AC_FAIL_COOLDOWN_MS = 30000;
 
 async function _getAppCheckToken() {
   try {
@@ -1589,8 +1596,15 @@ async function _getAppCheckToken() {
     if (_acTokenCache && Date.now() < _acTokenCache.expireMs - 60000) {
       return _acTokenCache.token;
     }
+    // Recently failed — skip straight to null instead of retrying the same
+    // expensive (and likely still-failing) round trip again immediately.
+    if (_acFailedUntil && Date.now() < _acFailedUntil) {
+      if (window._AC_DEBUG) showToast('🐞 AC: skipped (recent failure, cooling down)');
+      return null;
+    }
     if (typeof grecaptcha === 'undefined' || !grecaptcha.execute) {
       if (window._AC_DEBUG) showToast('🐞 AC: grecaptcha not loaded');
+      _acFailedUntil = Date.now() + _AC_FAIL_COOLDOWN_MS;
       return null;
     }
     // Bound the reCAPTCHA call with a timeout — grecaptcha.ready()'s callback
@@ -1616,15 +1630,18 @@ async function _getAppCheckToken() {
     }, _FB_TIMEOUT_MS);
     if (!resp.ok) {
       if (window._AC_DEBUG) { const t = await resp.text().catch(()=>''); showToast('🐞 AC: exchange HTTP ' + resp.status + ' in ' + (Date.now()-_exStart) + 'ms: ' + t.slice(0,80)); }
+      _acFailedUntil = Date.now() + _AC_FAIL_COOLDOWN_MS;
       return null;
     }
     const { token, ttl } = await resp.json();
     if (window._AC_DEBUG) showToast('🐞 AC: token ok in ' + (Date.now()-_exStart) + 'ms');
     const ttlMs = ttl ? parseInt(ttl) * 1000 : 3600000;
     _acTokenCache = { token, expireMs: Date.now() + ttlMs };
+    _acFailedUntil = 0; // success — clear any prior cooldown
     return token;
   } catch (e) {
     if (window._AC_DEBUG) showToast('🐞 AC: threw — ' + (e.message||e));
+    _acFailedUntil = Date.now() + _AC_FAIL_COOLDOWN_MS;
     return null; // degrade gracefully — Firebase rules still protect via installId
   }
 }
@@ -4205,6 +4222,7 @@ async function doLogin(){
     USER = Object.freeze({...userObj}); // freeze to prevent console mutation
     localStorage.setItem(_TOS_PFX+userObj.username,'y');
     _savedUsersAdd(userObj.username); // remember this username on this device
+    _applyStaySignedIn(userObj.username); // honour device's "stay signed in" preference
     _idleReset(); // start inactivity watchdog
     showMainUI();
     updPill();
@@ -4320,11 +4338,88 @@ function doLogout(){
   const _origDoLogoutNow = _doLogoutNow;
   window._doLogoutNow = function() {
     _broadcastLogout();
+    _clearStaySignedIn(); // any logout path always ends a persisted session too
     _origDoLogoutNow();
   };
   // Re-expose so existing callers (doLogout modal, idle timer) pick up the patch
   window._doLogoutNow = window._doLogoutNow; // no-op re-assignment for clarity
 })();
+
+// ── STAY SIGNED IN ───────────────────────────────────────────────────────────
+// Optional, per-device, opt-in persistent session. Off by default. Stores ONLY
+// a username + expiry timestamp in localStorage — never a password or hash —
+// so a copied/stolen localStorage value can skip the login SCREEN on this one
+// device but cannot be replayed elsewhere or used to derive credentials.
+// Any explicit logout (button, idle timeout, remote-tab logout) always clears
+// this — "stay signed in" only survives a page reload/app relaunch, never an
+// actual logout.
+const _STAY_KEY = 'mdm_stay_signed_in';
+const _STAY_DAYS_DEFAULT = 30;
+
+function getStaySignedInPref(){
+  try {
+    const raw = localStorage.getItem(_STAY_KEY);
+    if (!raw) return { enabled:false, days:_STAY_DAYS_DEFAULT };
+    const p = JSON.parse(raw);
+    return { enabled: !!p.enabled, days: Number(p.days)||_STAY_DAYS_DEFAULT };
+  } catch { return { enabled:false, days:_STAY_DAYS_DEFAULT }; }
+}
+
+// Called on every successful login (password or biometric) to persist (or
+// clear) the session token according to the device's saved preference.
+function _applyStaySignedIn(username){
+  const pref = getStaySignedInPref();
+  if (!pref.enabled || !username) { _clearStaySignedIn(); return; }
+  try {
+    localStorage.setItem(_STAY_KEY, JSON.stringify({
+      enabled: true,
+      days: pref.days,
+      username: username.toLowerCase(),
+      expiresAt: Date.now() + pref.days*24*60*60*1000
+    }));
+  } catch {}
+}
+
+function _clearStaySignedIn(){
+  try {
+    const raw = localStorage.getItem(_STAY_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    // Preserve the on/off + days preference for next time; only drop the
+    // live session token (username/expiresAt) so the toggle itself survives
+    // an explicit logout — only the signed-in state is revoked.
+    localStorage.setItem(_STAY_KEY, JSON.stringify({ enabled: p.enabled, days: p.days }));
+  } catch {}
+}
+
+// Settings UI calls this when the user flips the toggle or changes duration.
+function setStaySignedInPref(enabled, days){
+  try {
+    localStorage.setItem(_STAY_KEY, JSON.stringify({
+      enabled: !!enabled,
+      days: Number(days)||_STAY_DAYS_DEFAULT
+    }));
+  } catch {}
+  // Turning OFF immediately revokes any live persisted session on this device.
+  if (!enabled) _clearStaySignedIn();
+  // Turning ON while already logged in starts protecting the CURRENT session
+  // immediately, rather than only taking effect on the next login.
+  else if (USER) _applyStaySignedIn(USER.username);
+}
+
+// Checked once at boot, before the login screen renders. Returns the
+// lowercase username to silently restore, or null if there is no valid,
+// unexpired persisted session.
+function _checkStaySignedIn(){
+  try {
+    const raw = localStorage.getItem(_STAY_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p.enabled || !p.username || !p.expiresAt) return null;
+    if (Date.now() >= p.expiresAt) { _clearStaySignedIn(); return null; }
+    return p.username;
+  } catch { return null; }
+}
 
 // ── AUTO-LOGOUT ON INACTIVITY ────────────────────────────────────────────────
 // Protects against physical access to a logged-in phone left unattended.
@@ -8946,6 +9041,8 @@ function renderSettings(){
 
     ${_renderBioSection()}
 
+    ${_renderStaySignedInSection()}
+
     <div class="sh">Change Password</div>
     <div class="card">
       <div id="pw-msg"></div>
@@ -9944,6 +10041,7 @@ async function startBioLogin(){
 
     _bfOk();
     USER=Object.freeze({...userObj}); // freeze to prevent console mutation — matches password login
+    _applyStaySignedIn(userObj.username); // honour device's "stay signed in" preference
     _idleReset(); // start inactivity watchdog
     showMainUI();
     updPill();
@@ -9989,6 +10087,49 @@ function _renderBioSection(){
       }
       <div id="bio-setup-msg" style="margin-top:8px"></div>
     </div>`;
+}
+
+// Settings helper — renders "Stay Signed In" card (sync, used inside renderSettings template)
+function _renderStaySignedInSection(){
+  const pref = getStaySignedInPref();
+  const days = pref.days || _STAY_DAYS_DEFAULT;
+  const opts = [7,14,30,60,90];
+  return `
+    <div class="sh">Stay Signed In</div>
+    <div class="card">
+      <div style="font-size:17px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+        Skip the login screen on this device until you sign out manually. Inactivity auto-logout still applies while the app is open.
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${pref.enabled?'14px':'0'}">
+        <span style="font-size:17px;color:var(--text)">Stay signed in on this device</span>
+        <label class="dw-toggle">
+          <input type="checkbox" id="stay-signed-in-toggle" ${pref.enabled?'checked':''} onchange="onToggleStaySignedIn(this.checked)"/>
+          <div class="dw-toggle-track"></div>
+          <div class="dw-toggle-thumb"></div>
+        </label>
+      </div>
+      ${pref.enabled ? `
+      <div class="fw" style="margin-bottom:0">
+        <div class="fl">Stay signed in for</div>
+        <select class="fi" id="stay-signed-in-days" onchange="onChangeStaySignedInDays(this.value)">
+          ${opts.map(d=>`<option value="${d}"${Number(days)===d?' selected':''}>${d} days</option>`).join('')}
+        </select>
+      </div>
+      <div class="ok-msg" style="margin-top:10px">✅ Active for <strong style="color:var(--white)">${esc(USER.username)}</strong> on this device.</div>
+      ` : ''}
+    </div>`;
+}
+
+function onToggleStaySignedIn(checked){
+  const days = Number((document.getElementById('stay-signed-in-days')||{}).value) || getStaySignedInPref().days;
+  setStaySignedInPref(checked, days);
+  showToast(checked ? '✅ Stay signed in enabled' : '🔒 Stay signed in disabled');
+  renderSettings();
+}
+
+function onChangeStaySignedInDays(val){
+  setStaySignedInPref(true, Number(val));
+  showToast('✅ Updated — staying signed in for ' + val + ' days');
 }
 
 // ── FONT SIZE ─────────────────────────────────────────────────────────────────
@@ -10574,6 +10715,42 @@ setTimeout(async ()=>{
     const parts=[di.name,di.district,di.country].filter(Boolean);
     const el=document.getElementById('login-depot-sub');
     if(el&&parts.length>0)el.textContent=parts.join(' · ');
+
+    // ── STAY SIGNED IN: silent auto-login ────────────────────────────────
+    // If this device has a valid, unexpired persisted session, restore it
+    // and skip the login screen entirely. Uses the exact same post-login
+    // sequence as a manual password login. Any failure here (account no
+    // longer exists locally, etc.) falls through to the normal login screen
+    // — never blocks the user from signing in manually.
+    const _stayUsername = _checkStaySignedIn();
+    if (_stayUsername && !USER) {
+      const _userObj = (DATA.users||[]).find(x=>(x.username||'').toLowerCase()===_stayUsername);
+      if (_userObj) {
+        USER = Object.freeze({..._userObj});
+        _idleReset();
+        showMainUI();
+        updPill();
+        applyDepotInfo();
+        initFirebase();
+        fbRestoreData().then(restored=>{
+          if(restored){ render(); showToast('☁ Data restored from cloud'); }
+        }).catch(()=>{});
+        checkLicense(async ()=>{
+          if(!(DATA.depotInfo&&DATA.depotInfo.setupDone)){
+            if(USER.role==='admin'){ showDepotSetupModal(); }
+          } else {
+            showTab('dashboard');
+            maybeShowFirstRun();
+          }
+          scheduleFbSync();
+        });
+        return; // skip showLanding() — already signed in
+      } else {
+        _clearStaySignedIn(); // stale token (account removed) — clean up
+      }
+    }
+    // ── END STAY SIGNED IN ────────────────────────────────────────────────
+
     showLanding();
   }catch(e){
     showLanding();

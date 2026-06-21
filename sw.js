@@ -25,6 +25,36 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v48 changes (2026-06-21):
+//   - Fix: login delay (30+ seconds, spread evenly across steps). Root cause:
+//     _getAppCheckToken() is called fresh before every single Firebase
+//     request, and one login makes 5-6 sequential Firebase calls (lockout
+//     check, username lookup, auth lookup, depot data restore, lockout
+//     clear, post-login cloud restore). When the reCAPTCHA→App Check token
+//     exchange is failing (it currently is — see Firebase Console App Check
+//     metrics, 0% verified), each of those 5-6 calls independently re-paid
+//     the full ~20s reCAPTCHA+exchange timeout before falling through to
+//     "no token" and proceeding. Added a 30s negative cache: once the
+//     exchange fails once, subsequent calls within that window return null
+//     immediately instead of retrying, so only the first call in a login
+//     pays the timeout cost. Does not fix the underlying App Check failure
+//     itself (still being diagnosed via ?acdebug=1) — only bounds its cost.
+//
+// v47 changes (2026-06-21):
+//   - New Settings → "Stay Signed In" toggle (off by default). Per-device,
+//     opt-in: when on, skips the login screen on app relaunch for up to a
+//     user-chosen number of days (7/14/30/60/90). Stores ONLY username +
+//     expiry timestamp in localStorage — never a password or hash — so a
+//     copied localStorage value can skip the login screen on that one
+//     device only, never be replayed elsewhere or used to derive
+//     credentials. Any explicit logout (button, idle auto-logout, or
+//     remote cross-tab logout) immediately revokes the persisted session;
+//     turning the toggle off does the same. Inactivity auto-logout still
+//     applies normally to a restored session.
+//
+// v46 changes (2026-06-21):
+//   - Cache version bump only (debug build for App Check diagnostics).
+//
 // v45 changes (2026-06-21):
 //   - Security: login now verifies the password against a small new
 //     depots/<id>/auth record (just username/passwordHash/role) BEFORE
@@ -212,7 +242,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v46';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v48';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
