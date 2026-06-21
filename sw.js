@@ -25,6 +25,16 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v44 changes (2026-06-21):
+//   - Fix: login could hang forever with zero feedback on a slow/flaky
+//     connection. _getAppCheckToken() (called before every Firebase request,
+//     including the brute-force lockout check that runs first on login) had
+//     no timeout on its reCAPTCHA promise or token-exchange fetch — both now
+//     bounded to 10s and degrade gracefully like the rest of the Firebase
+//     helpers. doLogin() also now validates the ToS checkbox and updates the
+//     button to "Checking…" BEFORE making any network call, so a tap always
+//     gives instant visual feedback instead of looking unresponsive.
+//
 // v43 changes (2026-06-21):
 //   - Firebase App Check (reCAPTCHA v3) integrated. All Firebase REST calls
 //     (fbGet, fbSet, fbSetIfNotExists, fbDelete) now attach an
@@ -191,7 +201,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v43';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v44';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 

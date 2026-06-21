@@ -1572,17 +1572,24 @@ async function _getAppCheckToken() {
       return _acTokenCache.token;
     }
     if (typeof grecaptcha === 'undefined' || !grecaptcha.execute) return null;
-    const rcToken = await new Promise((res, rej) => {
-      grecaptcha.ready(() => {
-        grecaptcha.execute(_AC_SITE_KEY, { action: 'firebase' }).then(res).catch(rej);
-      });
-    });
+    // Bound the reCAPTCHA call with a timeout — grecaptcha.ready()'s callback
+    // can simply never fire on a stalled/flaky connection, which would hang
+    // this whole function (and everything awaiting it, including login)
+    // forever with no error and no feedback.
+    const rcToken = await Promise.race([
+      new Promise((res, rej) => {
+        grecaptcha.ready(() => {
+          grecaptcha.execute(_AC_SITE_KEY, { action: 'firebase' }).then(res).catch(rej);
+        });
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('reCAPTCHA timeout')), _FB_TIMEOUT_MS))
+    ]);
     const url = `https://firebaseappcheck.googleapis.com/v1/projects/${_AC_PROJECT}/apps/${FB_CONFIG.appId}:exchangeRecaptchaV3Token`;
-    const resp = await fetch(url, {
+    const resp = await _fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recaptcha_v3_token: rcToken })
-    });
+    }, _FB_TIMEOUT_MS);
     if (!resp.ok) return null;
     const { token, ttl } = await resp.json();
     const ttlMs = ttl ? parseInt(ttl) * 1000 : 3600000;
@@ -3984,17 +3991,17 @@ async function doLogin(){
   const tosCheck = document.getElementById('tos-check');
   const tosBox = document.getElementById('tos-box');
 
-  // Block if already logged in
-  if (USER) return;
-
-  // Brute-force lockout check (async — reads Firebase first)
-  const lockMsg = await _bfLocked();
-  if (lockMsg) {
-    err.style.display = 'block';
-    err.textContent = lockMsg;
-    return;
+  // Block if already logged in — but self-heal if USER got stuck in memory
+  // while the login screen is still visible (e.g. an interrupted fingerprint
+  // login, or the app being backgrounded mid-login). Without this, a stale
+  // USER causes every subsequent tap on Sign In to silently do nothing.
+  if (USER) {
+    console.warn('doLogin: USER was already set while login screen is visible — resetting stale state.');
+    USER = null;
   }
 
+  // TOS check first — instant, no network — so a missing checkbox is never
+  // confused with a slow/stalled connection.
   if(!tosCheck||!tosCheck.checked){
     err.style.display='block';
     err.textContent='⚠️ You must read and accept the Terms of Service before signing in.';
@@ -4004,7 +4011,22 @@ async function doLogin(){
   }
   if(tosBox){tosBox.style.borderColor='var(--green)';tosBox.style.background='#001a10';}
   err.style.display='none';
-  btn.disabled=true; btn.textContent='🔐 Signing in…';
+  // Give instant feedback the moment the tap is accepted, BEFORE any network
+  // call. The brute-force lockout check below reads from Firebase and can take
+  // several seconds (or longer) on a slow connection — without this line the
+  // button would sit unchanged the whole time, looking like the tap did nothing.
+  btn.disabled=true; btn.textContent='🔐 Checking…';
+
+  // Brute-force lockout check (async — reads Firebase first)
+  const lockMsg = await _bfLocked();
+  if (lockMsg) {
+    btn.disabled=false; btn.textContent='🔒 Sign In';
+    err.style.display = 'block';
+    err.textContent = lockMsg;
+    return;
+  }
+
+  btn.textContent='🔐 Signing in…';
 
   try {
     await initData();
@@ -9817,6 +9839,13 @@ function bioRemoveAndRefresh(){
 
 // Perform fingerprint login from the login screen
 async function startBioLogin(){
+  // Self-heal a stale USER left over from an interrupted previous login
+  // attempt (e.g. an earlier fingerprint prompt or password login that got
+  // cut off before showMainUI() ran). See matching guard in doLogin().
+  if (USER) {
+    console.warn('startBioLogin: USER was already set while login screen is visible — resetting stale state.');
+    USER = null;
+  }
   const btn=document.getElementById('bio-login-btn');
   const err=document.getElementById('login-err');
   const resetBtn=()=>{
