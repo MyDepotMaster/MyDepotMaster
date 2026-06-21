@@ -1969,6 +1969,7 @@ const TIER_FEATURES = {
     'dashboard_customize',       // Toggle / reorder dashboard widgets
     'biometric_login',           // Fingerprint / Face ID login
     'setup_checklist',           // First-run onboarding checklist
+    'custom_branding',           // Custom logo & accent colour on staff ID cards
   ],
 
   // ── MULTISITE ────────────────────────────────────────────────────────────
@@ -5317,6 +5318,8 @@ function saveGenRec(){if(isReadOnly()){alert("🔒 This account is in read-only 
     supplierName=supNameIn.value.trim().toUpperCase();
   }
   const payload={id:uid(),date:document.getElementById('gr-date').value,time:nowTime(),itemName:name,received:effectiveRec,good:effectiveGood,damaged:effectiveDmg,condition:condVal,rejectedQty:condVal==='rejected'?rec:0,rejectionReason:rejectReason,expiryDate:document.getElementById('gr-expiry')?.value||'',notes:uc(document.getElementById('gr-notes').value),purchasePrice:condVal==='rejected'?0:pprice,creditStatus:document.getElementById('gr-credit')?.value||'paid',supplierId,supplierName};
+  const totalCost=condVal==='rejected'?0:(rec*pprice);
+  if(!confirm(`Confirm Item Received:\n${name} · ${rec} units${pprice>0?` × ${cur()}${pprice.toFixed(2)} = ${cur()}${totalCost.toFixed(2)}`:''}\nCondition: ${condVal.toUpperCase()}${supplierName?`\nSupplier: ${supplierName}`:''}\n\nProceed?`))return;
   updateData(d=>{
     // Remember price per item
     const prices={...(d.inventoryPrices||{})};
@@ -5371,6 +5374,8 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
   const creditStatus=document.getElementById('gi-credit')?.value||'paid';
   const partialAmt=creditStatus==='partial'?Number(document.getElementById('gi-partial-amt')?.value||0):0;
   const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value),sellingPrice:sprice,creditStatus,partialPaid:partialAmt};
+  const totalRev=qty*sprice;
+  if(!confirm(`Confirm Item Issued:\n${name} · ${qty} units${sprice>0?` × ${cur()}${sprice.toFixed(2)} = ${cur()}${totalRev.toFixed(2)}`:''}\nPayment: ${creditStatus.toUpperCase()}\n\nProceed?`))return;
   updateData(d=>{
     const prices={...(d.inventoryPrices||{})};
     if(sprice>0)prices[name]={...(prices[name]||{}),sellingPrice:sprice};
@@ -6154,6 +6159,9 @@ function saveMaizeRec(){if(isReadOnly()){alert("🔒 This account is in read-onl
   const lotId=existingRec?existingRec.lotId:('LOT-'+uid().toUpperCase().slice(0,8));
   const payload={id:uid(),batchName:batch,date:document.getElementById('mr-date').value,time:nowTime(),received:rec,unitPrice,supplierId:mSupplierId,supplierName:mSupplierName,lotId};
   const cid=CCOM;
+  const comName=getCom(cid).name, comUnit=getCom(cid).unit;
+  const totalCost=rec*unitPrice;
+  if(!confirm(`Confirm ${comName} Received:\nBatch: ${batch} · ${rec} ${comUnit}${unitPrice>0?` × ${cur()}${unitPrice.toFixed(2)} = ${cur()}${totalCost.toFixed(2)}`:''}${mSupplierName?`\nSupplier: ${mSupplierName}`:''}\n\nProceed?`))return;
   updateData(d=>{const cr={...(d.commodityReceived||{})};cr[cid]=[...(cr[cid]||[]),payload];return{...d,commodityReceived:cr};});
   logAuditEvent('CREATE',`${getCom(cid).name} Received`,`Batch: ${batch} · Lot: ${lotId} · Qty: ${rec}`);
   closeModal();
@@ -6202,6 +6210,9 @@ function saveMaizeIss(){if(isReadOnly()){alert("🔒 This account is in read-onl
   const partialPaid=creditStatus==='partial'?Number(document.getElementById('mi-partial-amt')?.value||0):0;
   const payload={id:uid(),batchName:batch,date:document.getElementById('mi-date').value,time:nowTime(),transporter:trans,issued:qty,salePrice,sourceReceiveId,creditStatus,partialPaid};
   const cid=CCOM;
+  const comName=getCom(cid).name, comUnit=getCom(cid).unit;
+  const totalRev=qty*salePrice;
+  if(!confirm(`Confirm ${comName} Issued:\nBatch: ${batch} · ${qty} ${comUnit}${salePrice>0?` × ${cur()}${salePrice.toFixed(2)} = ${cur()}${totalRev.toFixed(2)}`:''}\nTransporter: ${trans}\nPayment: ${creditStatus.toUpperCase()}\n\nProceed?`))return;
   updateData(d=>{const ci={...(d.commodityIssued||{})};ci[cid]=[...(ci[cid]||[]),payload];return{...d,commodityIssued:ci};});
   logAuditEvent('CREATE',`${getCom(cid).name} Issued`,`Batch: ${batch} · Qty: ${qty} · Transporter: ${trans}`);
   closeModal();
@@ -6300,6 +6311,7 @@ function saveTransport(){if(isReadOnly()){alert("🔒 This account is in read-on
     status:document.getElementById('tl-status').value,
     notes:uc(document.getElementById('tl-notes').value)
   };
+  if(!confirm(`Confirm Transport Entry:\nVehicle: ${vehicle} · Driver: ${driver}\nBatch: ${batch} · ${qty} ${com.unit}\nRoute: ${payload.origin||'—'} → ${payload.destination||'—'}\n\nProceed?`))return;
   updateData(d=>({...d,transportLog:[...(d.transportLog||[]),payload]}));
   logAuditEvent('CREATE','Transport Log',`Vehicle:${vehicle} · Driver:${driver} · Batch:${batch} · Qty:${qty}`);
   closeModal();
@@ -7035,6 +7047,7 @@ function openStaffForm(){
   openModal(`
     <div class="mtitle">👤 Register Staff</div>
     <div class="fw"><div class="fl">Full Name <span style="color:var(--red)">*</span></div><input class="fi" id="sf-name" placeholder="E.G. JOHN BANDA"/></div>
+    <div class="fw"><div class="fl">Profile Photo (optional)</div><input type="file" class="fi" id="sf-photo" accept="image/png,image/jpeg,image/webp" style="padding:9px"></div>
     <div class="fw"><div class="fl">Job Role <span style="color:var(--red)">*</span></div><select class="fi" id="sf-role">${roleOpts||'<option>No roles defined</option>'}</select></div>
     <div class="fw"><div class="fl">Contract Type</div><select class="fi" id="sf-contract"><option value="permanent">PERMANENT</option><option value="casual">CASUAL</option><option value="seasonal">SEASONAL</option><option value="probation">PROBATION</option></select></div>
     <div class="fw"><div class="fl">Date Joined <span style="color:var(--red)">*</span></div><input class="fi" type="date" id="sf-joined" value="${today()}"/></div>
@@ -7051,9 +7064,21 @@ function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only m
   if(!name){alert('Enter staff name.');return;}
   const joined=document.getElementById('sf-joined').value;
   if(!joined){alert('Enter date joined.');return;}
-  const payload={id:uid(),name,role:document.getElementById('sf-role').value,contractType:document.getElementById('sf-contract').value||'permanent',dateJoined:joined,phone:document.getElementById('sf-phone').value,employeeId:(document.getElementById('sf-empid').value||'').trim(),emergencyContactName:uc(document.getElementById('sf-ecname').value),emergencyContactPhone:(document.getElementById('sf-ecphone').value||'').trim(),notes:uc(document.getElementById('sf-notes').value),status:'active'};
-  updateData(d=>({...d,staff:[...d.staff,payload]}));
-  closeModal();
+  const photoFile=document.getElementById('sf-photo')?.files?.[0]||null;
+  const finish=(photoDataUrl)=>{
+    const payload={id:uid(),name,role:document.getElementById('sf-role').value,contractType:document.getElementById('sf-contract').value||'permanent',dateJoined:joined,phone:document.getElementById('sf-phone').value,employeeId:(document.getElementById('sf-empid').value||'').trim(),emergencyContactName:uc(document.getElementById('sf-ecname').value),emergencyContactPhone:(document.getElementById('sf-ecphone').value||'').trim(),notes:uc(document.getElementById('sf-notes').value),status:'active',photoDataUrl:photoDataUrl||null};
+    updateData(d=>({...d,staff:[...d.staff,payload]}));
+    closeModal();
+  };
+  if(photoFile){
+    if(photoFile.size > STAFF_PHOTO_MAX_BYTES){ alert('Photo too large. Please use an image under 350KB, or add it later from the staff profile.'); finish(null); return; }
+    const reader=new FileReader();
+    reader.onload=()=>finish(reader.result);
+    reader.onerror=()=>{ alert('Could not read that photo — staff saved without it. You can add it later from the profile.'); finish(null); };
+    reader.readAsDataURL(photoFile);
+  } else {
+    finish(null);
+  }
 }
 
 // ── TWO-STAGE SHIFT LOG ───────────────────────────────────────────────────────
@@ -7600,7 +7625,7 @@ function renderStaffList(){
       const dimmed=s.status==='expelled'?'opacity:.55;':'';
       return`<div class="sl-card" style="${dimmed}" onclick="openStaffDetail('${s.id}')">
         <div style="display:flex;align-items:center;gap:12px">
-          <div class="sl-avatar ${avatarClass}">${initials(s.name)}</div>
+          <div class="sl-avatar ${avatarClass}" style="${s.photoDataUrl?'overflow:hidden;padding:0':''}">${s.photoDataUrl?`<img src="${s.photoDataUrl}" style="width:100%;height:100%;object-fit:cover">`:initials(s.name)}</div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--white)">${esc(s.name)}</span>
@@ -7685,10 +7710,17 @@ function openStaffDetail(id){
         :`<div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','suspended')">⏸ Suspend</button><button class="btn bo" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','resigned')">🚪 Resigned</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button></div>`
   ):'';
   const editDetailsBtn=USER.role==='admin'?`<button class="btn bo bsm" style="width:100%;margin-bottom:8px" onclick="closeModal();setTimeout(()=>openEditStaffDetails('${s.id}'),50)">✏️ Edit Details</button>`:'';
+  const removePhotoBtn=(USER.role==='admin'&&s.photoDataUrl)?`<button class="btn bo bsm" style="width:100%;margin-bottom:8px;color:var(--red);border-color:rgba(192,57,43,.4)" onclick="removeStaffPhoto('${s.id}')">🗑 Remove Photo</button>`:'';
 
   openModal(`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
-      <div class="sl-avatar st" style="width:50px;height:50px;font-size:25px">${s.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>
+      <div style="position:relative;flex-shrink:0">
+        <div class="sl-avatar st" style="width:50px;height:50px;font-size:25px;overflow:hidden;${USER.role==='admin'?'cursor:pointer':''}" ${USER.role==='admin'?`onclick="triggerStaffPhotoUpload('${s.id}')"`:''}>
+          ${s.photoDataUrl?`<img src="${s.photoDataUrl}" style="width:100%;height:100%;object-fit:cover">`:s.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}
+        </div>
+        ${USER.role==='admin'?`<div onclick="triggerStaffPhotoUpload('${s.id}')" style="position:absolute;bottom:-3px;right:-3px;width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid var(--bg);cursor:pointer">📷</div>
+        <input type="file" id="staff-photo-input-${s.id}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleStaffPhotoUpload('${s.id}',this)">`:''}
+      </div>
       <div>
         <div style="font-family:var(--fh);font-size:25px;font-weight:800;color:var(--white)">${esc(s.name)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="tag">${esc(s.role)}</span>${statusBadge}${s.contractType&&s.contractType!=='permanent'?`<span style="background:rgba(139,92,246,.15);color:var(--purple);border-radius:6px;padding:1px 7px;font-size:15px;font-weight:700">${s.contractType.toUpperCase()}</span>`:''}</div>
@@ -7715,6 +7747,7 @@ function openStaffDetail(id){
     ${taskBreakdown?`<div style="margin-bottom:14px"><div style="font-size:16px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:4px">TASK BREAKDOWN</div>${taskBreakdown}</div>`:''}
     ${recentLogs?`<div style="margin-bottom:14px"><div style="font-size:16px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:4px">RECENT SESSIONS</div>${recentLogs}</div>`:''}
     ${editDetailsBtn}
+    ${removePhotoBtn}
     <button class="btn bo bsm" style="width:100%;margin-bottom:8px;color:var(--green);border-color:rgba(0,214,143,.4)" onclick="printStaffIdCard('${s.id}')">🪪 Print ID Card</button>
     ${USER.role==='admin'?`<button class="btn bo bsm" style="width:100%;margin-bottom:8px" onclick="closeModal();setTimeout(()=>openStaffWarnings('${s.id}'),50)">⚠️ Disciplinary / Warnings</button>`:''}
     ${actionBtns?`<div style="margin-top:14px">${actionBtns}</div>`:''}
@@ -7724,6 +7757,9 @@ function openStaffDetail(id){
 // ── EDIT STAFF DETAILS ───────────────────────────────────────────────────────
 function openEditStaffDetails(id){
   if(!requireAdmin('edit staff details'))return;
+  requireAdminPassword('edit staff details', ()=>_openEditStaffDetails(id));
+}
+function _openEditStaffDetails(id){
   const s=DATA.staff.find(x=>String(x.id)===String(id));
   if(!s){alert('Staff member not found.');return;}
   const roleOpts=allRoleNames().map(r=>`<option${r===s.role?' selected':''}>${r}</option>`).join('');
@@ -7756,6 +7792,41 @@ function saveEditStaffDetails(id){
   showToast('✅ Staff details updated.');
 }
 
+// ── STAFF PROFILE PHOTO ──────────────────────────────────────────────────────
+const STAFF_PHOTO_MAX_BYTES = 350 * 1024; // keep document size reasonable for Firebase/localStorage
+function triggerStaffPhotoUpload(id){
+  if(!requireAdmin('change staff photo'))return;
+  const input=document.getElementById('staff-photo-input-'+id);
+  if(input)input.click();
+}
+function handleStaffPhotoUpload(id, input){
+  if(!requireAdmin('change staff photo'))return;
+  const file=input.files && input.files[0];
+  if(!file)return;
+  if(file.size > STAFF_PHOTO_MAX_BYTES){
+    alert('Image too large. Please use a photo under 350KB (try a smaller export or a compressed JPEG).');
+    input.value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,photoDataUrl:reader.result}:s)}));
+    logAuditEvent('EDIT','Staff Photo',`Staff ID:${id} · Photo updated`);
+    closeModal();
+    setTimeout(()=>openStaffDetail(id),100);
+  };
+  reader.onerror=()=>{ alert('Could not read that image. Try a different file.'); };
+  reader.readAsDataURL(file);
+}
+function removeStaffPhoto(id){
+  if(!requireAdmin('remove staff photo'))return;
+  if(!confirm('Remove this staff member\'s photo?'))return;
+  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,photoDataUrl:null}:s)}));
+  closeModal();
+  setTimeout(()=>openStaffDetail(id),100);
+}
+
+
 // ══════════════════════════════════════════════════════════
 // FIX 29 — Staff ID Card Generator
 // Prints a credit-card-sized ID card (85.6 × 54mm) using the
@@ -7765,6 +7836,10 @@ function saveEditStaffDetails(id){
 // the print dialog works on all devices; cards are centred.
 // ══════════════════════════════════════════════════════════
 function printStaffIdCard(id) {
+  if(!requireAdmin('print staff ID card'))return;
+  requireAdminPassword('print staff ID card', ()=>_printStaffIdCard(id));
+}
+function _printStaffIdCard(id) {
   if(!hasFeature('staff_id_card')){ showUpgradePrompt('staff_id_card'); return; }
   const s = DATA.staff.find(x => String(x.id) === String(id));
   if (!s) { alert('Staff member not found.'); return; }
@@ -7783,6 +7858,21 @@ function printStaffIdCard(id) {
   const stColor = statusColors[s.status||'active'] || '#1E8449';
   const stLabel = statusLabel[s.status||'active']  || 'ACTIVE';
 
+  // ── Custom branding (Pro feature) ──────────────────────────────────────
+  // Subscriber-controlled: logo + accent colour, read from depotInfo.
+  // NOT subscriber-controlled: the "MDM" badge text below is a hardcoded
+  // constant, never sourced from depotInfo/DATA — no upload or setting can
+  // ever replace, rename, or hide it.
+  const MDM_BADGE_TEXT = 'MDM'; // locked — do not derive from user data
+  const brandingEnabled = hasFeature('custom_branding');
+  const accentColor = (brandingEnabled && di.brandColor) ? di.brandColor : '#27AE60';
+  const accentGradientEnd = (brandingEnabled && di.brandColor) ? di.brandColor : '#1E8449';
+  const accentTextColor = _brandTextColor(accentColor);
+  const logoDataUrl = (brandingEnabled && di.logoDataUrl) ? di.logoDataUrl : null;
+  const headerLogoHtml = logoDataUrl
+    ? `<img src="${logoDataUrl}" style="height:20px;max-width:60px;object-fit:contain;margin-right:6px;vertical-align:middle">`
+    : '';
+
   const html = `
 <style>
   @page { size: A4; margin: 0; }
@@ -7800,12 +7890,12 @@ function printStaffIdCard(id) {
     display: flex; flex-direction: column;
   }
   .card-header {
-    background: linear-gradient(90deg, #27AE60, #1E8449);
+    background: linear-gradient(90deg, ${accentColor}, ${accentGradientEnd});
     padding: 6px 12px;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .card-company { font-size: 9.5pt; font-weight: 900; color: #1A1A2E; letter-spacing: -.2px; }
-  .card-mdm-badge { font-size: 8pt; font-weight: 900; color: #1A1A2E; background: rgba(0,0,0,.15); border-radius: 4px; padding: 1px 5px; }
+  .card-company { font-size: 9.5pt; font-weight: 900; color: ${accentTextColor}; letter-spacing: -.2px; display:flex; align-items:center; }
+  .card-mdm-badge { font-size: 8pt; font-weight: 900; color: ${accentTextColor}; background: rgba(0,0,0,.15); border-radius: 4px; padding: 1px 5px; flex-shrink:0; }
   .card-body { flex: 1; display: flex; align-items: center; padding: 10px 12px; gap: 12px; }
   .card-avatar {
     width: 60px; height: 60px; border-radius: 50%;
@@ -7833,9 +7923,9 @@ function printStaffIdCard(id) {
     color: #fff; display: flex; flex-direction: column;
   }
   .card-back-header {
-    background: linear-gradient(90deg, #27AE60, #1E8449);
+    background: linear-gradient(90deg, ${accentColor}, ${accentGradientEnd});
     padding: 5px 12px; text-align: center;
-    font-size: 8.5pt; font-weight: 900; color: #1A1A2E; letter-spacing: .3px;
+    font-size: 8.5pt; font-weight: 900; color: ${accentTextColor}; letter-spacing: .3px;
   }
   .card-back-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 12px; gap: 4px; }
   .card-back-row { font-size: 7.5pt; color: #8ab0cc; line-height: 1.6; }
@@ -7844,6 +7934,7 @@ function printStaffIdCard(id) {
   .card-sig-line { border-top: 1px solid rgba(255,255,255,.2); margin: 6px 0 2px; width: 120px; }
   .card-sig-label { font-size: 6.5pt; color: #A0A0A0; }
   .card-barcode { font-family: 'Courier New', monospace; font-size: 7pt; color: #2a5070; letter-spacing: 2px; word-break: break-all; }
+  .card-powered-by { font-size: 6pt; color: #4d8fb0; text-align: right; margin-top: 2px; letter-spacing: .2px; }
   .print-label { font-size: 9pt; color: #555; text-align: center; }
   @media print {
     body { background: #fff; padding: 0; justify-content: flex-start; gap: 0; }
@@ -7860,11 +7951,11 @@ function printStaffIdCard(id) {
     <div class="print-label no-print" style="margin-bottom:6px;font-weight:700">▼ FRONT</div>
     <div class="card card-front">
       <div class="card-header">
-        <div class="card-company">${esc(company)}</div>
-        <div class="card-mdm-badge">MDM</div>
+        <div class="card-company">${headerLogoHtml}${esc(company)}</div>
+        <div class="card-mdm-badge">${MDM_BADGE_TEXT}</div>
       </div>
       <div class="card-body">
-        <div class="card-avatar">${initials}</div>
+        <div class="card-avatar" style="${s.photoDataUrl?'overflow:hidden;padding:0':''}">${s.photoDataUrl?`<img src="${s.photoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:initials}</div>
         <div class="card-info">
           <div class="card-name">${esc(s.name)}</div>
           <div class="card-role">${esc(s.role)}</div>
@@ -7904,6 +7995,7 @@ function printStaffIdCard(id) {
       <div class="card-back-footer">
         <div class="card-sig-line"></div>
         <div class="card-sig-label">Authorised Signature &amp; Stamp</div>
+        <div class="card-powered-by">Powered by MyDepotMaster</div>
       </div>
     </div>
   </div>
@@ -7929,9 +8021,11 @@ function printStaffIdCard(id) {
 function openStaffWarnings(id){
   if(!hasFeature('staff_warnings')){ showUpgradePrompt('staff_warnings'); return; }
   if(!requireAdmin('view disciplinary records'))return;
-  const s=DATA.staff.find(x=>String(x.id)===String(id));
-  if(!s){alert('Staff member not found.');return;}
-  _renderWarningsModal(id);
+  requireAdminPassword('view disciplinary records', ()=>{
+    const s=DATA.staff.find(x=>String(x.id)===String(id));
+    if(!s){alert('Staff member not found.');return;}
+    _renderWarningsModal(id);
+  });
 }
 function _renderWarningsModal(id){
   const s=DATA.staff.find(x=>String(x.id)===String(id));
@@ -8010,6 +8104,8 @@ function _confirmPayment(){
   });
 }
 function savePayment(sid, amount, date, notes){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
+  const s=DATA.staff.find(x=>String(x.id)===String(sid));
+  if(!confirm(`Confirm Staff Payment:\n${s?s.name:'Staff'} · ${cur()}${Number(amount).toFixed(2)}\nDate: ${fmtDate(date)}${notes?`\nNotes: ${notes}`:''}\n\nProceed?`))return;
   const payload={id:uid(),staffId:sid,date,amount,notes};
   updateData(d=>({...d,staffPayments:[...(d.staffPayments||[]),payload]}));
   logAuditEvent('CREATE','Staff Payment',`Staff ID:${sid} · Amount:${amount} · Date:${date}`);
@@ -8553,6 +8649,35 @@ function renderSettings(){
       <div class="fw"><div class="fl">Company Name</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).name||'—'}</div></div>
       <div class="fw"><div class="fl">District</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).district||'—'}</div></div>
       <div class="fw"><div class="fl">Country</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).country||'—'}</div></div>
+    </div>
+    <div class="sh">Branding ${hasFeature('custom_branding')?'':'🔒'}</div>
+    <div class="card">
+      ${!hasFeature('custom_branding')?`
+        <div style="font-size:17px;color:var(--muted);margin-bottom:10px;line-height:1.6">Add your own logo and accent colour to staff ID cards. The MyDepotMaster mark always stays on the card — this only customises your company's look.</div>
+        <button class="btn bg bsm" style="width:100%" onclick="showUpgradePrompt('custom_branding')">⭐ Unlock Branding (Pro)</button>
+      `:`
+        <div style="font-size:16px;color:var(--muted);margin-bottom:14px;line-height:1.6">Customise your staff ID cards with your own logo and accent colour. The MyDepotMaster mark is always shown and cannot be removed.</div>
+        <div class="fw">
+          <div class="fl">Company Logo</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+            <div id="brand-logo-preview" style="width:52px;height:52px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+              ${(DATA.depotInfo||{}).logoDataUrl?`<img src="${(DATA.depotInfo||{}).logoDataUrl}" style="width:100%;height:100%;object-fit:contain">`:`<span style="font-size:11px;color:var(--muted)">No logo</span>`}
+            </div>
+            <input type="file" id="brand-logo-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="flex:1;font-size:13px" onchange="handleBrandLogoUpload(this)">
+          </div>
+          <div id="brand-logo-msg"></div>
+          ${(DATA.depotInfo||{}).logoDataUrl?`<button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="removeBrandLogo()">🗑 Remove Logo</button>`:''}
+        </div>
+        <div class="fw" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+          <div class="fl">Accent Colour</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <input type="color" id="brand-color-input" value="${(DATA.depotInfo||{}).brandColor||'#27AE60'}" style="width:48px;height:38px;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:none">
+            <button class="btn bg bsm" style="width:auto;flex:1" onclick="saveBrandColor()">Save Colour</button>
+          </div>
+          <div id="brand-color-msg" style="margin-top:6px"></div>
+          <div style="font-size:14px;color:var(--muted);margin-top:6px;line-height:1.6">Used for the header bar and highlights on printed staff ID cards. Text colour auto-adjusts for readability.</div>
+        </div>
+      `}
     </div>
     <div class="sh">Display Preferences</div>
     <div class="card">
@@ -9366,14 +9491,21 @@ function exportAuditLog(){
   if(!hasFeature('audit_log')){ showUpgradePrompt('audit_log'); return; }
   const log=DATA.auditLog||[];
   if(log.length===0){alert('No audit events recorded yet. Events are captured from this point forward whenever records are created, edited, or deleted.');return;}
-  const headers=['Date / Time','User','Role','Action','Area','Detail'];
-  const rows=log.slice().sort((a,b)=>a.ts.localeCompare(b.ts)).map(e=>[
-    (e.date||'')+(e.time?' '+e.time:''),e.user||'',e.role||'',
-    e.action||'',e.entity||'',e.detail||''
-  ]);
-  const body=_pdfHeader('Audit Log')+_pdfTable(headers,rows)+_pdfFooter(`${log.length} event${log.length!==1?'s':''}`);
-  _pdfPrint(body,'MDM Audit Log');
-  showToast(`📋 Opening PDF for ${log.length} audit event${log.length!==1?'s':''}`);
+  openDateRangeModal({
+    title:'📋 Export Audit Log',
+    onConfirm:(startStr,endStr,label)=>{
+      const filtered=log.filter(e=>e.date>=startStr&&e.date<=endStr).slice().sort((a,b)=>a.ts.localeCompare(b.ts));
+      if(filtered.length===0){alert(`No audit events found between ${label}.`);return;}
+      const headers=['Date / Time','User','Role','Action','Area','Detail'];
+      const rows=filtered.map(e=>[
+        (e.date||'')+(e.time?' '+e.time:''),e.user||'',e.role||'',
+        e.action||'',e.entity||'',e.detail||''
+      ]);
+      const body=_pdfHeader('Audit Log — '+label)+_pdfTable(headers,rows)+_pdfFooter(`${filtered.length} event${filtered.length!==1?'s':''}`);
+      _pdfPrint(body,'MDM Audit Log');
+      showToast(`📋 Opening PDF for ${filtered.length} audit event${filtered.length!==1?'s':''}`);
+    }
+  });
 }
 
 // ── Fix 26: Audit Log Viewer ──────────────────────────────────────────────────
@@ -9924,6 +10056,52 @@ function saveShiftHours(){
   updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),standardShiftHours:val}}));
   if(msg)msg.innerHTML='<div class="ok-msg">✅ Standard shift set to '+val+' hours.</div>';
   setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+
+// ── CUSTOM BRANDING (logo + accent colour for staff ID cards) ───────────────
+// Pro-tier feature. The MyDepotMaster mark on the ID card template is always
+// rendered from a hardcoded constant — never from depotInfo — so nothing
+// uploaded or chosen here can ever replace or hide it.
+const BRAND_LOGO_MAX_BYTES = 350 * 1024; // ~350KB keeps localStorage/Firebase doc size sane
+function handleBrandLogoUpload(input){
+  if(!requireAdmin('change company logo'))return;
+  const msg=document.getElementById('brand-logo-msg');
+  const file=input.files && input.files[0];
+  if(!file)return;
+  if(file.size > BRAND_LOGO_MAX_BYTES){
+    if(msg)msg.innerHTML='<div class="err-box">Image too large. Please use an image under 350KB (try a smaller PNG/JPEG export).</div>';
+    input.value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),logoDataUrl:reader.result}}));
+    if(msg)msg.innerHTML='<div class="ok-msg">✅ Logo updated.</div>';
+    setTimeout(()=>{showTab('settings');},600);
+  };
+  reader.onerror=()=>{ if(msg)msg.innerHTML='<div class="err-box">Could not read that file. Try a different image.</div>'; };
+  reader.readAsDataURL(file);
+}
+function removeBrandLogo(){
+  if(!requireAdmin('remove company logo'))return;
+  if(!confirm('Remove your company logo from staff ID cards?'))return;
+  updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),logoDataUrl:null}}));
+  showTab('settings');
+}
+function saveBrandColor(){
+  if(!requireAdmin('change accent colour'))return;
+  const val=document.getElementById('brand-color-input')?.value||'#27AE60';
+  const msg=document.getElementById('brand-color-msg');
+  updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),brandColor:val}}));
+  if(msg)msg.innerHTML='<div class="ok-msg">✅ Accent colour updated.</div>';
+  setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+// Picks black or white text for readability against any chosen accent colour (WCAG-ish luminance check)
+function _brandTextColor(hex){
+  if(!hex || hex[0]!=='#') return '#1A1A2E';
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const luminance=(0.299*r + 0.587*g + 0.114*b)/255;
+  return luminance > 0.55 ? '#1A1A2E' : '#FFFFFF';
 }
 
 function saveLeaveEntitlement(){
@@ -11461,31 +11639,70 @@ function renderProfitLoss(){
 }
 
 
-function openPrintSummary(){
-  const now=new Date();
-  const nowM=now.getMonth();const nowY=now.getFullYear();
-  const monthOpts=['January','February','March','April','May','June','July','August','September','October','November','December']
-    .map((m,i)=>`<option value="${i}"${i===nowM?' selected':''}>${m}</option>`).join('');
-  const yrOpts=[nowY-2,nowY-1,nowY].map(y=>`<option value="${y}"${y===nowY?' selected':''}>${y}</option>`).join('');
+// ── Reusable date-range picker for any printable item ──────────────────────
+// Call openDateRangeModal({ title, onConfirm: (startISO, endISO, label) => {...} })
+// Presets auto-fill the date inputs; user can also pick fully custom dates,
+// including cross-month ranges like "12 July – 12 August 2026".
+function _fmtPeriodLabel(startStr, endStr){
+  const s = new Date(startStr+'T00:00:00'), e = new Date(endStr+'T00:00:00');
+  const sameYear = s.getFullYear()===e.getFullYear();
+  const isFullMonthSpan = s.getDate()===1 && e.getDate()===new Date(e.getFullYear(),e.getMonth()+1,0).getDate();
+  if (isFullMonthSpan){
+    if (s.getMonth()===e.getMonth() && sameYear) return s.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    const sLbl = s.toLocaleDateString('en-GB', sameYear?{month:'long'}:{month:'long',year:'numeric'});
+    const eLbl = e.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    return `${sLbl} – ${eLbl}`;
+  }
+  const sLbl = s.toLocaleDateString('en-GB', sameYear?{day:'numeric',month:'long'}:{day:'numeric',month:'long',year:'numeric'});
+  const eLbl = e.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  return `${sLbl} – ${eLbl}`;
+}
+function openDateRangeModal({title='🖨️ Select Print Period', onConfirm, allowAllTime=true}={}){
+  const today=new Date();
+  const iso=d=>d.toISOString().slice(0,10);
+  const thisMonthStart=new Date(today.getFullYear(),today.getMonth(),1);
+  const thisMonthEnd=new Date(today.getFullYear(),today.getMonth()+1,0);
+  window._drmConfirm = onConfirm;
+  const setRange=(s,e)=>{
+    document.getElementById('drm-start').value=iso(s);
+    document.getElementById('drm-end').value=iso(e);
+  };
   openModal(`
-    <div class="mtitle">🖨️ Print Period Summary</div>
-    <div style="font-size:18px;color:var(--muted);margin-bottom:14px">Generate a printable HTML report for the selected period.</div>
+    <div class="mtitle">${title}</div>
+    <div style="font-size:16px;color:var(--muted);margin-bottom:12px">Choose a quick range or set custom dates.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+      <button type="button" class="btn bo bsm" onclick="(()=>{const t=new Date();document.getElementById('drm-start').value=new Date(t.getFullYear(),t.getMonth(),1).toISOString().slice(0,10);document.getElementById('drm-end').value=new Date(t.getFullYear(),t.getMonth()+1,0).toISOString().slice(0,10);})()">This Month</button>
+      <button type="button" class="btn bo bsm" onclick="(()=>{const t=new Date();const m=new Date(t.getFullYear(),t.getMonth()-1,1);document.getElementById('drm-start').value=m.toISOString().slice(0,10);document.getElementById('drm-end').value=new Date(m.getFullYear(),m.getMonth()+1,0).toISOString().slice(0,10);})()">Last Month</button>
+      <button type="button" class="btn bo bsm" onclick="(()=>{const t=new Date();const q=Math.floor(t.getMonth()/3);document.getElementById('drm-start').value=new Date(t.getFullYear(),q*3,1).toISOString().slice(0,10);document.getElementById('drm-end').value=new Date(t.getFullYear(),q*3+3,0).toISOString().slice(0,10);})()">This Quarter</button>
+      <button type="button" class="btn bo bsm" onclick="(()=>{const t=new Date();document.getElementById('drm-start').value=new Date(t.getFullYear(),0,1).toISOString().slice(0,10);document.getElementById('drm-end').value=new Date(t.getFullYear(),11,31).toISOString().slice(0,10);})()">This Year</button>
+      ${allowAllTime?`<button type="button" class="btn bo bsm" onclick="(()=>{document.getElementById('drm-start').value='2000-01-01';document.getElementById('drm-end').value=new Date().toISOString().slice(0,10);})()">All Time</button>`:''}
+    </div>
     <div class="twobox">
-      <div class="fw"><div class="fl">Month</div><select class="fi" id="ps-mon">${monthOpts}</select></div>
-      <div class="fw"><div class="fl">Year</div><select class="fi" id="ps-yr">${yrOpts}</select></div>
+      <div class="fw"><div class="fl">From</div><input type="date" class="fi" id="drm-start" value="${iso(thisMonthStart)}"></div>
+      <div class="fw"><div class="fl">To</div><input type="date" class="fi" id="drm-end" value="${iso(thisMonthEnd)}"></div>
     </div>
     <div class="mact">
       <button class="btn bo" onclick="closeModal()">Cancel</button>
-      <button class="btn bg" onclick="closeModal();generatePrintSummary(+document.getElementById('ps-mon').value,+document.getElementById('ps-yr').value)">🖨️ Generate</button>
+      <button class="btn bg" onclick="(()=>{
+        const s=document.getElementById('drm-start').value, e=document.getElementById('drm-end').value;
+        if(!s||!e){alert('Please choose both a start and end date.');return;}
+        if(s>e){alert('Start date must be before end date.');return;}
+        closeModal();
+        window._drmConfirm(s, e, _fmtPeriodLabel(s,e));
+      })()">🖨️ Generate</button>
     </div>`);
 }
 
-function generatePrintSummary(month,year){
+function openPrintSummary(){
+  openDateRangeModal({
+    title:'🖨️ Print Period Summary',
+    onConfirm:(startStr,endStr,label)=>generatePrintSummary(startStr,endStr,label)
+  });
+}
+
+function generatePrintSummary(startStr,endStr,periodLabel){
   const di=DATA.depotInfo||{};
   const today=new Date();
-  const periodLabel=new Date(year,month,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-  const startStr=new Date(year,month,1).toISOString().slice(0,10);
-  const endStr=new Date(year,month+1,0).toISOString().slice(0,10);
   const inRange=d=>d&&d>=startStr&&d<=endStr;
 
   // Commodity stats
