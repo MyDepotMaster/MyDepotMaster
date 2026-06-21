@@ -25,6 +25,14 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v43 changes (2026-06-21):
+//   - Firebase App Check (reCAPTCHA v3) integrated. All Firebase REST calls
+//     (fbGet, fbSet, fbSetIfNotExists, fbDelete) now attach an
+//     X-Firebase-AppCheck token. Token is fetched from reCAPTCHA v3 and
+//     exchanged via firebaseappcheck.googleapis.com, cached until near-expiry.
+//     Degrades silently if reCAPTCHA hasn't loaded (offline start). CSP
+//     updated to allow reCAPTCHA and App Check domains.
+//
 // v31 changes (2026-06-20):
 //   - General-tab inventory item types now capped, in parallel with (but
 //     independent from) the existing Commodity tab cap: Free = 1 item type,
@@ -183,7 +191,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v42';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v43';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 
