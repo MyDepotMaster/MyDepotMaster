@@ -25,6 +25,17 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// v45 changes (2026-06-21):
+//   - Security: login now verifies the password against a small new
+//     depots/<id>/auth record (just username/passwordHash/role) BEFORE
+//     fetching the full depot dataset. Previously the entire depot — every
+//     commodity, staff record, transaction, and financial figure — was
+//     downloaded as part of resolving the login, even on a wrong password.
+//     The auth record is kept in sync automatically on every doFbSync() call
+//     (derived from DATA.users) and written immediately at signup. Existing
+//     depots self-migrate on their next sync; until then, login falls back
+//     to the old full-data verification path with no behavior change.
+//
 // v44 changes (2026-06-21):
 //   - Fix: login could hang forever with zero feedback on a slow/flaky
 //     connection. _getAppCheckToken() (called before every Firebase request,
@@ -201,7 +212,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v44';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v45';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 

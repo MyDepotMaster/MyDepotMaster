@@ -1413,6 +1413,20 @@ function isHashed(p) {
          /^[0-9a-f]{128}$/.test(p);
 }
 
+// Build a minimal {username: {password, role}} map from DATA.users for the
+// depots/<id>/auth Firebase node. This lets login verify credentials by
+// fetching just one small record instead of the entire depot dataset
+// (commodities, staff, financials, transactions) — a wrong password should
+// never pull business data onto the device.
+function _buildAuthSnapshot(users) {
+  const out = {};
+  (users || []).forEach(usr => {
+    if (!usr || !usr.username) return;
+    out[(usr.username || '').toLowerCase()] = { password: usr.password, role: usr.role || 'staff' };
+  });
+  return out;
+}
+
 // hmac256 — real HMAC-SHA256 via crypto.subtle (supported on all modern browsers/WebViews).
 // Falls back to keyed hash only if subtle is genuinely unavailable (very old Android).
 async function hmac256(key, data) {
@@ -1719,7 +1733,10 @@ async function doFbSync() {
         lastSync: now,
         depotName: (DATA.depotInfo||{}).name || '',
         version: DATA._v || 0
-      })
+      }),
+      // Lightweight credentials mirror — kept in sync automatically on every
+      // write so login can verify a password before pulling the full depot.
+      fbSet('depots/' + key + '/auth', _buildAuthSnapshot(DATA.users))
     ]);
     DATA._lastFbSync = now;
     sv(DATA); // persist updated _lastFbSync to both localStorage and IDB
@@ -3849,6 +3866,12 @@ async function signupFinish() {
           trialStart: now
         });
       } catch(fe) { console.warn('Firebase license register failed:', fe.message); }
+      // Lightweight credentials mirror — see _buildAuthSnapshot. Written here
+      // immediately so login on another device works before the first
+      // background sync, not just after.
+      try {
+        await fbSet('depots/' + newInstallId + '/auth', { [username]: { password: hashed, role: 'admin' } });
+      } catch(fe) { console.warn('Firebase auth snapshot write failed:', fe.message); }
     }
     // ── SAVE LOCALLY ONLY AFTER FIREBASE CONFIRMED ───────────────────────────
 
@@ -4043,7 +4066,7 @@ async function doLogin(){
     //   - Different depot on same device → loads the correct depot for this login
     let _loginTargetInstallId = null; // hoisted so cross-depot guard below can read it
     if (navigator.onLine && isFbConfigured()) {
-      btn.textContent = '☁ Restoring data…';
+      btn.textContent = '🔐 Verifying…';
       try {
         // Step 1: resolve installId for the typed username via the global index
         try {
@@ -4053,8 +4076,32 @@ async function doLogin(){
           }
         } catch(e) { console.warn('Username index lookup failed:', e); }
 
-        // Step 2: restore from Firebase using the resolved installId
         if (_loginTargetInstallId) {
+          // Step 2: verify against the lightweight credentials record BEFORE
+          // touching the full depot data. If this depot has synced since the
+          // auth-snapshot feature shipped, a wrong password exits here and
+          // the full dataset (commodities, staff, financials) is never fetched.
+          // If no snapshot exists yet (older account, first login since this
+          // shipped), fall through to the legacy full-data verification below —
+          // that sync will write the snapshot and protect this depot going forward.
+          try {
+            const authRec = await fbGet('depots/' + _loginTargetInstallId + '/auth/' + u);
+            if (authRec && authRec.password) {
+              const ok = await verifyPassword(p, authRec.password);
+              if (!ok) {
+                btn.disabled = false; btn.textContent = '🔒 Sign In';
+                const _s = await _bfFail();
+                const _rem = _BF_MAX - (_s.attempts || 0);
+                err.style.display = 'block';
+                err.innerHTML = _rem > 0
+                  ? `❌ Invalid username or password. ${_rem} attempt${_rem!==1?'s':''} left before 60-second lockout.`
+                  : '⛔ Too many failed attempts. Try again in 60 seconds.';
+                return; // ← full depot data was never fetched
+              }
+            }
+          } catch(e) { console.warn('Auth record lookup failed:', e); }
+
+          btn.textContent = '☁ Restoring data…';
           const prevId = DATA.installId;
           const switchingDepot = _loginTargetInstallId !== prevId;
           // Always override installId so fbRestoreData fetches the right depot
