@@ -662,7 +662,15 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 /* ── END THEME ──────────────────────────────────────────────── */
 </style>
 <!-- ── FIREBASE APP CHECK (reCAPTCHA v3) ────────────────────────────────── -->
-<script src="https://www.google.com/recaptcha/api.js?render=6LcLhystAAAAHClIZK1fQf1AbgAYJdDLwUNX9XT" async defer></script>
+<!-- grecaptchaReady resolves when the reCAPTCHA script has fully loaded.   -->
+<!-- _getAppCheckToken() awaits this before executing, so the first Firebase -->
+<!-- call (even on a fast boot) never races against a not-yet-loaded script. -->
+<script>
+  window._grecaptchaReady = new Promise(function(resolve) {
+    window._onGrecaptchaLoad = function() { resolve(); };
+  });
+</script>
+<script src="https://www.google.com/recaptcha/api.js?render=6LcLhystAAAAHClIZK1fQf1AbgAYJdDLwUNX9XT&onload=_onGrecaptchaLoad" async defer></script>
 </head>
 <body>
 <button id="global-fullscreen-btn" onclick="toggleAppFullscreen()" title="Full screen" aria-label="Toggle full screen" style="position:fixed;top:max(10px,env(safe-area-inset-top,10px));right:10px;z-index:5000;background:var(--surface,#16213E);border:1px solid var(--border,#2C3E50);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--muted,#8a93a6);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;opacity:.85;box-shadow:0 2px 8px rgba(0,0,0,.3);">
@@ -1600,6 +1608,19 @@ async function _getAppCheckToken() {
     // expensive (and likely still-failing) round trip again immediately.
     if (_acFailedUntil && Date.now() < _acFailedUntil) {
       if (window._AC_DEBUG) showToast('🐞 AC: skipped (recent failure, cooling down)');
+      return null;
+    }
+    // Wait for the reCAPTCHA script to finish loading (resolves via onload=
+    // callback set in <head>). Times out after _FB_TIMEOUT_MS so a blocked
+    // CDN request never stalls the login flow forever.
+    try {
+      await Promise.race([
+        window._grecaptchaReady,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('grecaptcha load timeout')), _FB_TIMEOUT_MS))
+      ]);
+    } catch(e) {
+      if (window._AC_DEBUG) showToast('🐞 AC: grecaptcha load timeout');
+      _acFailedUntil = Date.now() + _AC_FAIL_COOLDOWN_MS;
       return null;
     }
     if (typeof grecaptcha === 'undefined' || !grecaptcha.execute) {
@@ -2682,7 +2703,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v34';
+const SW_VERSION  = 'mdm-v49';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2698,7 +2719,7 @@ const SW_VERSION  = 'mdm-v34';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v31';
+  const VER = 'mdm-v49';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
