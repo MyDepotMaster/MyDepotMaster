@@ -4467,6 +4467,10 @@ function _idleClear() {
 
 function _idleReset() {
   if (!USER) return; // only active when logged in
+  // "Stay Signed In" is active on this device — disable inactivity auto-logout.
+  // The user has explicitly opted in to staying logged in; firing auto-logout
+  // would directly contradict that preference.
+  if (_checkStaySignedIn()) { _idleClear(); return; }
   _idleClear();
   const warnMs = _IDLE_WARN_MS();
   const limitMs = _IDLE_LIMIT_MS();
@@ -10118,7 +10122,7 @@ function _renderStaySignedInSection(){
     <div class="sh">Stay Signed In</div>
     <div class="card">
       <div style="font-size:17px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        Skip the login screen on this device until you sign out manually. Inactivity auto-logout still applies while the app is open.
+        Skip the login screen on this device until you sign out manually. While this is on, inactivity auto-logout is disabled — you will only be logged out if you tap Sign Out explicitly.
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${pref.enabled?'14px':'0'}">
         <span style="font-size:17px;color:var(--text)">Stay signed in on this device</span>

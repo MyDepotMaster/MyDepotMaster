@@ -28,10 +28,13 @@
 // Current version: v50 (2026-06-24)
 //
 // v50 changes (2026-06-24):
+//   - Fix: when "Stay Signed In" is enabled on a device, inactivity
+//     auto-logout is now fully disabled. _idleReset() returns early and
+//     clears any pending timers if _checkStaySignedIn() returns a valid
+//     session. The user is only logged out by an explicit Sign Out action
+//     or by disabling the "Stay Signed In" toggle. The Settings card
+//     description is updated to reflect this behaviour.
 //   - Cache version bump to align sw.js with index.html v49 deploy.
-//     No logic changes; required so activate fires, old cache is purged,
-//     and all open Median/browser tabs receive the NEW_VERSION message
-//     and hard-reload to the latest shell.
 //
 // v49 changes (2026-06-21):
 //   - Median appConfig hardened: keepScreenOn, portrait lock, PDF/CSV
@@ -62,10 +65,11 @@
 //     expiry timestamp in localStorage — never a password or hash — so a
 //     copied localStorage value can skip the login screen on that one
 //     device only, never be replayed elsewhere or used to derive
-//     credentials. Any explicit logout (button, idle auto-logout, or
-//     remote cross-tab logout) immediately revokes the persisted session;
-//     turning the toggle off does the same. Inactivity auto-logout still
-//     applies normally to a restored session.
+//     credentials. Any explicit logout (button or remote cross-tab logout)
+//     immediately revokes the persisted session; turning the toggle off
+//     does the same. When "Stay Signed In" is active, inactivity
+//     auto-logout is suppressed — the timers are not started so the user
+//     is never kicked out involuntarily while the feature is enabled.
 //
 // v46 changes (2026-06-21):
 //   - Cache version bump only (debug build for App Check diagnostics).
