@@ -25,6 +25,21 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
+// Current version: v50 (2026-06-24)
+//
+// v50 changes (2026-06-24):
+//   - Cache version bump to align sw.js with index.html v49 deploy.
+//     No logic changes; required so activate fires, old cache is purged,
+//     and all open Median/browser tabs receive the NEW_VERSION message
+//     and hard-reload to the latest shell.
+//
+// v49 changes (2026-06-21):
+//   - Median appConfig hardened: keepScreenOn, portrait lock, PDF/CSV
+//     downloads to public storage, tel/mailto/wa.me external routing,
+//     pull-to-refresh disabled, Android hardware back confirm-exit,
+//     allowInsecure:false, androidWebviewTextZoom:100.
+//     No sw.js logic changes; cache bump only.
+//
 // v48 changes (2026-06-21):
 //   - Fix: login delay (30+ seconds, spread evenly across steps). Root cause:
 //     _getAppCheckToken() is called fresh before every single Firebase
@@ -242,7 +257,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v49';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v50';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
 

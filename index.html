@@ -5238,10 +5238,9 @@ function renderGenReceived(){
     <td style="color:var(--blue);text-align:right;font-size:17px">${sv!==null?zm(sv):'—'}</td>
     <td style="color:var(--green);text-align:right;font-size:17px">${Number(item.good||0).toLocaleString()}</td>
     <td style="color:var(--amber);text-align:right;font-size:17px">${Number(item.damaged||0).toLocaleString()}</td>
-                  <td style="font-size:16px">${item.condition==='rejected'?'<span style="color:var(--red);font-weight:700">❌ REJECTED'+(item.rejectionReason?' — '+esc(item.rejectionReason):'')+'</span>':esc(item.condition||'good')}</td>
+    <td>${item.condition==='rejected'?`<span style="color:var(--red);font-weight:700">❌ REJECTED${item.rejectionReason?' — '+esc(item.rejectionReason):''}</span>`:`<span class="bdg ${item.condition==='good'?'bg2':'ba2'}" style="font-size:15px">${(item.condition||'good').toUpperCase()}</span>`}</td>
+    <td>${(()=>{const cs=item.creditStatus||'paid';return cs==='paid'?'<span class="bdg bg2" style="font-size:14px">PAID</span>':cs==='partial'?'<span class="bdg ba2" style="font-size:14px">PARTIAL</span>':'<span class="bdg br2" style="font-size:14px">CREDIT</span>'})()}</td>
     <td style="font-size:16px">${item.expiryDate?`<span style="color:${new Date(item.expiryDate)<new Date()?'var(--red)':'var(--amber)'};font-weight:700">${fmtDate(item.expiryDate)}</span>`:'—'}</td>
-    <td><span class="bdg ${item.condition==='good'?'bg2':'ba2'}" style="font-size:15px">${item.condition||'GOOD'}</span></td>
-    <td style="font-size:16px">${(()=>{const cs=item.creditStatus||'paid';return cs==='paid'?'<span class="bdg bg2" style="font-size:14px">PAID</span>':cs==='partial'?'<span class="bdg ba2" style="font-size:14px">PARTIAL</span>':'<span class="bdg br2" style="font-size:14px">CREDIT</span>'})()}</td>
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenRec('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
