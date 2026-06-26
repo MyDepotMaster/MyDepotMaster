@@ -3746,6 +3746,19 @@ function renderSignupStep() {
         <input class="fi" id="su-district" placeholder="E.G. MANSA DISTRICT" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.district||'')}"/></div>
       <div class="fw"><div class="fl">Country <span style="color:var(--red)">*</span></div>
         <input class="fi" id="su-country" placeholder="E.G. YOUR COUNTRY" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.country||'')}"/></div>
+      <div class="fw"><div class="fl">Contact Person Name <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-contact" placeholder="E.G. JOHN BANDA" oninput="this.value=this.value.toUpperCase()" value="${esc(_signupData.contactName||'')}"/></div>
+      <div class="fw"><div class="fl">Contact Phone <span style="color:var(--red)">*</span></div>
+        <input class="fi" id="su-phone" type="tel" placeholder="E.G. 0977123456" autocomplete="tel" value="${esc(_signupData.contactPhone||'')}"/></div>
+      <div class="fw"><div class="fl">Plan Interested In <span style="color:var(--red)">*</span></div>
+        <select class="fi" id="su-plan" style="cursor:pointer">
+          <option value="" disabled ${!_signupData.requestedPlan?'selected':''}>— Select a plan —</option>
+          <option value="starter" ${_signupData.requestedPlan==='starter'?'selected':''}>Starter — K90/month</option>
+          <option value="growth"  ${_signupData.requestedPlan==='growth' ?'selected':''}>Growth  — K150/month</option>
+          <option value="pro"     ${_signupData.requestedPlan==='pro'    ?'selected':''}>Pro     — K300/month</option>
+        </select>
+        <div style="font-size:16px;color:var(--muted);margin-top:5px;line-height:1.6">You'll start with a free 30-day trial regardless of plan chosen.</div>
+      </div>
       <button class="btn bg" style="margin-top:8px" onclick="signupStep1Next()">Next →</button>`;
 
   } else if (_signupStep === 2) {
@@ -3786,17 +3799,27 @@ function renderSignupStep() {
 function signupGoBack() { _signupStep--; renderSignupStep(); }
 
 function signupStep1Next() {
-  const name = uc(document.getElementById('su-name')?.value);
-  const district = uc(document.getElementById('su-district')?.value);
-  const country = uc(document.getElementById('su-country')?.value);
+  const name        = uc(document.getElementById('su-name')?.value);
+  const district    = uc(document.getElementById('su-district')?.value);
+  const country     = uc(document.getElementById('su-country')?.value);
+  const contactName = uc(document.getElementById('su-contact')?.value);
+  const contactPhone= (document.getElementById('su-phone')?.value||'').trim();
+  const requestedPlan = (document.getElementById('su-plan')?.value||'').trim();
   const err = document.getElementById('su-err1');
   const missing = [];
-  if (!name) missing.push('Company Name');
-  if (!district) missing.push('District');
-  if (!country) missing.push('Country');
+  if (!name)         missing.push('Company Name');
+  if (!district)     missing.push('District');
+  if (!country)      missing.push('Country');
+  if (!contactName)  missing.push('Contact Person Name');
+  if (!contactPhone) missing.push('Contact Phone');
+  if (!requestedPlan) missing.push('Plan Interested In');
   if (missing.length) { err.style.display='block'; err.textContent='Please fill in: '+missing.join(', '); return; }
+  // Basic phone sanity check
+  if (!/^[0-9+()\s\-]{7,20}$/.test(contactPhone)) {
+    err.style.display='block'; err.textContent='⚠️ Enter a valid phone number.'; return;
+  }
   err.style.display='none';
-  _signupData = {..._signupData, name, district, country};
+  _signupData = {..._signupData, name, district, country, contactName, contactPhone, requestedPlan};
   _signupStep = 2;
   renderSignupStep();
 }
@@ -3914,7 +3937,12 @@ async function signupFinish() {
       try {
         await fbSet('licenses/' + newInstallId, {
           status: 'trial',
-          depotName: _signupData.name || 'Unnamed Depot',
+          depotName:      _signupData.name || 'Unnamed Depot',
+          district:       _signupData.district || '',
+          country:        _signupData.country || '',
+          contactName:    _signupData.contactName || '',
+          contactPhone:   _signupData.contactPhone || '',
+          requestedPlan:  _signupData.requestedPlan || '',
           createdAt: now,
           trialStart: now
         });
