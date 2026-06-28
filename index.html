@@ -38,15 +38,15 @@
 <!-- Fonts load async — app renders immediately offline with system fallbacks -->
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
-<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet"/></noscript>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
+<noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet"/></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --bg:#1A1A2E;--surface:#16213E;--surface2:#0F3460;--border:#2C3E50;
   --green:#27AE60;--green2:#82E0AA;--amber:#F39C12;--red:#E74C3C;--blue:#2E86C1;--purple:#A569BD;
   --text:#E0E0E0;--muted:#A0A0A0;--white:#F8F9FA;
-  --fh:'Syne','Arial Black','Arial',sans-serif;--fb:'DM Sans','Segoe UI','Helvetica Neue',Arial,sans-serif;--fm:'DM Mono','Courier New',monospace;
+  --fh:'Syne','Arial Black','Arial',sans-serif;--fb:'IBM Plex Sans','Segoe UI','Helvetica Neue',Arial,sans-serif;--fm:'IBM Plex Mono','Courier New',monospace;
   --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;
   --shadow-sm:0 1px 3px rgba(0,0,0,.4);
   --shadow-md:0 4px 16px rgba(0,0,0,.5);
@@ -2703,7 +2703,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v49';
+const SW_VERSION  = 'mdm-v51';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2719,7 +2719,7 @@ const SW_VERSION  = 'mdm-v49';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v49';
+  const VER = 'mdm-v51';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -2735,7 +2735,7 @@ const SW_VERSION  = 'mdm-v49';
     }
   }
 })();
-const SW_FONTS_URL = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
+const SW_FONTS_URL = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
 // Aggressively pre-cache the shell from the main thread as a belt-and-braces
 // fallback for browsers where the SW hasn't activated yet.
@@ -3961,6 +3961,7 @@ async function signupFinish() {
     fresh.depotInfo = { name: _signupData.name, district: _signupData.district, country: _signupData.country, setupDone: true, recoveryEmail: emailRaw || '' };
     fresh.currency = suCurrency;
     fresh.commodities=[];
+    fresh.dailyCloseOuts=[];
     fresh.installId = newInstallId;
     fresh.trialStart = now;
     fresh._v = 1;
@@ -5089,6 +5090,7 @@ function renderGeneral(){
     <div class="stabs">
       <button class="stab${GTAB==='inventory'?' act':''}" id="gtab-inventory">Received Stock</button>
       <button class="stab${GTAB==='issued'?' act':''}" id="gtab-issued">Issued</button>
+      <button class="stab${GTAB==='sales'?' act':''}" id="gtab-sales">🛒 Sales</button>
       <button class="stab${GTAB==='stockcount'?' act':''}" id="gtab-stockcount">Stock Count</button>
       <button class="stab${GTAB==='summary'?' act':''}" id="gtab-summary">Summary</button>
       <button class="stab${GTAB==='itemnames'?' act':''}" id="gtab-itemnames">📋 Item Names</button>
@@ -5097,7 +5099,7 @@ function renderGeneral(){
       <button class="stab${GTAB==='budget'?' act':''}" id="gtab-budget" style="${GTAB==='budget'?'background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.3)':''}">🎯 Budget</button>
     </div>
     <div class="prow">${pBtns('general')}</div>
-    ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():GTAB==='stockcount'?renderGenStockCount():GTAB==='itemnames'?renderGenItemNamesTab():GTAB==='pl'?renderProfitLoss():GTAB==='cashflow'?renderCashFlow():GTAB==='budget'?renderBudgetVsActual():renderGenSummary()}`;
+    ${GTAB==='inventory'?renderGenReceived():GTAB==='issued'?renderGenIssued():GTAB==='sales'?renderGenSales():GTAB==='stockcount'?renderGenStockCount():GTAB==='itemnames'?renderGenItemNamesTab():GTAB==='pl'?renderProfitLoss():GTAB==='cashflow'?renderCashFlow():GTAB==='budget'?renderBudgetVsActual():renderGenSummary()}`;
 }
 
 // Generic table search helper — hides rows where none of the cell text matches the query
@@ -5332,6 +5334,7 @@ function renderGenIssued(){
       :cs==='partial'
         ?`<span class="bdg ba2" style="font-size:14px">PARTIAL</span>`
         :`<span class="bdg br2" style="font-size:14px">CREDIT</span>`;
+    const custChip=item.customerName?`<span style="font-size:14px;color:var(--blue);font-weight:700">👤 ${esc(item.customerName)}</span>`:item.customerId?`<span style="font-size:13px;color:var(--muted)">linked</span>`:'<span style="color:var(--muted)">—</span>';
     return`<tr>
     <td style="white-space:nowrap">
       <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}</div>
@@ -5342,6 +5345,7 @@ function renderGenIssued(){
     <td style="color:var(--muted);text-align:right;font-size:17px">${sp>0?zm(sp):'—'}</td>
     <td style="color:var(--green);text-align:right;font-size:17px">${saleVal!==null?zm(saleVal):'—'}</td>
     <td>${creditChip}${cs==='partial'&&item.partialPaid>0?`<span style="font-size:15px;color:var(--muted);margin-left:4px">${zm(item.partialPaid)} pd</span>`:''}</td>
+    <td style="font-size:16px">${custChip}</td>
     <td style="font-size:17px;color:var(--muted)">${esc(item.notes)||'—'}</td>
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button></td>`:''}
@@ -5382,7 +5386,8 @@ function renderGenIssued(){
           const sv=Number(x.issued||0)*Number(x.sellingPrice||0);
           const pd=x.creditStatus==='partial'?Number(x.partialPaid||0):0;
           const owed=sv-pd;
-          return`<tr><td style="white-space:nowrap">${fmtDate(x.date)}</td><td>${esc(x.itemName)}</td><td style="text-align:right">${sv>0?zm(sv):'—'}</td><td style="text-align:right;color:var(--green)">${pd>0?zm(pd):'—'}</td><td style="text-align:right;color:var(--red);font-weight:700">${zm(owed)}</td><td>${x.creditStatus==='partial'?'<span class="bdg ba2" style="font-size:14px">PARTIAL</span>':'<span class="bdg br2" style="font-size:14px">CREDIT</span>'}</td></tr>`;
+          const custLabel=x.customerName?`<span style="color:var(--blue);font-size:14px"> · 👤 ${esc(x.customerName)}</span>`:'';
+          return`<tr><td style="white-space:nowrap">${fmtDate(x.date)}</td><td>${esc(x.itemName)}${custLabel}</td><td style="text-align:right">${sv>0?zm(sv):'—'}</td><td style="text-align:right;color:var(--green)">${pd>0?zm(pd):'—'}</td><td style="text-align:right;color:var(--red);font-weight:700">${zm(owed)}</td><td>${x.creditStatus==='partial'?'<span class="bdg ba2" style="font-size:14px">PARTIAL</span>':'<span class="bdg br2" style="font-size:14px">CREDIT</span>'}</td></tr>`;
         }).join('')}</tbody>
       </table></div>
     </div>`:'';
@@ -5400,9 +5405,259 @@ function renderGenIssued(){
       <input class="fi" id="gen-iss-search" placeholder="🔍 Search by item name or notes…" oninput="filterTable('gen-iss-table',this.value)" style="font-size:18px"/>
     </div>
     <div class="card" style="padding:0"><div class="tw"><table id="gen-iss-table">
-      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Selling Price</th><th style="text-align:right">Sale Value</th><th>Payment</th><th>Notes</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${items.length===0?`<tr><td colspan="9" class="empty">No issued items for this period</td></tr>`:rows}</tbody>
+      <thead><tr><th>Date & Time</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Selling Price</th><th style="text-align:right">Sale Value</th><th>Payment</th><th>Customer</th><th>Notes</th><th style="text-align:right;color:var(--blue);border-left:2px solid var(--border)">Item Cum.</th>${USER.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${items.length===0?`<tr><td colspan="10" class="empty">No issued items for this period</td></tr>`:rows}</tbody>
     </table></div></div>`;
+}
+
+// ── DAILY SALES TAB ──────────────────────────────────────────────────────────
+function renderGenSales(){
+  const todayStr=today();
+  const allSales=DATA.generalIssued;
+  const todaySales=allSales.filter(x=>x.date===todayStr);
+  const periodSales=filterPeriod(allSales, PERIOD.general, 'date', 'general');
+
+  // Today's figures
+  const todayCash   = todaySales.filter(x=>(x.creditStatus||'paid')==='paid').reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const todayCredit = todaySales.filter(x=>x.creditStatus==='credit').reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const todayPartial= todaySales.filter(x=>x.creditStatus==='partial').reduce((a,b)=>a+(Number(b.issued||0)*Number(b.sellingPrice||0)-Number(b.partialPaid||0)),0);
+  const todayRevenue= todaySales.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const todayTxCount= todaySales.length;
+  const todayOutstanding= todayCredit+todayPartial;
+
+  // Top selling item today
+  const todayByItem={};
+  todaySales.forEach(x=>{ todayByItem[x.itemName]=(todayByItem[x.itemName]||0)+Number(x.issued||0)*Number(x.sellingPrice||0); });
+  const topItem=Object.entries(todayByItem).sort((a,b)=>b[1]-a[1])[0];
+
+  // Close-out records
+  const closeOuts=DATA.dailyCloseOuts||[];
+  const todayClose=closeOuts.find(x=>x.date===todayStr);
+
+  // Period figures
+  const periodRevenue = periodSales.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const periodCash    = periodSales.filter(x=>(x.creditStatus||'paid')==='paid').reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const periodCredit  = periodSales.filter(x=>x.creditStatus==='credit'||x.creditStatus==='partial').reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+
+  // Today's sales rows
+  const sorted=todaySales.slice().sort((a,b)=>(b.time||'').localeCompare(a.time||''));
+  const rows=sorted.map(item=>{
+    const sp=Number(item.sellingPrice||0);
+    const val=sp*Number(item.issued||0);
+    const cs=item.creditStatus||'paid';
+    const chip=cs==='paid'?`<span class="bdg bg2" style="font-size:14px">PAID</span>`
+      :cs==='partial'?`<span class="bdg ba2" style="font-size:14px">PARTIAL</span>`
+      :`<span class="bdg br2" style="font-size:14px">CREDIT</span>`;
+    const editable=isWithin24h(item);
+    const custName=item.customerName||'';
+    return`<tr>
+      <td style="color:var(--muted);font-size:16px;white-space:nowrap">${item.time||'—'}</td>
+      <td style="font-weight:600">${esc(item.itemName)}</td>
+      <td style="text-align:right;color:var(--amber);font-weight:700">${Number(item.issued||0).toLocaleString()}</td>
+      <td style="text-align:right">${sp>0?zm(sp):'—'}</td>
+      <td style="text-align:right;color:var(--green);font-weight:700">${val>0?zm(val):'—'}</td>
+      <td>${chip}${cs==='partial'&&item.partialPaid>0?`<span style="font-size:14px;color:var(--muted);margin-left:4px">${zm(item.partialPaid)} pd</span>`:''}</td>
+      <td style="font-size:15px;color:var(--blue)">${custName?esc(custName):'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="editbtn" onclick="printSaleReceipt('${item.id}')" title="Print receipt">🧾</button>
+        ${USER.role==='admin'?`<button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed'}">✏️</button>
+        <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Close-out card
+  const closeCard=todayClose?`
+    <div style="background:linear-gradient(135deg,#001a0d,#000d07);border:1.5px solid var(--green);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-family:var(--fh);font-size:19px;font-weight:800;color:var(--green)">✅ Today Closed Out</div>
+        <div style="font-size:15px;color:var(--muted)">${todayClose.closedAt||''}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--green)">${zm(todayClose.expectedCash||0)}</div>
+          <div style="font-size:14px;color:var(--muted)">Expected Cash</div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--blue)">${zm(todayClose.actualCash||0)}</div>
+          <div style="font-size:14px;color:var(--muted)">Actual Cash</div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:10px;text-align:center">
+          ${(()=>{const v=Number(todayClose.actualCash||0)-Number(todayClose.expectedCash||0);
+            return`<div style="font-family:var(--fh);font-size:20px;font-weight:800;color:${v===0?'var(--green)':v>0?'var(--amber)':'var(--red)'}">${v>=0?'+':''}${zm(v)}</div>
+            <div style="font-size:14px;color:var(--muted)">${v===0?'EXACT':v>0?'OVER':'SHORT'}</div>`;})()}
+        </div>
+      </div>
+      ${todayClose.notes?`<div style="margin-top:8px;font-size:15px;color:var(--muted)">${esc(todayClose.notes)}</div>`:''}
+    </div>`
+  :`${USER.role==='admin'&&todaySales.length>0?`
+    <button onclick="openDailyCloseOut()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface);border:1.5px dashed var(--green);border-radius:12px;padding:12px;color:var(--green);font-family:var(--fh);font-size:17px;font-weight:700;cursor:pointer;margin-bottom:12px;touch-action:manipulation">
+      🔒 Close Out Today's Sales
+    </button>`:''}`;
+
+  return`
+    <!-- Today Summary Card -->
+    <div style="background:linear-gradient(135deg,var(--surface),var(--surface2));border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-family:var(--fh);font-size:19px;font-weight:800">🛒 Today's Sales</div>
+        <div style="font-size:15px;color:var(--muted)">${fmtDate(todayStr)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="sbox" style="border-radius:10px">
+          <div class="sv" style="font-size:22px;color:var(--green)">${zm(todayCash)}</div>
+          <div class="sl">Cash Sales</div>
+        </div>
+        <div class="sbox" style="border-radius:10px">
+          <div class="sv" style="font-size:22px;color:${todayOutstanding>0?'var(--red)':'var(--muted)'}">${zm(todayOutstanding)}</div>
+          <div class="sl">Outstanding Credit</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-family:var(--fh);font-size:22px;font-weight:800;color:var(--blue)">${zm(todayRevenue)}</div>
+          <div style="font-size:14px;color:var(--muted)">Total Revenue</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-family:var(--fh);font-size:22px;font-weight:800">${todayTxCount}</div>
+          <div style="font-size:14px;color:var(--muted)">Transactions</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-family:var(--fh);font-size:16px;font-weight:800;color:var(--amber)">${topItem?esc(topItem[0]):'—'}</div>
+          <div style="font-size:14px;color:var(--muted)">Top Item</div>
+        </div>
+      </div>
+    </div>
+
+    ${closeCard}
+
+    <!-- New Sale Button -->
+    <button onclick="GTAB='issued';openGenIssForm()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#111;border:none;border-radius:12px;padding:13px;font-family:var(--fh);font-size:18px;font-weight:800;cursor:pointer;margin-bottom:14px;touch-action:manipulation">
+      + New Sale
+    </button>
+
+    <!-- Today's Transactions -->
+    <div style="font-family:var(--fh);font-size:17px;font-weight:700;margin-bottom:8px;color:var(--muted)">TODAY'S TRANSACTIONS</div>
+    ${todaySales.length===0
+      ?`<div style="text-align:center;padding:28px 0;color:var(--muted);font-size:17px">No sales recorded today yet.<br><span style="font-size:28px">🛒</span></div>`
+      :`<div class="card" style="padding:0"><div class="tw"><table>
+        <thead><tr><th>Time</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Value</th><th>Payment</th><th>Customer</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div></div>`}
+
+    <!-- Period Summary -->
+    ${periodRevenue>0?`
+    <div style="margin-top:16px;font-family:var(--fh);font-size:17px;font-weight:700;margin-bottom:8px;color:var(--muted)">PERIOD SUMMARY</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div class="sbox" style="border-radius:10px"><div class="sv" style="font-size:18px;color:var(--green)">${zm(periodRevenue)}</div><div class="sl">Revenue</div></div>
+      <div class="sbox" style="border-radius:10px"><div class="sv" style="font-size:18px">${zm(periodCash)}</div><div class="sl">Cash</div></div>
+      <div class="sbox" style="border-radius:10px"><div class="sv" style="font-size:18px;color:${periodCredit>0?'var(--amber)':'var(--muted)'}">${zm(periodCredit)}</div><div class="sl">Credit</div></div>
+    </div>`:''}
+  `;
+}
+
+function printSaleReceipt(id){
+  const item=DATA.generalIssued.find(x=>x.id===id);
+  if(!item){showToast('⚠️ Record not found');return;}
+  const depot=(DATA.depotInfo||{});
+  const sp=Number(item.sellingPrice||0);
+  const total=sp*Number(item.issued||0);
+  const cs=item.creditStatus||'paid';
+  const payLabel=cs==='paid'?'PAID — SETTLED IN FULL':cs==='partial'?`PARTIAL — ${zm(Number(item.partialPaid||0))} PAID`:'CREDIT — ON ACCOUNT';
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Receipt #${item.id.slice(-6).toUpperCase()}</title>
+  <style>
+    body{font-family:Arial,sans-serif;max-width:320px;margin:20px auto;padding:0 16px;color:#111;font-size:14px}
+    h1{font-size:20px;text-align:center;margin:0 0 2px}
+    .center{text-align:center}.muted{color:#888;font-size:12px}
+    hr{border:none;border-top:1px dashed #ccc;margin:10px 0}
+    table{width:100%;border-collapse:collapse}td{padding:5px 0}
+    .right{text-align:right}.bold{font-weight:700}.total{font-size:18px;font-weight:800}
+    .pay{text-align:center;margin:10px 0;padding:8px;border:1.5px solid #ccc;border-radius:8px;font-weight:700;font-size:13px}
+    .footer{text-align:center;font-size:11px;color:#aaa;margin-top:14px}
+  </style></head><body>
+  <h1>${esc(depot.name||'MY DEPOT MASTER')}</h1>
+  ${depot.district?`<div class="center muted">${esc(depot.district)}</div>`:''}
+  ${depot.contactPhone?`<div class="center muted">Tel: ${esc(depot.contactPhone)}</div>`:''}
+  <hr>
+  <div class="center muted">SALES RECEIPT</div>
+  <div class="center bold" style="font-size:16px">#${item.id.slice(-6).toUpperCase()}</div>
+  <div class="center muted">${fmtDate(item.date)}${item.time?' · '+item.time:''}</div>
+  ${item.customerName?`<div class="center muted" style="margin-top:4px">Customer: <strong>${esc(item.customerName)}</strong></div>`:''}
+  <hr>
+  <table>
+    <tr><td colspan="3" class="bold">${esc(item.itemName)}</td></tr>
+    <tr>
+      <td class="muted">${Number(item.issued||0).toLocaleString()} units</td>
+      <td class="right muted">× ${sp>0?zm(sp):'—'}</td>
+      <td class="right bold">${total>0?zm(total):'—'}</td>
+    </tr>
+  </table>
+  <hr>
+  <table>
+    <tr><td class="bold total">TOTAL</td><td class="right bold total">${total>0?zm(total):'—'}</td></tr>
+  </table>
+  <div class="pay">${payLabel}</div>
+  ${item.notes?`<div class="muted center">${esc(item.notes)}</div>`:''}
+  <hr>
+  <div class="footer">Thank you for your business!<br>Powered by My Depot Master</div>
+  </body></html>`;
+  medianPrint(html, `Receipt-${item.id.slice(-6).toUpperCase()}`);
+}
+
+function openDailyCloseOut(){
+  if(!requireAdmin('close out daily sales'))return;
+  const todayStr=today();
+  const todaySales=DATA.generalIssued.filter(x=>x.date===todayStr);
+  const expectedCash=todaySales.filter(x=>(x.creditStatus||'paid')==='paid').reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const partialCash=todaySales.filter(x=>x.creditStatus==='partial').reduce((a,b)=>a+Number(b.partialPaid||0),0);
+  const totalExpected=expectedCash+partialCash;
+  const txCount=todaySales.length;
+  openModal(`
+    <div class="mtitle" style="font-size:20px">🔒 Close Out — ${fmtDate(todayStr)}</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+      ${txCount} transaction${txCount!==1?'s':''} recorded today.<br>
+      Expected cash from paid sales: <strong style="color:var(--green)">${zm(totalExpected)}</strong>
+    </div>
+    <div class="fw">
+      <div class="fl" style="font-weight:700">Actual Cash Counted <span style="color:var(--red)">*</span></div>
+      <input class="fi" type="number" id="co-actual" placeholder="0.00" step="0.01" inputmode="decimal" oninput="
+        const exp=${totalExpected};
+        const act=Number(this.value||0);
+        const v=act-exp;
+        const el=document.getElementById('co-variance-hint');
+        if(el)el.innerHTML=v===0?'<span style=color:var(--green)>✅ EXACT</span>':v>0?'<span style=color:var(--amber)>⚠️ OVER by '+zm(v)+'</span>':'<span style=color:var(--red)>🔴 SHORT by '+zm(Math.abs(v))+'</span>';
+      "/>
+      <div id="co-variance-hint" style="margin-top:4px;font-size:14px;font-weight:700"></div>
+    </div>
+    <div class="fw">
+      <div class="fl">Notes (optional)</div>
+      <input class="fi" id="co-notes" placeholder="E.G. CASH HANDED TO MANAGER…" oninput="this.value=this.value.toUpperCase()"/>
+    </div>
+    <div class="mact">
+      <button class="btn bo" style="flex:1" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" style="flex:2" onclick="saveDailyCloseOut(${totalExpected})">🔒 Confirm Close Out</button>
+    </div>
+  `);
+}
+
+function saveDailyCloseOut(expectedCash){
+  if(!requireAdmin('close out daily sales'))return;
+  const actual=Number(document.getElementById('co-actual')?.value||0);
+  if(!actual&&actual!==0){showToast('⚠️ Enter actual cash counted');return;}
+  const notes=uc(document.getElementById('co-notes')?.value||'');
+  const todayStr=today();
+  const payload={
+    id:uid(), date:todayStr, closedAt:nowTime(),
+    expectedCash, actualCash:actual,
+    variance:actual-expectedCash, notes,
+    closedBy:USER.username||'admin'
+  };
+  if(!confirm(`Confirm Close Out:\nExpected: ${zm(expectedCash)}\nActual: ${zm(actual)}\nVariance: ${zm(actual-expectedCash)}\n\nThis records the daily close for ${fmtDate(todayStr)}. Proceed?`))return;
+  updateData(d=>({...d,dailyCloseOuts:[...(d.dailyCloseOuts||[]).filter(x=>x.date!==todayStr),payload]}));
+  logAuditEvent('CREATE','Daily Close Out',`Date: ${todayStr} · Expected: ${zm(expectedCash)} · Actual: ${zm(actual)} · Variance: ${zm(actual-expectedCash)}`);
+  closeModal();
+  showToast('✅ Daily close out saved');
+  GTAB='sales'; render();
 }
 
 function renderGenSummary(){
@@ -5612,11 +5867,16 @@ function openGenIssForm(){
   const fromData=[...new Set(DATA.generalInventory.map(x=>x.itemName))];
   const allNames=[...new Set([...defined,...fromData])].sort();
   const opts=allNames.length>0?allNames.map(n=>`<option value="${n}">${n}</option>`).join(''):`<option value="">NO ITEMS RECEIVED YET</option>`;
+  // Build customer dropdown
+  const customers=(DATA.contacts||[]).filter(c=>c.type==='customer').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const custOpts=`<option value="">— Walk-in / No customer —</option>`+customers.map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?' · '+esc(c.phone):''}</option>`).join('');
   openModal(`
     <div class="mtitle">📤 Issue Item</div>
     <div class="fw"><div class="fl">Item Name</div><select class="fi" id="gi-name">${opts}</select></div>
     <div class="fw"><div class="fl">Qty Issued</div><input class="fi" type="number" id="gi-qty" placeholder="0" inputmode="numeric"/></div>
     <div class="fw"><div class="fl">Selling Price (${cur()} per unit) ${mdmTip('The price per unit at which you sold or issued this stock. Used in Profit & Loss to calculate revenue. Leave at 0 for internal use or transfers.')}</div><input class="fi" type="number" id="gi-sprice" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
+    <div class="fw"><div class="fl">Customer (optional)</div><select class="fi" id="gi-customer" style="text-transform:none">${custOpts}</select></div>
+    <div class="fw" style="display:none" id="gi-cust-new-wrap"><div class="fl">New Customer Name</div><input class="fi" id="gi-cust-new" placeholder="ENTER CUSTOMER NAME" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="fw"><div class="fl">Date Issued</div><input class="fi" type="date" id="gi-date" value="${today()}"/></div>
     <div class="fw"><div class="fl">Notes (optional)</div><input class="fi" id="gi-notes" placeholder="E.G. DESTINATION, PURPOSE…" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="fw"><div class="fl">Payment Status</div><select class="fi" id="gi-credit"><option value="paid">✅ PAID — Settled in full</option><option value="partial">🔶 PARTIAL — Partially paid</option><option value="credit">🔴 CREDIT — On account / debt</option></select></div>
@@ -5650,7 +5910,15 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
   if(!name||!qty){alert('Select item and enter quantity.');return;}
   const creditStatus=document.getElementById('gi-credit')?.value||'paid';
   const partialAmt=creditStatus==='partial'?Number(document.getElementById('gi-partial-amt')?.value||0):0;
-  const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value),sellingPrice:sprice,creditStatus,partialPaid:partialAmt};
+  // Customer linking
+  let customerId='', customerName='';
+  const custSel=document.getElementById('gi-customer');
+  if(custSel&&custSel.value){
+    customerId=custSel.value;
+    const custContact=(DATA.contacts||[]).find(c=>c.id===custSel.value);
+    customerName=custContact?custContact.name:'';
+  }
+  const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value),sellingPrice:sprice,creditStatus,partialPaid:partialAmt,customerId,customerName};
   const totalRev=qty*sprice;
   if(!confirm(`Confirm Item Issued:\n${name} · ${qty} units${sprice>0?` × ${cur()}${sprice.toFixed(2)} = ${cur()}${totalRev.toFixed(2)}`:''}\nPayment: ${creditStatus.toUpperCase()}\n\nProceed?`))return;
   updateData(d=>{
@@ -11644,7 +11912,58 @@ function exportCurrentTabCSV(){
     return _csvDownload(rows,_csvFilename('Contacts'));
   }
 }
-// ══════════════════════════════════════════════════════════
+// ── CUSTOMER PURCHASE HISTORY ─────────────────────────────────────────────────
+function toggleCustHistory(id){
+  const el=document.getElementById('cust-hist-'+id);
+  if(!el)return;
+  if(el.style.display==='none'){
+    el.innerHTML=_renderCustomerHistory(id);
+    el.style.display='block';
+  } else {
+    el.style.display='none';
+  }
+}
+
+function _renderCustomerHistory(customerId){
+  const txns=(DATA.generalIssued||[]).filter(x=>x.customerId===customerId).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  if(txns.length===0){
+    return`<div style="background:var(--surface2);border-radius:10px;padding:12px;font-size:17px;color:var(--muted);text-align:center">No purchases linked to this customer yet.</div>`;
+  }
+  const totalSpend=txns.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const totalOwed=txns.reduce((a,b)=>{
+    const sv=Number(b.issued||0)*Number(b.sellingPrice||0);
+    const paid=b.creditStatus==='partial'?Number(b.partialPaid||0):b.creditStatus==='paid'?sv:0;
+    return a+(sv-paid);
+  },0);
+  const rows=txns.map(x=>{
+    const sv=Number(x.issued||0)*Number(x.sellingPrice||0);
+    const cs=x.creditStatus||'paid';
+    const chip=cs==='paid'?`<span class="bdg bg2" style="font-size:13px">PAID</span>`:cs==='partial'?`<span class="bdg ba2" style="font-size:13px">PARTIAL</span>`:  `<span class="bdg br2" style="font-size:13px">CREDIT</span>`;
+    return`<tr>
+      <td style="white-space:nowrap;font-size:16px">${fmtDate(x.date)}</td>
+      <td style="font-weight:600">${esc(x.itemName)}</td>
+      <td style="text-align:right;color:var(--amber)">${Number(x.issued||0).toLocaleString()}</td>
+      <td style="text-align:right;color:var(--green);font-weight:700">${sv>0?zm(sv):'—'}</td>
+      <td>${chip}</td>
+    </tr>`;
+  }).join('');
+  return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-family:var(--fh);font-size:17px;font-weight:700;color:var(--blue)">🧾 Purchase History (${txns.length})</div>
+      <div style="text-align:right">
+        <div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--green)">${zm(totalSpend)}</div>
+        <div style="font-size:13px;color:var(--muted)">total spend</div>
+        ${totalOwed>0?`<div style="font-size:14px;color:var(--red);font-weight:700">${zm(totalOwed)} owed</div>`:''}
+      </div>
+    </div>
+    <div class="tw"><table style="font-size:16px">
+      <thead><tr><th>Date</th><th>Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Value</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
+// ── END CUSTOMER HISTORY ──────────────────────────────────────────────────────
 function renderContacts(){
   const all=(DATA.contacts||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   const list=CTAB==='all'?all:all.filter(c=>c.type===CTAB);
@@ -11683,10 +12002,12 @@ function renderContacts(){
           <div style="font-size:15px;color:var(--muted)">${Number(c.balance||0)>0?'owes you':'you owe'}</div>`:'<div style="font-size:16px;color:var(--muted)">No balance</div>'}
           <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">
             <button class="btn bo bsm" onclick="editContact('${c.id}')">✏️</button>
+            ${c.type==='customer'?`<button class="btn bo bsm" style="color:var(--blue);border-color:var(--blue)" onclick="toggleCustHistory('${c.id}')">🧾 History</button>`:''}
             <button class="btn rd bsm" onclick="deleteContact('${c.id}')">🗑️</button>
           </div>
         </div>
       </div>
+      ${c.type==='customer'?`<div id="cust-hist-${c.id}" style="display:none;margin-top:10px">${_renderCustomerHistory(c.id)}</div>`:''}
     </div>`;
   }).join('');
 
@@ -11714,7 +12035,8 @@ function renderContacts(){
       <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:12px;padding:12px">
         <div style="font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Customers</div>
         <div style="font-family:var(--fh);font-size:27px;font-weight:800;color:var(--blue)">${customers.length}</div>
-        ${totalCusBalance!==0?`<div style="font-size:16px;color:var(--muted)">Owed: ${zm(Math.abs(totalCusBalance))}</div>`:''}
+        ${totalCusBalance!==0?`<div style="font-size:16px;color:var(--muted)">Balance: ${zm(Math.abs(totalCusBalance))}</div>`:''}
+        ${(()=>{const txnOwed=(DATA.generalIssued||[]).filter(x=>x.customerId&&(x.creditStatus==='credit'||x.creditStatus==='partial')).reduce((a,b)=>{const sv=Number(b.issued||0)*Number(b.sellingPrice||0);const pd=b.creditStatus==='partial'?Number(b.partialPaid||0):0;return a+(sv-pd);},0);return txnOwed>0?`<div style="font-size:15px;color:var(--red);font-weight:700">🔴 ${zm(txnOwed)} credit owed</div>`:'';})()}
       </div>
     </div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">

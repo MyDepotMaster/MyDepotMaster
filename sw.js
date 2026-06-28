@@ -25,7 +25,19 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v50 (2026-06-24)
+// Current version: v51 (2026-06-28)
+//
+// v51 changes (2026-06-28):
+//   - Font stack updated: DM Sans → IBM Plex Sans, DM Mono → IBM Plex Mono.
+//     Provides a more authoritative financial/data-entry feel throughout the app.
+//     Syne (headings) retained. FONTS_CSS updated to match new Google Fonts URL.
+//   - Customer linking: sales/issue transactions now accept an optional customer
+//     from DATA.contacts (type=customer). customerId + customerName stored on
+//     each generalIssued record. Customer column added to Issued and Daily Sales
+//     tables. Customer name appears on printed receipts. Contacts tab customer
+//     cards gain a 🧾 History button showing all linked transactions, total
+//     spend, and outstanding credit. Debtor card shows customer name inline.
+//     Cache bump only for sw.js — no SW logic changes.
 //
 // v50 changes (2026-06-24):
 //   - Fix: when "Stay Signed In" is enabled on a device, inactivity
@@ -261,9 +273,9 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v50';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v51';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
-const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap';
+const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 
