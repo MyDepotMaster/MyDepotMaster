@@ -25,7 +25,27 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v51 (2026-06-28)
+// Current version: v52 (2026-06-28)
+//
+// v52 changes (2026-06-28):
+//   - Fix: Sales tab button not responding to taps. 'sales' was missing from
+//     the gtab listener array in attachTabListeners(), so no click handler was
+//     ever registered for #gtab-sales. Added 'sales' between 'issued' and
+//     'stockcount' in the forEach list.
+//   - Admin panel: subscription applications now received and actionable.
+//     MDM app writes to subscriptionRequests/<installId>/<timestamp> but the
+//     admin panel only read licenses/ — applications were silently lost.
+//     Admin now loads subscriptionRequests/ in parallel with licenses/ on
+//     every refresh. A "📋 Subscription Applications" section (with pulsing
+//     badge count) appears above the depot list whenever pending requests
+//     exist. Each card shows depot name, phone (tap-to-call), payment method,
+//     transaction ID, and submission time, with three action buttons:
+//     → Trial (sets status:trial), → Active (sets status:active with correct
+//     tier + 30-day activeUntil), ✕ Dismiss (marks request dismissed without
+//     touching the license). Field mapping fixed: MDM sends `phone`, admin
+//     now reads phone || contactPhone when writing to licenses/.
+//     Firebase rules note added to admin config block — subscriptionRequests
+//     node must allow unauthenticated read/write per $installId.
 //
 // v51 changes (2026-06-28):
 //   - Font stack updated: DM Sans → IBM Plex Sans, DM Mono → IBM Plex Mono.
@@ -273,7 +293,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v51';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v52';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 

@@ -2185,10 +2185,10 @@ function showCapReachedPrompt(capKey, label) {
       <div style="font-size:13px;color:var(--muted);margin-bottom:3px">Your Company Key — include when upgrading:</div>
       <div style="font-family:monospace;font-size:16px;color:var(--blue);word-break:break-all;user-select:all">${esc(key)}</div>
     </div>
-    <a href="${waLink}" target="_blank"
-      style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;background:var(--green);color:#111;border-radius:8px;padding:10px 16px;font-family:var(--fh);font-size:17px;font-weight:800;text-decoration:none;touch-action:manipulation">
-      💬 Upgrade to ${esc(nextTM.label)} via WhatsApp
-    </a>
+    <button onclick="closeModal();openSubscriptionForm('${nextTier}')"
+      style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;background:var(--green);color:#111;border:none;border-radius:8px;padding:10px 16px;font-family:var(--fh);font-size:17px;font-weight:800;cursor:pointer;width:100%;touch-action:manipulation">
+      📋 Apply to Upgrade — ${esc(nextTM.label)}
+    </button>
     <div class="mact" style="margin-top:0">
       <button class="btn bo" style="flex:1" onclick="closeModal()">Maybe Later</button>
     </div>`);
@@ -2543,6 +2543,120 @@ const _TIER_BULLETS = {
   ],
 };
 
+// ── SUBSCRIPTION APPLICATION FORM ────────────────────────────────────────────
+// Writes to Firebase: subscriptionRequests/<installId>/<timestamp>
+// Admin app reads from this path to process upgrade requests.
+function openSubscriptionForm(planTier) {
+  const key   = depotKey();
+  const tm    = TIER_META[planTier] || TIER_META.growth;
+  const acc   = planTier === 'starter' ? 'var(--amber)' : planTier === 'growth' ? 'var(--blue)' : planTier === 'pro' ? 'var(--green)' : '#a78bfa';
+  const di    = DATA.depotInfo || {};
+  const defaultPhone = di.contactPhone || '';
+
+  openModal(`
+    <div class="mtitle" style="font-size:21px;margin-bottom:4px">📋 Upgrade Application</div>
+    <div style="background:color-mix(in srgb,${acc} 12%,var(--surface2));border:1px solid ${acc};border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-family:var(--fh);font-size:17px;font-weight:800;color:var(--white)">${esc(tm.label)} Plan</div>
+        <div style="font-size:15px;color:var(--muted)">${esc(tm.desc)}</div>
+      </div>
+      <div style="font-family:var(--fh);font-size:22px;font-weight:800;color:${acc}">K${tm.price}<span style="font-size:13px;font-weight:500;color:var(--muted)">/mo</span></div>
+    </div>
+
+    <div class="fw">
+      <div class="fl">Company Key <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(auto-filled)</span></div>
+      <input class="fi" id="sub-key" value="${esc(key)}" readonly style="color:var(--blue);font-family:var(--fm);cursor:default;opacity:.8"/>
+    </div>
+    <div class="fw">
+      <div class="fl">Phone Number <span style="color:var(--red)">*</span></div>
+      <input class="fi" id="sub-phone" type="tel" placeholder="E.G. 0977123456" value="${esc(defaultPhone)}" inputmode="tel"/>
+    </div>
+    <div class="fw">
+      <div class="fl">Payment Method <span style="color:var(--red)">*</span></div>
+      <select class="fi" id="sub-method">
+        <option value="">— Select —</option>
+        <option value="Airtel Money">🔴 Airtel Money</option>
+        <option value="MTN MoMo">🟡 MTN Mobile Money</option>
+        <option value="Bank Transfer">🏦 Bank Transfer</option>
+        <option value="Cash">💵 Cash</option>
+      </select>
+    </div>
+    <div class="fw">
+      <div class="fl">Transaction ID / Reference <span style="color:var(--red)">*</span></div>
+      <input class="fi" id="sub-txid" placeholder="E.G. AE123456789" oninput="this.value=this.value.toUpperCase()"/>
+    </div>
+
+    <!-- Payment numbers for reference -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:14px;font-size:16px">
+      <div style="font-size:13px;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Payment Numbers</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="color:var(--text)">🔴 Airtel Money</span>
+        <span style="font-family:var(--fm);color:var(--green);font-weight:700">0970 962 902</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text)">🟡 MTN MoMo</span>
+        <span style="font-family:var(--fm);color:var(--green);font-weight:700">0960 271 128</span>
+      </div>
+    </div>
+
+    <div class="err-box" id="sub-err" style="display:none"></div>
+    <div class="mact">
+      <button class="btn bo" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" id="sub-submit-btn" onclick="submitSubscriptionRequest('${planTier}')">📤 Submit Application</button>
+    </div>`);
+}
+
+async function submitSubscriptionRequest(planTier) {
+  const key    = depotKey();
+  const phone  = (document.getElementById('sub-phone')?.value || '').trim();
+  const method = document.getElementById('sub-method')?.value || '';
+  const txid   = (document.getElementById('sub-txid')?.value || '').trim();
+  const err    = document.getElementById('sub-err');
+  const btn    = document.getElementById('sub-submit-btn');
+
+  err.style.display = 'none';
+  if (!phone)  { err.style.display='block'; err.textContent='⚠️ Enter your phone number.'; return; }
+  if (!method) { err.style.display='block'; err.textContent='⚠️ Select a payment method.'; return; }
+  if (!txid)   { err.style.display='block'; err.textContent='⚠️ Enter the transaction ID or reference.'; return; }
+
+  if (!isFbConfigured() || !navigator.onLine) {
+    err.style.display='block';
+    err.textContent='⚠️ Internet connection required to submit. Please check your connection.';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = '⏳ Submitting…';
+
+  const di = DATA.depotInfo || {};
+  const payload = {
+    installId:   key,
+    depotName:   di.name || '',
+    district:    di.district || '',
+    country:     di.country || '',
+    requestedPlan: planTier,
+    planLabel:   (TIER_META[planTier] || {}).label || planTier,
+    phone,
+    paymentMethod: method,
+    transactionId: txid,
+    submittedAt:   Date.now(),
+    submittedBy:   (USER || {}).username || '',
+    status:        'pending'
+  };
+
+  try {
+    const ts = Date.now();
+    await fbSet('subscriptionRequests/' + key + '/' + ts, payload);
+    closeModal();
+    showToast('✅ Application submitted! We will activate your plan shortly.');
+    logAuditEvent('CREATE', 'Subscription Request', `Plan: ${payload.planLabel} · Method: ${method} · TxID: ${txid}`);
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '📤 Submit Application';
+    err.style.display = 'block';
+    err.textContent = '❌ Submission failed: ' + (e.message || 'Please try again.');
+  }
+}
+// ── END SUBSCRIPTION FORM ─────────────────────────────────────────────────────
+
 function showUpgradePrompt(featureName) {
   const meta     = _FEATURE_LABEL[featureName] || { name: featureName, tier: 'growth' };
   const reqTier  = meta.tier;                          // tier that unlocks this feature
@@ -2583,10 +2697,10 @@ function showUpgradePrompt(featureName) {
       <div style="display:flex;flex-wrap:wrap;gap:4px 10px">
         ${bullets.map(([e,l])=>`<div style="font-size:14px;color:var(--text);opacity:.9;white-space:nowrap">${e} ${esc(l)}</div>`).join('')}
       </div>
-      ${isReq && !isCur ? `<a href="${waLink}" target="_blank"
-        style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;background:${accent};color:#111;border-radius:8px;padding:10px 16px;font-family:var(--fh);font-size:17px;font-weight:800;text-decoration:none;touch-action:manipulation">
-        💬 Upgrade to ${esc(tm.label)} via WhatsApp
-      </a>` : ''}
+      ${isReq && !isCur ? `<button onclick="closeModal();openSubscriptionForm('${t}')"
+        style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;background:${accent};color:#111;border:none;border-radius:8px;padding:10px 16px;font-family:var(--fh);font-size:17px;font-weight:800;cursor:pointer;width:100%;touch-action:manipulation">
+        📋 Apply to Upgrade — ${esc(tm.label)}
+      </button>` : ''}
     </div>`;
   }).join('');
 
@@ -2703,7 +2817,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v51';
+const SW_VERSION  = 'mdm-v52';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2719,7 +2833,7 @@ const SW_VERSION  = 'mdm-v51';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v51';
+  const VER = 'mdm-v52';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -8959,10 +9073,10 @@ function renderPaymentSection() {
         ${bullets.slice(0,4).map(([e,l])=>`<span style="font-size:13px;color:var(--text);opacity:.85">${e} ${esc(l)}</span>`).join('')}
         ${bullets.length>4?`<span style="font-size:13px;color:var(--muted)">+${bullets.length-4} more…</span>`:''}
       </div>
-      ${!isCur ? `<a href="https://wa.me/260960271128?text=${waMsg(t)}" target="_blank"
-        style="display:flex;align-items:center;justify-content:center;gap:6px;background:${acc};color:#111;border-radius:8px;padding:9px 14px;font-family:var(--fh);font-size:16px;font-weight:800;text-decoration:none;touch-action:manipulation">
-        💬 Upgrade to ${esc(tm.label)} via WhatsApp
-      </a>` : ''}
+      ${!isCur ? `<button onclick="openSubscriptionForm('${t}')"
+        style="display:flex;align-items:center;justify-content:center;gap:6px;background:${acc};color:#111;border:none;border-radius:8px;padding:9px 14px;font-family:var(--fh);font-size:16px;font-weight:800;cursor:pointer;width:100%;touch-action:manipulation">
+        📋 Apply to Upgrade — ${esc(tm.label)}
+      </button>` : ''}
     </div>`;
   }).join('');
 
@@ -8993,8 +9107,8 @@ function renderPaymentSection() {
       <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
     </div>
     <a href="https://wa.me/260960271128" target="_blank"
-      style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#1A1A2E;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:19px;font-weight:700;text-decoration:none;margin-top:4px">
-      💬 WhatsApp for Help or Activation
+      style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:19px;font-weight:700;text-decoration:none;margin-top:4px">
+      💬 WhatsApp for Help or Queries
     </a>
   </div>`;
 }
@@ -10801,7 +10915,7 @@ function attachTabListeners(){
   if(addGenRec)addGenRec.addEventListener('click',openGenRecForm);
   if(addGenIss)addGenIss.addEventListener('click',openGenIssForm);
   if(addGenSc)addGenSc.addEventListener('click',openGenStockCountForm);
-  ['inventory','issued','stockcount','summary','itemnames','pl','cashflow','budget'].forEach(t=>{
+  ['inventory','issued','sales','stockcount','summary','itemnames','pl','cashflow','budget'].forEach(t=>{
     const el=document.getElementById('gtab-'+t);
     if(el)el.addEventListener('click',()=>{GTAB=t;render();});
   });
