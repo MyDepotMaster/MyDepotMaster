@@ -25,7 +25,18 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v52 (2026-06-28)
+// Current version: v53 (2026-06-28)
+//
+// v53 changes (2026-06-28):
+//   - Payment details: Airtel Money number changed to +260 977 638 790 in the
+//     subscription application form, the upgrade prompt screen, and the
+//     copy-to-clipboard value. MTN MoMo number unchanged.
+//   - Trading name updated: payment method labels ("MDM Developer" →
+//     "Spike Trading and General Dealers"), Terms of Service (§1 Acceptance,
+//     §7 Intellectual Property), Privacy Policy (§1 Who We Are), and both
+//     modal footer copyright lines now read NEXLITE-DIGITAL-SOLUTIONS-LIMITED
+//     (trading as Spike Trading and General Dealers) in place of
+//     "Digital Frontier Technologies". Legal entity name unchanged.
 //
 // v52 changes (2026-06-28):
 //   - Fix: Sales tab button not responding to taps. 'sales' was missing from
@@ -293,7 +304,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v52';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v53';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 

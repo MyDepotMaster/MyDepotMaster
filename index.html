@@ -1483,43 +1483,62 @@ function esc(str) {
 // Security is enforced entirely by Firebase Security Rules (see below).
 //
 // ── ACTIVE RULES (apply these in Firebase Console → Realtime Database → Rules) ──
+// This block reflects what is ACTUALLY deployed (confirmed directly from the
+// Firebase Console on 28 Jun 2026), not a theoretical/aspirational version.
 // {
 //   "rules": {
+//     ".read": false,
+//     ".write": false,
 //     "licenses": {
-//       ".read": false,
-//       ".write": false,
-//       "$key": {
-//         ".read": "auth == null",
-//         ".write": false
+//       ".read": true,
+//       "$depotKey": {
+//         ".read": true,
+//         ".write": true
 //       }
 //     },
 //     "depots": {
-//       "$installId": {
-//         ".read": "auth == null",
-//         ".write": "auth == null && newData.child('data/installId').val() === $installId"
+//       "$depotKey": {
+//         ".read": true,
+//         ".write": true
 //       }
 //     },
 //     "usernames": {
 //       "$username": {
-//         ".read": "auth == null",
-//         ".write": "auth == null"
+//         ".read": true,
+//         ".write": true
 //       }
 //     },
 //     "lockouts": {
 //       "$installId": {
-//         ".read": "auth == null",
-//         ".write": "auth == null"
+//         ".read": true,
+//         ".write": true
+//       }
+//     },
+//     "subscriptionRequests": {
+//       ".read": true,
+//       "$installId": {
+//         ".read": true,
+//         ".write": true
 //       }
 //     }
 //   }
 // }
 //
 // KEY POINTS:
-// - licenses: ".read": false at root — stops bulk enumeration of all licenses.
-//   Each depot can still read its own license key path directly (via $key rule).
-// - depots write rule verifies the installId in the payload matches the key,
-//   preventing any caller from overwriting another depot's data.
+// - No real Firebase Auth is used anywhere — every node is open to anyone who
+//   knows (or guesses) the depotKey/installId/username. There is no per-tenant
+//   server-side enforcement; security relies entirely on key unguessability.
+// - licenses.$depotKey.write must be unconditional ("true"). An earlier,
+//   tighter rule only allowed setting status to 'pending_approval' on an
+//   existing record — that silently blocked the admin panel's activate/
+//   suspend/renew/approve/delete actions (every one of them sets status to
+//   something other than 'pending_approval', or deletes the record outright).
 // - The API key alone gives no write access — rules enforce all restrictions.
+// - To actually restrict admin-only actions (activate/suspend/delete) to the
+//   admin panel specifically, the admin panel would need real Firebase Auth
+//   sign-in so rules can check "auth != null" / a custom claim — the current
+//   model can't distinguish "the admin panel" from "the depot's own app",
+//   since both connect identically with no auth.
 //
 // ── APP CHECK SETUP (strongly recommended — do this once) ────────────────────
 // App Check ensures only requests from your actual app domain are accepted,
@@ -2591,7 +2610,7 @@ function openSubscriptionForm(planTier) {
       <div style="font-size:13px;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Payment Numbers</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="color:var(--text)">🔴 Airtel Money</span>
-        <span style="font-family:var(--fm);color:var(--green);font-weight:700">0970 962 902</span>
+        <span style="font-family:var(--fm);color:var(--green);font-weight:700">0977 638 790</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="color:var(--text)">🟡 MTN MoMo</span>
@@ -2817,7 +2836,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v52';
+const SW_VERSION  = 'mdm-v53';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2833,7 +2852,7 @@ const SW_VERSION  = 'mdm-v52';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v52';
+  const VER = 'mdm-v53';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -9092,17 +9111,17 @@ function renderPaymentSection() {
       <span class="pm-icon">🔴</span>
       <div class="pm-info">
         <div class="pm-label">Airtel Money</div>
-        <div class="pm-num" style="font-size:22px">+260 970 962 902</div>
-        <div class="pm-name">MDM Developer</div>
+        <div class="pm-num" style="font-size:22px">+260 977 638 790</div>
+        <div class="pm-name">Spike Trading and General Dealers</div>
       </div>
-      <button class="pm-copy" onclick="copyNum('260970962902')">Copy</button>
+      <button class="pm-copy" onclick="copyNum('260977638790')">Copy</button>
     </div>
     <div class="pay-method">
       <span class="pm-icon">🟡</span>
       <div class="pm-info">
         <div class="pm-label">MTN Mobile Money</div>
         <div class="pm-num" style="font-size:22px">+260 960 271 128</div>
-        <div class="pm-name">MDM Developer</div>
+        <div class="pm-name">Spike Trading and General Dealers</div>
       </div>
       <button class="pm-copy" onclick="copyNum('260960271128')">Copy</button>
     </div>
@@ -9625,7 +9644,7 @@ function renderSettings(){
       <div style="font-size:18px;color:var(--muted);line-height:1.7;margin-bottom:12px">Permanently delete this company account and all associated data. <strong style="color:var(--red)">This cannot be undone.</strong></div>
       <button class="btn" style="width:100%;background:transparent;border:1.5px solid var(--red);color:var(--red);font-weight:700;white-space:normal;line-height:1.3;min-height:48px;height:auto" onclick="deleteAccountStep1()">🗑 Delete Account &amp; Data</button>
     </div>
-    <div style="text-align:center;padding:12px 0 4px;font-size:16px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Digital Frontier Technologies) · General Purpose Business Management Software</div>
+    <div style="text-align:center;padding:12px 0 4px;font-size:16px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Spike Trading and General Dealers) · General Purpose Business Management Software</div>
     <div style="height:60px"></div>`;
 }
 
@@ -9634,20 +9653,20 @@ function showTOS(){
   openModal(`<div class="mtitle">📄 Terms of Service</div>
     <div style="font-size:17px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
       <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">PLEASE READ BEFORE USING THIS APPLICATION.</div>
-      <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with NEXLITE-DIGITAL-SOLUTIONS-LIMITED, trading as Digital Frontier Technologies ("the Developer"), the NAPSA-registered company operating My Depot Master.</p>
+      <b style="color:var(--white)">1. Acceptance</b><p style="margin:4px 0 10px">By using My Depot Master you agree to these Terms. These are a binding agreement with NEXLITE-DIGITAL-SOLUTIONS-LIMITED, trading as Spike Trading and General Dealers ("the Developer"), the NAPSA-registered company operating My Depot Master.</p>
       <b style="color:var(--white)">2. General-Purpose Tool — No Official Affiliation</b><p style="margin:4px 0 10px">My Depot Master is a <b>general-purpose business management tool</b> for internal record-keeping. It is <b>NOT</b> an official government system and is NOT affiliated with any government agency, ministry, PACRA, ZRA, or any regulatory authority.</p>
       <b style="color:var(--white)">3. No Warranties</b><p style="margin:4px 0 10px">THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY. Calculations may not be accurate, complete, or suitable for any official, legal, or financial purpose.</p>
       <b style="color:var(--white)">4. Limitation of Liability</b><p style="margin:4px 0 10px">THE DEVELOPER IS NOT LIABLE FOR: data loss; financial loss; wage or count errors; labour disputes; regulatory penalties; or any indirect damages. Maximum liability = 3 months' subscription fees.</p>
       <b style="color:var(--white)">5. User Responsibilities</b><p style="margin:4px 0 10px">You are solely responsible for: verifying data accuracy; keeping independent records; complying with all laws; safeguarding passwords; and verifying all wage figures before payment.</p>
       <b style="color:var(--white)">6. Data &amp; Privacy</b><p style="margin:4px 0 10px">Data is stored locally on your device and optionally synced to Google Firebase where cloud sync is enabled. By using this Software you consent to this processing. Our full data practices are described in the <span style="color:var(--blue);text-decoration:underline;cursor:pointer" onclick="showPrivacyPolicy()">Privacy Policy</span>, which forms part of these Terms. In brief: we do not sell your data; you remain the data controller for all business records you enter; the Developer acts as a data processor only. You are responsible for compliance with the Zambia Data Protection Act No. 3 of 2021 and any other applicable local data protection law in your jurisdiction.</p>
-      <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to NEXLITE-DIGITAL-SOLUTIONS-LIMITED (trading as Digital Frontier Technologies). You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
+      <b style="color:var(--white)">7. Intellectual Property</b><p style="margin:4px 0 10px">All rights belong to NEXLITE-DIGITAL-SOLUTIONS-LIMITED (trading as Spike Trading and General Dealers). You may NOT copy, resell, reverse-engineer, or rebrand the Software.</p>
       <b style="color:var(--white)">8. Subscription, Fees &amp; Activation</b><p style="margin:4px 0 10px">Fees are non-refundable once activation is issued. Activation will be completed within 48 hours of confirmed payment receipt. Access may be suspended for non-payment. <b style="color:#ffcc66">The Developer reserves the right to change subscription fees and/or subscription periods (e.g. trial duration, active period length) at any time without prior notice.</b> The fee and period applicable at the time of your payment will be honoured for that payment cycle only. Continued use of the Software after any fee or period change constitutes acceptance of the new terms.</p>
       <b style="color:var(--white)">9. Indemnification</b><p style="margin:4px 0 10px">You indemnify the Developer from any claims, costs, or legal fees from your use, misuse, or breach of these Terms.</p>
       <b style="color:var(--white)">10. Governing Law</b><p style="margin:4px 0 10px">Governed by the laws of the country in which the operator is registered. Disputes go to negotiation first, then arbitration if unresolved within 30 days.</p>
       <b style="color:var(--white)">11. Modifications</b><p style="margin:4px 0 10px">Terms may be updated at any time. Continued use = acceptance.</p>
       <b style="color:var(--white)">12. Age &amp; Legal Capacity</b><p style="margin:4px 0 10px">By using this Software you confirm you are at least 18 years old and legally capable of entering a binding agreement under applicable local law. Minors may not use this Software.</p>
       <div style="background:rgba(220,38,38,.12);border:1px solid var(--red);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#ff8080"><b>\u26a0\ufe0f IMPORTANT:</b> This is a general-purpose admin tool only — NOT legal, financial, or accounting advice. All figures must be independently verified.</div>
-      <div style="text-align:center;font-size:16px">My Depot Master \u00b7 \u00a9 ${yr} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Digital Frontier Technologies) \u00b7 All Rights Reserved</div>
+      <div style="text-align:center;font-size:16px">My Depot Master \u00b7 \u00a9 ${yr} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Spike Trading and General Dealers) \u00b7 All Rights Reserved</div>
     </div>
     <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 I Understand &amp; Accept</button></div>`);
 }
@@ -9656,7 +9675,7 @@ function showPrivacyPolicy(){
   openModal(`<div class="mtitle">🔒 Privacy Policy</div>
     <div style="font-size:17px;color:var(--muted);line-height:1.85;max-height:65vh;overflow-y:auto;padding-right:4px">
       <div style="background:#003d2e;border:1px solid var(--green);border-radius:8px;padding:9px 12px;margin-bottom:12px;color:var(--green);font-weight:700">EFFECTIVE DATE: 1 JANUARY 2025 · LAST UPDATED: ${yr}</div>
-      <b style="color:var(--white)">1. Who We Are</b><p style="margin:4px 0 10px">My Depot Master is developed and operated by NEXLITE-DIGITAL-SOLUTIONS-LIMITED, trading as Digital Frontier Technologies (\u201cthe Developer\u201d), a NAPSA-registered software company based in Zambia. Contact: <span style="color:var(--blue)">mydepotmaster@gmail.com</span></p>
+      <b style="color:var(--white)">1. Who We Are</b><p style="margin:4px 0 10px">My Depot Master is developed and operated by NEXLITE-DIGITAL-SOLUTIONS-LIMITED, trading as Spike Trading and General Dealers (\u201cthe Developer\u201d), a NAPSA-registered software company based in Zambia. Contact: <span style="color:var(--blue)">mydepotmaster@gmail.com</span></p>
       <b style="color:var(--white)">2. What Data We Collect</b><p style="margin:4px 0 10px">We collect only the data you voluntarily enter into the app. This includes: company name, district, and country; admin username and hashed password; recovery email address; stock, sales, purchase, staff, and financial records; and device/session identifiers stored locally. We do <b style="color:var(--white)">not</b> collect names, ID numbers, or personal data of your end-customers beyond what you choose to record.</p>
       <b style="color:var(--white)">3. How We Use Your Data</b><p style="margin:4px 0 10px">Data you enter is used solely to provide the app\u2019s business management features to you. The Developer does not analyse, profile, sell, rent, or share your data with any third party for marketing or commercial purposes.</p>
       <b style="color:var(--white)">4. Cloud Sync &amp; Third Parties</b><p style="margin:4px 0 10px">If you enable cloud sync, your data is transmitted to and stored on <b style="color:var(--white)">Google Firebase</b>, a secure cloud infrastructure service. This transfer is protected by industry-standard security measures. No other third-party services receive your data. You may disable cloud sync at any time in Settings; your data will remain on-device only.</p>
@@ -9667,7 +9686,7 @@ function showPrivacyPolicy(){
       <b style="color:var(--white)">9. Your Rights (DPA 2021)</b><p style="margin:4px 0 10px">As a data subject under the DPA 2021 you have the right to: access data held about you; correct inaccurate data; request erasure; restrict or object to processing; and withdraw consent. To exercise any of these rights, contact <span style="color:var(--blue)">mydepotmaster@gmail.com</span>.</p>
       <b style="color:var(--white)">10. Children</b><p style="margin:4px 0 10px">This app is not intended for use by persons under 18 years of age. We do not knowingly collect data from minors.</p>
       <b style="color:var(--white)">11. Changes to This Policy</b><p style="margin:4px 0 10px">We may update this Privacy Policy from time to time. Material changes will be communicated via an in-app notice. Continued use of the app after a change constitutes acceptance of the updated policy.</p>
-      <div style="text-align:center;font-size:16px;margin-top:12px">My Depot Master \u00b7 \u00a9 ${yr} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Digital Frontier Technologies) \u00b7 All Rights Reserved</div>
+      <div style="text-align:center;font-size:16px;margin-top:12px">My Depot Master \u00b7 \u00a9 ${yr} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Spike Trading and General Dealers) \u00b7 All Rights Reserved</div>
     </div>
     <div class="mact"><button class="btn bg" onclick="closeModal()">\u2713 Close</button></div>`);
 }
