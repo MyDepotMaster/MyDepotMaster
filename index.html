@@ -5528,7 +5528,7 @@ function renderGenIssued(){
     <td style="font-size:16px">${custChip}</td>
     <td style="font-size:17px;color:var(--muted)">${esc(item.notes)||'—'}</td>
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
-    ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button></td>`:''}
+    <td style="white-space:nowrap"><button class="editbtn" onclick="printSaleReceipt('${item.id}')" title="Print receipt">🧾</button>${USER.role==='admin'?` <button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button>`:''}</td>
   </tr>`;}).join('');
   const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
   const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
@@ -5790,7 +5790,7 @@ function printSaleReceipt(id){
   <div class="brand-hr"></div>
   <div class="footer">Thank you for your business!<br>${esc(depot.name||'My Depot Master')} · Powered by My Depot Master</div>
   </body></html>`;
-  medianPrint(html, `Receipt-${item.id.slice(-6).toUpperCase()}`);
+  _pdfPrint(html, `Receipt #${item.id.slice(-6).toUpperCase()}`);
 }
 
 function openDailyCloseOut(){
@@ -6176,13 +6176,49 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
   }
   const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value),sellingPrice:sprice,creditStatus,partialPaid:partialAmt,customerId,customerName};
   const totalRev=qty*sprice;
-  if(!confirm(`Confirm Item Issued:\n${name} · ${qty} units${sprice>0?` × ${cur()}${sprice.toFixed(2)} = ${cur()}${totalRev.toFixed(2)}`:''}\nPayment: ${creditStatus.toUpperCase()}\n\nProceed?`))return;
+  const payLabel=creditStatus==='paid'?'✅ Paid':creditStatus==='partial'?`🟶 Partial — ${zm(partialAmt)} paid`:'🔴 Credit';
+  const custLine=customerName?`<div style="font-size:15px;color:var(--blue);margin-top:4px">👤 ${esc(customerName)}</div>`:'';
+  openModal(`
+    <div class="mtitle">Confirm Sale</div>
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:16px;text-align:center">
+      <div style="font-size:19px;font-weight:800;color:var(--white)">${esc(name)}</div>
+      <div style="font-size:15px;color:var(--muted);margin-top:4px">${qty.toLocaleString()} units${sprice>0?` × ${zm(sprice)}`:''}</div>
+      ${totalRev>0?`<div style="font-size:22px;font-weight:900;color:var(--green);margin-top:6px">${zm(totalRev)}</div>`:''}
+      <div style="font-size:14px;margin-top:6px">${payLabel}</div>
+      ${custLine}
+    </div>
+    <div class="mact" style="flex-direction:column;gap:8px">
+      <button class="btn bg" style="width:100%" onclick="_doSaveGenIss(this)">&#x1F9FE; Confirm &amp; Print Receipt</button>
+      <button class="btn ba" style="width:100%" onclick="_doSaveGenIssNoprint(this)">✓ Confirm</button>
+      <button class="btn bo" style="width:100%" onclick="closeModal()">✕ Cancel</button>
+    </div>`,'uncloseable');
+  // Stash payload on the modal so buttons can access it without serialising to HTML
+  document.getElementById('modal-ovl')._pendingIssPayload=payload;
+}
+
+function _doSaveGenIss(btn){
+  const ovl=document.getElementById('modal-ovl');
+  const payload=ovl._pendingIssPayload;
+  if(!payload)return;
+  _commitGenIss(payload);
+  printSaleReceipt(payload.id);
+}
+
+function _doSaveGenIssNoprint(btn){
+  const ovl=document.getElementById('modal-ovl');
+  const payload=ovl._pendingIssPayload;
+  if(!payload)return;
+  _commitGenIss(payload);
+}
+
+function _commitGenIss(payload){
+  const sprice=Number(payload.sellingPrice||0);
   updateData(d=>{
     const prices={...(d.inventoryPrices||{})};
-    if(sprice>0)prices[name]={...(prices[name]||{}),sellingPrice:sprice};
+    if(sprice>0)prices[payload.itemName]={...(prices[payload.itemName]||{}),sellingPrice:sprice};
     return{...d,generalIssued:[...d.generalIssued,payload],inventoryPrices:prices};
   });
-  logAuditEvent('CREATE','Inventory Issued',`Item: ${name} · Qty: ${qty}`);
+  logAuditEvent('CREATE','Inventory Issued',`Item: ${payload.itemName} · Qty: ${payload.issued}`);
   closeModal();
 }
 
