@@ -25,7 +25,25 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v53 (2026-06-28)
+// Current version: v54 (2026-06-30)
+//
+// v54 changes (2026-06-30):
+//   - Branding in all prints: company logo and brand colour now appear on
+//     every print surface (sale receipts, payslips, period summary, audit
+//     log, CSV/data exports, books PDF, staff ID cards). New
+//     _getBrandedHeader() helper reads di.logoDataUrl and di.brandColor;
+//     shows logo image if uploaded, else a coloured initials box. CSS var
+//     --accent injected into _pdfPrint() so table accents, borders, and
+//     highlights all follow the depot's colour. Feature gate removed from
+//     ID card print — stored logo/colour always prints regardless of tier.
+//   - Sales tab gated to Pro plan. Free/Starter/Growth users see a lock
+//     screen with upgrade prompt. daily_sales added to TIER_FEATURES.pro.
+//     Sales tab button shows 🔒 for non-pro tiers.
+//   - Inline "＋ New Customer" in issue form. Tapping the link opens a
+//     name + phone panel inside the modal; "✓ Save & Select Customer"
+//     creates the contact in DATA.contacts, logs to audit trail, and
+//     auto-selects the new customer in the dropdown — no form re-open
+//     needed. Duplicate names reuse the existing contact instead.
 //
 // v53 changes (2026-06-28):
 //   - Payment details: Airtel Money number changed to +260 977 638 790 in the
@@ -304,7 +322,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v53';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v54';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
