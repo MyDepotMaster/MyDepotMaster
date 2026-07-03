@@ -3364,6 +3364,39 @@ function _historyClamp(items, f) {
   });
 }
 
+// Resolve the actual start/end dates a PERIOD value covers, for the
+// same period semantics used by filterPeriod(). Returns {start:null,end:null}
+// for 'all' (unbounded — no clean window to prorate a monthly salary against).
+function _periodBounds(period, tab){
+  const now=new Date();
+  const todayD=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(period==='daily') return {start:todayD,end:todayD};
+  if(period==='weekly'){const start=new Date(todayD);start.setDate(start.getDate()-7);return{start,end:todayD};}
+  if(period==='monthly') return {start:new Date(now.getFullYear(),now.getMonth(),1),end:new Date(now.getFullYear(),now.getMonth()+1,0)};
+  if(period==='yearly') return {start:new Date(now.getFullYear(),0,1),end:new Date(now.getFullYear(),11,31)};
+  if(period==='range'){const dr=(tab&&DATE_RANGE[tab])||{};return{start:dr.from?new Date(dr.from+'T00:00:00'):null,end:dr.to?new Date(dr.to+'T23:59:59'):null};}
+  return {start:null,end:null};
+}
+// Prorated cost of all fixed-monthly-salary staff for a given period,
+// accounting for staff who joined or left mid-period.
+function _salaryCostForPeriod(period, tab){
+  const {start,end}=_periodBounds(period,tab);
+  if(!start||!end) return 0; // unbounded window — skip rather than guess
+  let total=0;
+  (DATA.staff||[]).filter(s=>s.payType==='salary'&&Number(s.monthlySalary||0)>0).forEach(s=>{
+    const joined=s.dateJoined?new Date(s.dateJoined+'T00:00:00'):null;
+    const left=(s.statusDate&&s.status!=='active')?new Date(s.statusDate+'T00:00:00'):null;
+    let ps=start, pe=end;
+    if(joined&&joined>ps)ps=joined;
+    if(left&&left<pe)pe=left;
+    if(pe<ps)return;
+    const days=Math.round((pe-ps)/86400000)+1;
+    const daysInMonth=new Date(pe.getFullYear(),pe.getMonth()+1,0).getDate();
+    total += (Number(s.monthlySalary||0)/daysInMonth)*days;
+  });
+  return total;
+}
+
 function filterPeriod(items,period,f='date',tab){
   if(period==='all')return _historyClamp(items, f);
   if(period==='range'){
@@ -4774,10 +4807,14 @@ document.querySelectorAll('.nb').forEach(btn=>{
 });
 
 function showTab(tab){
+  const tabChanged = TAB!==tab;
   TAB=tab;
   document.querySelectorAll('.nb').forEach(b=>b.classList.toggle('act',b.dataset.tab===tab));
   document.querySelectorAll('.hdr-menu-navbtn[data-tab]').forEach(b=>b.classList.toggle('act',b.dataset.tab===tab));
-  render();
+  // Only jump to top when actually switching to a different tab.
+  // Re-renders triggered by data changes (adding/editing/deleting records
+  // while staying on the same tab) should keep the user's scroll position.
+  render(tabChanged);
 }
 function goToTabFromMenu(tab){
   closeHdrMenu();
@@ -4785,12 +4822,16 @@ function goToTabFromMenu(tab){
 }
 
 let _renderAttempts = 0; // Fix 6: guard against infinite retry on deterministic errors
-function render(){
+function render(resetScroll=false){
   const c=document.getElementById('content');
   if(!c||!USER) return;
   // Fix 1: skip re-render when nothing visible has changed
   const cacheKey = _renderCacheKey();
   if(cacheKey === _renderCache.key) return;
+  // Preserve the user's scroll position across re-renders that happen
+  // as a result of data changes (e.g. adding/editing/deleting a record)
+  // while they stay on the same tab. Only reset to top on an actual tab switch.
+  const prevScrollTop = c.scrollTop;
   // Ensure content area is visible (guards against edge-case where it stayed hidden)
   if(c.style.display==='none') c.style.display='block';
   try {
@@ -4803,7 +4844,7 @@ function render(){
     else if(TAB==='settings'){c.innerHTML=renderSettings();setTimeout(updateLastSyncDisplay,50);}
     _renderCache.key = cacheKey; // commit cache on success
     _renderAttempts = 0;         // reset error counter on clean render
-    c.scrollTop=0;
+    c.scrollTop = resetScroll ? 0 : prevScrollTop;
     attachTabListeners();
   } catch(err) {
     _renderAttempts++;
@@ -7887,6 +7928,8 @@ function openStaffForm(){
     <div class="fw"><div class="fl">Profile Photo (optional)</div><input type="file" class="fi" id="sf-photo" accept="image/png,image/jpeg,image/webp" style="padding:9px"></div>
     <div class="fw"><div class="fl">Job Role <span style="color:var(--red)">*</span></div><select class="fi" id="sf-role">${roleOpts||'<option>No roles defined</option>'}</select></div>
     <div class="fw"><div class="fl">Contract Type</div><select class="fi" id="sf-contract"><option value="permanent">PERMANENT</option><option value="casual">CASUAL</option><option value="seasonal">SEASONAL</option><option value="probation">PROBATION</option></select></div>
+    <div class="fw"><div class="fl">Pay Type</div><select class="fi" id="sf-paytype" onchange="_toggleSalaryField('sf')"><option value="rate">TASK / RATE-BASED (per bag, hour, day, etc.)</option><option value="salary">FIXED MONTHLY SALARY</option></select></div>
+    <div class="fw" id="sf-salary-wrap" style="display:none"><div class="fl">Monthly Salary (K)</div><input class="fi" type="number" min="0" step="0.01" id="sf-salary" placeholder="E.G. 3500"/></div>
     <div class="fw"><div class="fl">Date Joined <span style="color:var(--red)">*</span></div><input class="fi" type="date" id="sf-joined" value="${today()}"/></div>
     <div class="fw"><div class="fl">Phone (optional)</div><input class="fi" id="sf-phone" placeholder="0977 000 000" inputmode="tel" style="text-transform:none"/></div>
     ${isAdmin()?`<div class="fw"><div class="fl">Employee ID / NRC Number <span style="font-size:15px;color:var(--muted)">(Admin only)</span></div><input class="fi" id="sf-empid" placeholder="E.G. NRC 123456/10/1" style="text-transform:none"/></div>`:'<input type="hidden" id="sf-empid"/>'}
@@ -7895,15 +7938,23 @@ function openStaffForm(){
     <div class="fw"><div class="fl">Notes (optional)</div><textarea class="fi" id="sf-notes" placeholder="E.G. SEASONAL WORKER, PROBATION UNTIL DEC 2025…" rows="2" style="resize:none;height:auto"></textarea></div>
     <div class="mact"><button class="btn bo" onclick="closeModal()">Cancel</button><button class="btn bg" onclick="saveStaff()">✓ Register</button></div>`);
 }
+function _toggleSalaryField(prefix){
+  const type=document.getElementById(prefix+'-paytype')?.value;
+  const wrap=document.getElementById(prefix+'-salary-wrap');
+  if(wrap) wrap.style.display = type==='salary' ? 'block' : 'none';
+}
 function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   if (isAtCap('staff', (DATA.staff||[]).length)) { closeModal(); showCapReachedPrompt('staff', 'Staff Profiles'); return; }
   const name=uc(document.getElementById('sf-name').value);
   if(!name){alert('Enter staff name.');return;}
   const joined=document.getElementById('sf-joined').value;
   if(!joined){alert('Enter date joined.');return;}
+  const payType=document.getElementById('sf-paytype')?.value||'rate';
+  const monthlySalary=payType==='salary'?Math.max(0,Number(document.getElementById('sf-salary')?.value)||0):0;
+  if(payType==='salary'&&monthlySalary<=0){alert('Enter a monthly salary amount.');return;}
   const photoFile=document.getElementById('sf-photo')?.files?.[0]||null;
   const finish=(photoDataUrl)=>{
-    const payload={id:uid(),name,role:document.getElementById('sf-role').value,contractType:document.getElementById('sf-contract').value||'permanent',dateJoined:joined,phone:document.getElementById('sf-phone').value,employeeId:(document.getElementById('sf-empid').value||'').trim(),emergencyContactName:uc(document.getElementById('sf-ecname').value),emergencyContactPhone:(document.getElementById('sf-ecphone').value||'').trim(),notes:uc(document.getElementById('sf-notes').value),status:'active',photoDataUrl:photoDataUrl||null};
+    const payload={id:uid(),name,role:document.getElementById('sf-role').value,contractType:document.getElementById('sf-contract').value||'permanent',payType,monthlySalary,dateJoined:joined,phone:document.getElementById('sf-phone').value,employeeId:(document.getElementById('sf-empid').value||'').trim(),emergencyContactName:uc(document.getElementById('sf-ecname').value),emergencyContactPhone:(document.getElementById('sf-ecphone').value||'').trim(),notes:uc(document.getElementById('sf-notes').value),status:'active',photoDataUrl:photoDataUrl||null};
     updateData(d=>({...d,staff:[...d.staff,payload]}));
     closeModal();
   };
@@ -8108,12 +8159,19 @@ function saveClockOut(logId){
     if(amount>0||reason)deductions.push({reason,amount});
   });
   const ded=deductions.reduce((a,b)=>a+b.amount,0);
-  const earningsBase=getEarnings(qty,role,task);
+  const staffRec=DATA.staff.find(x=>String(x.id)===String(log.staffId));
+  const isSalariedStaff=staffRec?.payType==='salary';
+  // Salaried staff are paid a fixed monthly amount, not by task/quantity —
+  // record the shift for attendance/hours only, no task-rate earnings.
+  const earningsBase=isSalariedStaff?0:getEarnings(qty,role,task);
   const earnings=earningsBase*otMult;
   const net=Math.max(0,earnings-ded);
   const ru=taskRateUnit(role,task);
   const bagsVal=ru==='bag'?qty:0;
-  if(!confirm(`Complete Shift:\n${task} · ${qty} × K${(earningsBase/(qty||1)).toFixed(2)}${otMult>1?` × ${otMult} OT`:''}= K${earnings.toFixed(2)} gross\nDeductions: K${ded.toFixed(2)}\nNet: K${net.toFixed(2)}\n\nProceed?`))return;
+  const confirmMsg=isSalariedStaff
+    ? `Complete Shift (Salaried Staff — no per-task pay):\n${task}${qty?` · ${qty}`:''}\nDeductions: K${ded.toFixed(2)}\n\nProceed?`
+    : `Complete Shift:\n${task} · ${qty} × K${(earningsBase/(qty||1)).toFixed(2)}${otMult>1?` × ${otMult} OT`:''}= K${earnings.toFixed(2)} gross\nDeductions: K${ded.toFixed(2)}\nNet: K${net.toFixed(2)}\n\nProceed?`;
+  if(!confirm(confirmMsg))return;
   const timeOutTs=Date.now();
   updateData(d=>({...d,staffLogs:d.staffLogs.map(l=>String(l.id)===String(logId)?{
     ...l,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,
@@ -8605,6 +8663,8 @@ function _openEditStaffDetails(id){
     <div class="fw"><div class="fl">Full Name <span style="color:var(--red)">*</span></div><input class="fi" id="esd-name" value="${esc(s.name)}" placeholder="FULL NAME"/></div>
     <div class="fw"><div class="fl">Job Role <span style="color:var(--red)">*</span></div><select class="fi" id="esd-role">${roleOpts||'<option>No roles defined</option>'}</select></div>
     <div class="fw"><div class="fl">Contract Type</div><select class="fi" id="esd-contract"><option value="permanent"${(s.contractType||'permanent')==='permanent'?' selected':''}>PERMANENT</option><option value="casual"${s.contractType==='casual'?' selected':''}>CASUAL</option><option value="seasonal"${s.contractType==='seasonal'?' selected':''}>SEASONAL</option><option value="probation"${s.contractType==='probation'?' selected':''}>PROBATION</option></select></div>
+    <div class="fw"><div class="fl">Pay Type</div><select class="fi" id="esd-paytype" onchange="_toggleSalaryField('esd')"><option value="rate"${(s.payType||'rate')==='rate'?' selected':''}>TASK / RATE-BASED (per bag, hour, day, etc.)</option><option value="salary"${s.payType==='salary'?' selected':''}>FIXED MONTHLY SALARY</option></select></div>
+    <div class="fw" id="esd-salary-wrap" style="display:${s.payType==='salary'?'block':'none'}"><div class="fl">Monthly Salary (K)</div><input class="fi" type="number" min="0" step="0.01" id="esd-salary" value="${Number(s.monthlySalary||0)||''}" placeholder="E.G. 3500"/></div>
     <div class="fw"><div class="fl">Phone</div><input class="fi" id="esd-phone" value="${esc(s.phone||'')}" placeholder="0977 000 000" inputmode="tel" style="text-transform:none"/></div>
     <div class="fw"><div class="fl">Employee ID / NRC Number</div><input class="fi" id="esd-empid" value="${esc(s.employeeId||'')}" placeholder="E.G. NRC 123456/10/1" style="text-transform:none"/></div>
     <div class="fw"><div class="fl">Emergency Contact Name</div><input class="fi" id="esd-ecname" value="${esc(s.emergencyContactName||'')}" placeholder="E.G. MARY BANDA"/></div>
@@ -8619,12 +8679,15 @@ function saveEditStaffDetails(id){
   if(!name){alert('Enter staff name.');return;}
   const role=document.getElementById('esd-role').value;
   const contractType=document.getElementById('esd-contract').value||'permanent';
+  const payType=document.getElementById('esd-paytype')?.value||'rate';
+  const monthlySalary=payType==='salary'?Math.max(0,Number(document.getElementById('esd-salary')?.value)||0):0;
+  if(payType==='salary'&&monthlySalary<=0){alert('Enter a monthly salary amount.');return;}
   const phone=(document.getElementById('esd-phone').value||'').trim();
   const employeeId=(document.getElementById('esd-empid').value||'').trim();
   const emergencyContactName=uc(document.getElementById('esd-ecname').value);
   const emergencyContactPhone=(document.getElementById('esd-ecphone').value||'').trim();
   const notes=uc(document.getElementById('esd-notes').value);
-  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,name,role,contractType,phone,employeeId,emergencyContactName,emergencyContactPhone,notes}:s)}));
+  updateData(d=>({...d,staff:d.staff.map(s=>String(s.id)===String(id)?{...s,name,role,contractType,payType,monthlySalary,phone,employeeId,emergencyContactName,emergencyContactPhone,notes}:s)}));
   closeModal();
   showToast('✅ Staff details updated.');
 }
@@ -8988,8 +9051,28 @@ function generatePayslip(staffId, periodMonth, periodYear){
     const d=new Date(p.date+'T00:00:00');
     return d.getMonth()===periodMonth&&d.getFullYear()===periodYear;
   });
-  const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
-  // Collect all deduction lines across logs
+  const isSalaried = s.payType==='salary';
+  let gross, earningsRowLabel;
+  if(isSalaried){
+    // Fixed monthly salary — prorate for the days actually employed within
+    // this calendar month (handles staff joining or leaving mid-month).
+    const monthStart=new Date(periodYear,periodMonth,1);
+    const monthEnd=new Date(periodYear,periodMonth+1,0); // last day of month
+    const daysInMonth=monthEnd.getDate();
+    const joinedDate=s.dateJoined?new Date(s.dateJoined+'T00:00:00'):monthStart;
+    const leftDate=(s.statusDate&&s.status!=='active')?new Date(s.statusDate+'T00:00:00'):null;
+    const effStart=joinedDate>monthStart?joinedDate:monthStart;
+    const effEnd=(leftDate&&leftDate<monthEnd)?leftDate:monthEnd;
+    const daysEmployed=Math.max(0,Math.min(daysInMonth,Math.round((effEnd-effStart)/86400000)+1));
+    const fullMonth=daysEmployed>=daysInMonth;
+    gross = fullMonth ? Number(s.monthlySalary||0) : (Number(s.monthlySalary||0)/daysInMonth)*daysEmployed;
+    earningsRowLabel = fullMonth ? 'Monthly Salary (Full Month)' : `Monthly Salary (Prorated — ${daysEmployed}/${daysInMonth} days)`;
+  } else {
+    gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
+    earningsRowLabel = `Gross Wages (${sLogs.length} session${sLogs.length!==1?'s':''})`;
+  }
+  // Collect all deduction lines across logs (applies to salaried staff too —
+  // e.g. absence penalties logged against attendance entries)
   const dedLines=[];
   sLogs.forEach(l=>{
     if(l.deductions&&l.deductions.length){
@@ -9016,7 +9099,7 @@ ${_getBrandedHeader('Payslip — '+s.name)}
 <div class="pay-section-title">Earnings</div>
 <table>
   <thead><tr><th>Description</th><th style="text-align:right">Amount (ZMW)</th></tr></thead>
-  <tbody><tr><td>Gross Wages (${sLogs.length} session${sLogs.length!==1?'s':''})</td><td class="num">${zm(gross)}</td></tr></tbody>
+  <tbody><tr><td>${earningsRowLabel}</td><td class="num">${zm(gross)}</td></tr></tbody>
 </table>
 <div class="pay-section-title">Deductions</div>
 <table>
@@ -12509,7 +12592,8 @@ function renderProfitLoss(){
   const grossMarginPct=totalIncome>0?((grossProfit/totalIncome)*100).toFixed(1):0;
 
   // ── Staff (Operating) Costs ───────────────────────────────
-  const staffEarned=staffLogs.filter(l=>!l.entryType||l.entryType==='work').reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+  const staffEarned=staffLogs.filter(l=>!l.entryType||l.entryType==='work').reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0)
+    + _salaryCostForPeriod(PERIOD.general,'general');
   const staffPaid=staffPays.reduce((a,b)=>a+Number(b.amount||0),0);
 
   // ── Net Profit ────────────────────────────────────────────
