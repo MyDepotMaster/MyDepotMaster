@@ -25,7 +25,22 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v54 (2026-06-30)
+// Current version: v55 (2026-07-03)
+//
+// v55 changes (2026-07-03):
+//   - Fix: clicking anything that re-rendered the current tab (adding,
+//     editing, or deleting a record) reset scroll position to the top of
+//     the page. render() now preserves scroll across data-driven re-renders
+//     and only jumps to top on an actual tab switch (showTab).
+//   - Added fixed monthly salary support for staff, alongside the existing
+//     task/rate-based pay. New Pay Type field (+ Monthly Salary amount) in
+//     Register Staff and Edit Staff Details. Salaried staff can still clock
+//     in/out for attendance without accruing task-rate earnings. Payslips
+//     for salaried staff use the fixed monthly amount, prorated for partial
+//     months (joined/left mid-month); deductions still apply as before.
+//     P&L and Cash Flow now include prorated salaried-staff cost for the
+//     selected period. Staff tab's Earnings and Roster views show a SALARY
+//     badge and the monthly amount instead of a misleading K0.
 //
 // v54 changes (2026-06-30):
 //   - Branding in all prints: company logo and brand colour now appear on
@@ -322,7 +337,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v54';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v55';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 

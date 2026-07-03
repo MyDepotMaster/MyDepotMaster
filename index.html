@@ -2883,7 +2883,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v54';
+const SW_VERSION  = 'mdm-v55';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2899,7 +2899,7 @@ const SW_VERSION  = 'mdm-v54';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v54';
+  const VER = 'mdm-v55';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -3377,23 +3377,29 @@ function _periodBounds(period, tab){
   if(period==='range'){const dr=(tab&&DATE_RANGE[tab])||{};return{start:dr.from?new Date(dr.from+'T00:00:00'):null,end:dr.to?new Date(dr.to+'T23:59:59'):null};}
   return {start:null,end:null};
 }
+// Prorated cost of a single salaried staff member over an explicit
+// [start,end] window, accounting for join/leave dates. Returns 0 for
+// rate-based staff or if there's no overlap with the window.
+function _proratedSalaryForStaff(s, start, end){
+  if(!s||s.payType!=='salary'||!Number(s.monthlySalary||0))return 0;
+  if(!start||!end)return 0;
+  const joined=s.dateJoined?new Date(s.dateJoined+'T00:00:00'):null;
+  const left=(s.statusDate&&s.status!=='active')?new Date(s.statusDate+'T00:00:00'):null;
+  let ps=start, pe=end;
+  if(joined&&joined>ps)ps=joined;
+  if(left&&left<pe)pe=left;
+  if(pe<ps)return 0;
+  const days=Math.round((pe-ps)/86400000)+1;
+  const daysInMonth=new Date(pe.getFullYear(),pe.getMonth()+1,0).getDate();
+  return (Number(s.monthlySalary||0)/daysInMonth)*days;
+}
 // Prorated cost of all fixed-monthly-salary staff for a given period,
 // accounting for staff who joined or left mid-period.
 function _salaryCostForPeriod(period, tab){
   const {start,end}=_periodBounds(period,tab);
   if(!start||!end) return 0; // unbounded window — skip rather than guess
   let total=0;
-  (DATA.staff||[]).filter(s=>s.payType==='salary'&&Number(s.monthlySalary||0)>0).forEach(s=>{
-    const joined=s.dateJoined?new Date(s.dateJoined+'T00:00:00'):null;
-    const left=(s.statusDate&&s.status!=='active')?new Date(s.statusDate+'T00:00:00'):null;
-    let ps=start, pe=end;
-    if(joined&&joined>ps)ps=joined;
-    if(left&&left<pe)pe=left;
-    if(pe<ps)return;
-    const days=Math.round((pe-ps)/86400000)+1;
-    const daysInMonth=new Date(pe.getFullYear(),pe.getMonth()+1,0).getDate();
-    total += (Number(s.monthlySalary||0)/daysInMonth)*days;
-  });
+  (DATA.staff||[]).filter(s=>s.payType==='salary').forEach(s=>{ total+=_proratedSalaryForStaff(s,start,end); });
   return total;
 }
 
@@ -7860,16 +7866,18 @@ function renderRoster(){
     const mRows=members.map(s=>{
       const sLogs=DATA.staffLogs.filter(l=>String(l.staffId)===String(s.id));
       const net=sLogs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+      const isSalaried=s.payType==='salary';
       const dimmed=(s.status==='expelled'||s.status==='terminated'||s.status==='resigned')?'opacity:.55;':'';
       return`<div style="display:flex;flex-direction:column;padding:12px 0;border-bottom:1px solid var(--border);gap:8px;${dimmed}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
-            <div style="font-weight:700;font-size:19px">${esc(s.name)} ${statusBadge(s)}</div>
+            <div style="font-weight:700;font-size:19px">${esc(s.name)} ${statusBadge(s)}${isSalaried?' <span class="tag" style="font-size:13px">SALARY</span>':''}</div>
             <div style="font-size:17px;color:var(--muted);margin-top:2px">${esc(s.phone)||'No phone'} · ${sLogs.length} logs</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:19px;font-weight:700;color:var(--green)">${zm(net)}</div>
-            <div style="font-size:16px;color:var(--muted)">cumulative</div>
+            ${isSalaried
+              ? `<div style="font-size:19px;font-weight:700;color:var(--green)">${zm(s.monthlySalary||0)}</div><div style="font-size:16px;color:var(--muted)">per month</div>`
+              : `<div style="font-size:19px;font-weight:700;color:var(--green)">${zm(net)}</div><div style="font-size:16px;color:var(--muted)">cumulative</div>`}
           </div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:6px">${actionBtns(s)}</div>
@@ -7887,24 +7895,27 @@ function renderRoster(){
 
 function renderEarnings(){
   const staffList=DATA.staff;
+  const {start:_eStart,end:_eEnd}=_periodBounds(PERIOD.staff,'staff');
   const rows=staffList.map(s=>{
+    const isSalaried=s.payType==='salary';
     const allLogs=DATA.staffLogs.filter(l=>String(l.staffId)===String(s.id)&&(!l.entryType||l.entryType==='work'));
     const sLogs=filterPeriod(allLogs, PERIOD.staff, 'date', 'staff');
     const absLogs=filterPeriod(DATA.staffLogs.filter(l=>String(l.staffId)===String(s.id)&&l.entryType&&l.entryType!=='work'), PERIOD.staff, 'date', 'staff');
     const totBags=sLogs.reduce((a,b)=>a+Number(b.bags||0),0);
-    const gross=sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
+    // Deductions come from logs either way (absence penalties etc apply to salaried staff too)
     const ded=sLogs.reduce((a,b)=>a+Number(b.deduction||0),0);
-    const net=gross-ded;
+    const gross=isSalaried?_proratedSalaryForStaff(s,_eStart,_eEnd):sLogs.reduce((a,b)=>a+Number(b.earnings||0),0);
+    const net=Math.max(0,gross-ded);
     const absCount=absLogs.length;
     const absLabel=absLogs.map(l=>{
       const t={absent:'Absent',leave:'Leave',sick:'Sick'}[l.entryType]||l.entryType;
       return t+(l.absenceNote?' ('+l.absenceNote+')':'');
     }).join(', ');
     return `<tr>
-      <td style="font-weight:700">${esc(s.name)}</td>
+      <td style="font-weight:700">${esc(s.name)}${isSalaried?' <span class="tag" style="font-size:13px">SALARY</span>':''}</td>
       <td><span class="tag">${esc(s.role)}</span></td>
-      <td>${totBags.toLocaleString()}</td>
-      <td style="color:var(--green)">${zm(gross)}</td>
+      <td>${isSalaried?'<span style="color:var(--muted)">—</span>':totBags.toLocaleString()}</td>
+      <td style="color:var(--green)">${zm(gross)}${isSalaried?' <span style="font-size:14px;color:var(--muted)">/mo</span>':''}</td>
       <td style="color:var(--red)">-${zm(ded)}</td>
       <td style="color:var(--green);font-weight:700">${zm(net)}</td>
       <td style="text-align:center;color:${absCount>0?'var(--amber)':'var(--muted)'};font-weight:${absCount>0?'700':'400'}">${absCount>0?absCount:'—'}</td>
