@@ -25,7 +25,16 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v55 (2026-07-03)
+// Current version: v56 (2026-07-05)
+//
+// v56 changes (2026-07-05):
+//   - Added Depot Copilot: Pro-tier AI assistant (🤖 FAB) for stock/staff
+//     Q&A and a Fable-5-powered end-of-day/period reconciliation, proxied
+//     through a new Cloudflare Worker (depot-copilot-worker.js) so the
+//     Anthropic API key never lives in client code. CSP connect-src
+//     extended to allow the worker origin once deployed. No sw.js cache
+//     logic changes — bump only, so the new index.html JS is fetched
+//     instead of served from the old cached shell.
 //
 // v55 changes (2026-07-03):
 //   - Fix: clicking anything that re-rendered the current tab (adding,
@@ -337,7 +346,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v55';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v56';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 

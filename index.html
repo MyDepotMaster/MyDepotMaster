@@ -18,7 +18,11 @@
 <!-- protection for script injection. To harden: extract JS to a separate     -->
 <!-- file and switch to a nonce-based CSP. Until then, all other XSS vectors  -->
 <!-- (esc(), input validation) are the primary defence.                       -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self' 'unsafe-inline' blob: https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.gstatic.com/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; connect-src https://*.firebaseio.com https://firebaseinstallations.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://firebaseappcheck.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com https://www.google.com/recaptcha/ https://recaptcha.google.com; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self' blob:; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com; frame-ancestors 'none';">
+<!-- NOTE (Depot Copilot): once you deploy depot-copilot-worker.js, replace
+     https://YOUR-WORKER-SUBDOMAIN.workers.dev below with your real worker
+     URL, matching COPILOT_ENDPOINT further down in this file — otherwise
+     the browser's CSP will silently block the fetch. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self' 'unsafe-inline' blob: https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.gstatic.com/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; connect-src https://*.firebaseio.com https://firebaseinstallations.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://firebaseappcheck.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com https://www.google.com/recaptcha/ https://recaptcha.google.com https://YOUR-WORKER-SUBDOMAIN.workers.dev; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self' blob:; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com; frame-ancestors 'none';">
 <!-- ──────────────────────────────────────────────────────────────────────── -->
 <!-- OpenGraph / Social sharing -->
 <meta property="og:title" content="My Depot Master"/>
@@ -397,6 +401,15 @@ body.light .clockout-btn{border-color:var(--amber);color:var(--amber);}
 /* Global Search */
 #gsearch-fab{position:fixed;bottom:72px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--green);border:none;color:var(--bg);font-size:27px;cursor:pointer;z-index:700;box-shadow:0 4px 18px rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;touch-action:manipulation;transition:transform .15s;}
 #gsearch-fab:active{transform:scale(.92);}
+#copilot-fab{position:fixed;bottom:130px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--purple);border:none;color:#fff;font-size:22px;cursor:pointer;z-index:700;box-shadow:0 4px 18px rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;touch-action:manipulation;transition:transform .15s;}
+#copilot-fab:active{transform:scale(.92);}
+.cop-msg{max-width:88%;padding:10px 13px;border-radius:14px;margin-bottom:10px;font-size:16px;line-height:1.5;white-space:pre-wrap;}
+.cop-msg.user{background:var(--green);color:var(--bg);margin-left:auto;border-bottom-right-radius:4px;}
+.cop-msg.bot{background:var(--overlay-light-5);border:1px solid var(--border);margin-right:auto;border-bottom-left-radius:4px;}
+.cop-msg.sys{background:none;color:var(--muted);font-size:13px;text-align:center;margin:6px auto;max-width:100%;}
+#cop-log{display:flex;flex-direction:column;max-height:50vh;overflow-y:auto;padding:4px 2px;margin-bottom:10px;}
+.cop-quick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.cop-quick button{font-size:14px;padding:6px 10px;border-radius:20px;border:1px solid var(--border);background:var(--overlay-light-3);color:var(--text);cursor:pointer;}
 #gsearch-overlay{position:fixed;inset:0;background:var(--movl-bg);backdrop-filter:blur(6px);z-index:800;display:none;flex-direction:column;padding:16px 16px 0;}
 #gsearch-box{background:var(--surface);border:1.5px solid var(--green);border-radius:12px;padding:11px 14px;font-size:20px;color:var(--text);width:100%;box-sizing:border-box;outline:none;}
 #gsearch-results{flex:1;overflow-y:auto;padding-bottom:24px;}
@@ -1136,6 +1149,9 @@ body.readonly-mode.trial-mode .content{padding-top:44px;}
 
 <!-- Global Search FAB -->
 <button id="gsearch-fab" onclick="openGlobalSearch()" title="Search">🔍</button>
+
+<!-- Depot Copilot FAB -->
+<button id="copilot-fab" onclick="openCopilot()" title="Depot Copilot">🤖</button>
 
 <!-- Global Search Overlay -->
 <div id="gsearch-overlay" onclick="if(event.target===this)closeGlobalSearch()">
@@ -2159,6 +2175,7 @@ const TIER_FEATURES = {
     'setup_checklist',           // First-run onboarding checklist
     'custom_branding',           // Custom logo & accent colour on staff ID cards
     'daily_sales',               // Daily Sales tab (close-out, receipt printing, sales history)
+    'ai_copilot',                // Depot Copilot — AI chat + reconciliation (Pro only)
   ],
 
   // ── MULTISITE ────────────────────────────────────────────────────────────
@@ -2883,7 +2900,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v55';
+const SW_VERSION  = 'mdm-v56';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2899,7 +2916,7 @@ const SW_VERSION  = 'mdm-v55';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v55';
+  const VER = 'mdm-v56';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -3519,6 +3536,7 @@ function _hideMainUI() {
   const ns=document.getElementById('nb-settings'); if(ns) ns.style.display='none';
   const nb=document.getElementById('nb-books');    if(nb) nb.style.display='none';
   const fab=document.getElementById('gsearch-fab'); if(fab) fab.style.display='none';
+  const cfab=document.getElementById('copilot-fab'); if(cfab) cfab.style.display='none';
   const hms=document.getElementById('hdr-menu-settings-btn'); if(hms) hms.style.display='none';
   closeGlobalSearch();
 }
@@ -3531,6 +3549,7 @@ function showMainUI() {
   const nb=document.getElementById('nb-books');    if(nb) nb.style.display='flex';
   const ns=document.getElementById('nb-settings'); if(ns) ns.style.display= USER&&USER.role==='admin'?'flex':'none';
   const fab=document.getElementById('gsearch-fab'); if(fab) fab.style.display='flex';
+  _copilotFabSync();
   const hms=document.getElementById('hdr-menu-settings-btn'); if(hms) hms.style.display= USER&&USER.role==='admin'?'flex':'none';
 }
 
@@ -13533,6 +13552,194 @@ function toggleTip(el, text, evt){
 document.addEventListener('click', ()=>{ if(_tipVisible) hideTip(0); });
 
 // ══ END TAB CLOUD SYNC ════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════
+// DEPOT COPILOT — AI chat + reconciliation (Pro tier feature)
+//
+// ARCHITECTURE:
+//   This app never talks to the Anthropic API directly — the API key
+//   must not live in client code that anyone can view-source. Instead
+//   this calls a small serverless proxy (Cloudflare Worker) which holds
+//   the key as a secret, forwards the request to Claude, and returns
+//   just the text. See depot-copilot-worker.js for that proxy's code.
+//
+// SETUP:
+//   1. Deploy depot-copilot-worker.js to Cloudflare Workers (free tier
+//      is enough to start).
+//   2. Set COPILOT_ENDPOINT below to your worker's URL.
+//   3. Add your worker's URL origin to the CSP connect-src meta tag
+//      at the top of this file, or requests will be blocked.
+// ══════════════════════════════════════════════════════════
+
+const COPILOT_ENDPOINT = 'https://YOUR-WORKER-SUBDOMAIN.workers.dev/copilot'; // ← set after deploying the worker
+
+// Soft client-side usage guard. The worker should also enforce a hard
+// per-depot daily cap server-side — this is just to stop obvious runaway
+// use (e.g. a stuck loop) and give the user a friendly message first.
+const COPILOT_DAILY_SOFT_CAP = 40;
+function _copilotUsageKey(){ const d=new Date(); return 'mdm_copilot_usage_'+d.toISOString().slice(0,10); }
+function _copilotUsageToday(){ return parseInt(localStorage.getItem(_copilotUsageKey())||'0',10); }
+function _copilotBumpUsage(){ localStorage.setItem(_copilotUsageKey(), String(_copilotUsageToday()+1)); }
+
+let _copilotHistory = []; // [{role:'user'|'assistant', content:'...'}]
+let _copilotBusy = false;
+
+// ── Build a condensed, cost-aware snapshot of the depot's data ──────────────
+// Sends SUMMARIES, not raw arrays, to keep token usage (and therefore cost)
+// small. Expand carefully — every field added here costs money on every call.
+function buildCopilotContext(daysBack){
+  daysBack = daysBack || 7;
+  const cutoff = Date.now() - daysBack*24*60*60*1000;
+  const staffActive = (DATA.staff||[]).filter(s=>!s.status||s.status==='active');
+
+  const recentReceived = (DATA.generalInventory||[]).filter(x=>new Date(x.date||x.createdAt||0).getTime() >= cutoff);
+  const recentIssued    = (DATA.generalIssued||[]).filter(x=>new Date(x.date||x.createdAt||0).getTime() >= cutoff);
+
+  // NOTE: MDM computes running stock balances inline (receive − issue) at each
+  // display site rather than through one shared function. Wire this up to
+  // whatever that calculation is (see the balance logic around the General/
+  // Inventory report tab) so low-stock detection actually reflects reality —
+  // right now this returns an empty list rather than a wrong one.
+  const lowStock = (DATA.inventoryItems||[])
+    .map(x=>typeof x==='string'?{name:x,minStock:0}:x)
+    .filter(it=>{
+      const onHand = (typeof getCurrentStockBalance === 'function') ? getCurrentStockBalance(_invItemName(it)) : null;
+      return it.minStock && onHand !== null && onHand <= it.minStock;
+    })
+    .map(it=>({ item: _invItemName(it), minStock: it.minStock }));
+
+  const commoditySummary = (DATA.commodities||[]).map(c=>({ id:c.id, name:c.name, unit:c.unit }));
+
+  const recentClockLogs = (DATA.clockLogs||DATA.attendance||[])
+    .filter(x=>new Date(x.date||x.time||0).getTime() >= cutoff)
+    .slice(-100); // hard cap regardless of date range
+
+  return {
+    depotName: (DATA.depotInfo||{}).name || 'Unnamed depot',
+    currency: DATA.currency || 'ZMW',
+    generatedAt: new Date().toISOString(),
+    rangeDays: daysBack,
+    staffCount: staffActive.length,
+    commodities: commoditySummary,
+    lowStockItems: lowStock,
+    recentReceivedCount: recentReceived.length,
+    recentIssuedCount: recentIssued.length,
+    recentReceived: recentReceived.slice(-50),   // capped — see note above
+    recentIssued: recentIssued.slice(-50),
+    recentClockLogs
+  };
+}
+
+// ── Modal UI ────────────────────────────────────────────────────────────────
+function openCopilot(){
+  if(!hasFeature('ai_copilot')){ showUpgradePrompt('ai_copilot'); return; }
+  if(COPILOT_ENDPOINT.includes('YOUR-WORKER-SUBDOMAIN')){
+    showToast('⚠️ Depot Copilot backend not configured yet.');
+    return;
+  }
+  openModal(`
+    <div class="ctitle">🤖 Depot Copilot</div>
+    <div id="cop-log">${_copilotHistory.length? _renderCopilotLog() : '<div class="cop-msg sys">Ask about stock, staff, or run an end-of-day reconciliation.</div>'}</div>
+    <div class="cop-quick">
+      <button onclick="askCopilot('Any low stock items I should reorder?')">Low stock check</button>
+      <button onclick="askCopilot('Summarize today\\'s activity')">Today's summary</button>
+      <button onclick="runReconciliation()">🔍 Run reconciliation</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input id="cop-input" placeholder="Ask about your depot…" style="flex:1;margin-bottom:0"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value;this.value='';askCopilot(v);}"/>
+      <button class="btn bg" style="width:auto;padding:0 16px" onclick="const el=document.getElementById('cop-input');const v=el.value;el.value='';askCopilot(v)">Send</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">Uses ${_copilotUsageToday()}/${COPILOT_DAILY_SOFT_CAP} today · answers may be imperfect, verify anything critical</div>
+  `);
+}
+
+function _renderCopilotLog(){
+  return _copilotHistory.map(m=>`<div class="cop-msg ${m.role==='user'?'user':'bot'}">${esc(m.content)}</div>`).join('');
+}
+
+function _copilotAppend(role, content){
+  _copilotHistory.push({role, content});
+  const log = document.getElementById('cop-log');
+  if(log){ log.innerHTML = _renderCopilotLog(); log.scrollTop = log.scrollHeight; }
+}
+
+// ── Core call to the proxy ───────────────────────────────────────────────────
+async function _callCopilot(mode, userText, context){
+  if(!navigator.onLine){ showToast('❌ Depot Copilot needs an internet connection'); return null; }
+  if(_copilotUsageToday() >= COPILOT_DAILY_SOFT_CAP){ showToast('⚠️ Daily Copilot limit reached — resets tomorrow'); return null; }
+  const acToken = await _getAppCheckToken(); // reuse existing App Check flow to prove this is the real app
+  const res = await _fetchWithTimeout(COPILOT_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', ...(acToken?{'X-Firebase-AppCheck':acToken}:{}) },
+    body: JSON.stringify({
+      mode,                         // 'chat' | 'reconciliation'
+      depotId: depotKey(),
+      tier: currentTier(),
+      question: userText || '',
+      context
+    })
+  }, mode==='reconciliation' ? 45000 : 20000); // reconciliation runs longer — Fable 5 on the backend
+  if(!res.ok){
+    const body = await res.text().catch(()=>'');
+    throw new Error('HTTP '+res.status+(body?': '+body.slice(0,150):''));
+  }
+  _copilotBumpUsage();
+  return res.json(); // { reply: '...' }
+}
+
+async function askCopilot(question){
+  question = (question||'').trim();
+  if(!question || _copilotBusy) return;
+  _copilotBusy = true;
+  _copilotAppend('user', question);
+  _copilotAppend('assistant', '…thinking');
+  try {
+    const context = buildCopilotContext(7);
+    const data = await _callCopilot('chat', question, context);
+    _copilotHistory.pop(); // remove the "…thinking" placeholder
+    if(data) _copilotAppend('assistant', data.reply || '(no response)');
+    else _copilotHistory.pop();
+  } catch(e){
+    _copilotHistory.pop();
+    _copilotAppend('assistant', '❌ '+(e.message||'Something went wrong'));
+  } finally {
+    _copilotBusy = false;
+    const log = document.getElementById('cop-log'); if(log){ log.innerHTML=_renderCopilotLog(); log.scrollTop=log.scrollHeight; }
+  }
+}
+
+// Heavier job — deliberately routed to Fable 5 server-side because it reasons
+// over weeks of movements + shift logs at once and needs to self-check its
+// own arithmetic rather than one-shot it.
+async function runReconciliation(){
+  if(_copilotBusy) return;
+  _copilotBusy = true;
+  _copilotAppend('user', 'Run end-of-day reconciliation');
+  _copilotAppend('assistant', '…running full reconciliation, this can take up to a minute');
+  try {
+    const context = buildCopilotContext(30); // wider window for a real reconciliation
+    const data = await _callCopilot('reconciliation', '', context);
+    _copilotHistory.pop();
+    if(data) _copilotAppend('assistant', data.reply || '(no response)');
+  } catch(e){
+    _copilotHistory.pop();
+    _copilotAppend('assistant', '❌ '+(e.message||'Reconciliation failed'));
+  } finally {
+    _copilotBusy = false;
+    const log = document.getElementById('cop-log'); if(log){ log.innerHTML=_renderCopilotLog(); log.scrollTop=log.scrollHeight; }
+  }
+}
+
+// Show/hide the Copilot FAB the same way the search FAB is toggled, and
+// respect the Pro-tier gate so Free/Growth users don't see a dead button.
+function _copilotFabSync(){
+  const fab = document.getElementById('copilot-fab');
+  if(!fab) return;
+  fab.style.display = hasFeature('ai_copilot') ? 'flex' : 'none';
+}
+
+// ══ END DEPOT COPILOT ════════════════════════════════════
 
 // ══ END CSV EXPORT ════════════════════════════════════════
 </script>
