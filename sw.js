@@ -25,7 +25,16 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v59 (2026-07-08)
+// Current version: v60 (2026-07-08)
+//
+// v60 changes (2026-07-08):
+//   - Cleanup: removed a dead `waMsg` per-tier WhatsApp message builder in
+//     renderPaymentSection() (Settings → My Plan). It was leftover from
+//     before the in-app "Apply to Upgrade" flow existed and was never
+//     referenced — buttons already open openSubscriptionForm(), which
+//     submits structured data straight to subscriptionRequests/ for the
+//     admin panel. No behavior change; just removes confusing dead code.
+//   - No sw.js fetch/cache logic changes — bump only.
 //
 // v59 changes (2026-07-08):
 //   - Fix: Settings → My Plan wrongly marked the Pro card as your "CURRENT"
@@ -392,7 +401,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v59';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v60';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 

@@ -2934,7 +2934,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v59';
+const SW_VERSION  = 'mdm-v60';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2950,7 +2950,7 @@ const SW_VERSION  = 'mdm-v59';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v59';
+  const VER = 'mdm-v60';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -9378,8 +9378,6 @@ function renderPaymentSection() {
   // card — including Pro — should still offer the upgrade button.
   const eff     = LICENSE.effectiveStatus || LICENSE.status || 'active';
   const curTier = (eff === 'active' || eff === 'expired_grace') ? currentTier() : null;
-  // Pre-filled WhatsApp messages per tier
-  const waMsg = t => encodeURIComponent(`Hi, I'd like to upgrade My Depot Master to the ${TIER_META[t].label} plan (K${TIER_META[t].price}/month).\nCompany Key: ${key}`);
 
   // Tier option cards — Starter, Growth and Pro (Multisite is future)
   const tierOpts = ['starter','growth','pro'].map(t => {
@@ -10743,15 +10741,66 @@ function handleImportFile(input){
 function clearAll(){
   if(!requireAdmin('clear all data'))return;
   requireAdminPassword('⚠️ CLEAR ALL DATA — this permanently deletes all inventory, commodities, and staff records and cannot be undone', ()=>{
-    // Preserve identity fields so the Firebase license record stays linked
-    // and the trial clock is not inadvertently reset.
+    // Preserve identity, company, license, and account fields so clearing
+    // inventory/commodity/staff data never wipes company details, license
+    // status, or logged-in user accounts.
     const keepInstallId  = DATA.installId  || '';
     const keepTrialStart = DATA.trialStart || 0;
     const keepUsers      = DATA.users      || [];
+    const keepDepotInfo  = DATA.depotInfo  ? JSON.parse(JSON.stringify(DATA.depotInfo)) : DEFAULT.depotInfo;
+    const keepCurrency   = DATA.currency   || '';
+    const keepTier       = DATA.tier       || 'trial';
+    // Roles & deduction reasons are Settings configuration, not transactional
+    // records — clearing data should never make an admin re-define these.
+    const keepStaffRoles = DATA.staffRoles ? JSON.parse(JSON.stringify(DATA.staffRoles)) : [];
+    const keepDeductionReasons = DATA.deductionReasons ? JSON.parse(JSON.stringify(DATA.deductionReasons)) : DEFAULT.deductionReasons;
+    // Audit trail is a compliance/security record of who-did-what — it is never
+    // touched by a data clear, and every category wiped below is snapshotted
+    // into it first so the full history remains recoverable from the audit log.
+    const keepAuditLog = DATA.auditLog ? JSON.parse(JSON.stringify(DATA.auditLog)) : [];
+
+    // Human-readable labels for every transactional category clearAll() wipes.
+    const WIPE_LABELS = {
+      generalInventory:     'Inventory Received (General)',
+      generalIssued:        'Inventory Issued (General)',
+      inventoryItems:       'Inventory Item List',
+      commodities:          'Commodities List',
+      commodityReceived:    'Commodity Received',
+      commodityIssued:      'Commodity Issued',
+      commodityStockCounts: 'Commodity Stock Counts',
+      maizeReceived:        'Maize Received (Legacy)',
+      maizeIssued:          'Maize Issued (Legacy)',
+      maizeStockCounts:     'Maize Stock Counts (Legacy)',
+      generalStockCounts:   'General Stock Counts',
+      staff:                'Staff Records',
+      staffLogs:            'Staff Work Logs',
+      staffPayments:        'Staff Payments',
+      leaveLog:             'Staff Leave Log',
+      inventoryPrices:      'Inventory Prices',
+      books:                'Books',
+      contacts:             'Contacts',
+      budgets:              'Budgets',
+      transportLog:         'Transport Log'
+    };
+    // Snapshot every category BEFORE it's wiped, so each can be logged with
+    // its full pre-clear contents in the audit entry's `before` field.
+    const wipeSnapshots = {};
+    Object.keys(WIPE_LABELS).forEach(key=>{
+      const val = DATA[key];
+      const isEmpty = val==null || (Array.isArray(val)&&val.length===0) || (typeof val==='object'&&!Array.isArray(val)&&Object.keys(val).length===0);
+      if(!isEmpty) wipeSnapshots[key] = JSON.parse(JSON.stringify(val));
+    });
+
     DATA = JSON.parse(JSON.stringify(DEFAULT));
     DATA.installId  = keepInstallId;
     DATA.trialStart = keepTrialStart;
     DATA.users      = keepUsers;
+    DATA.depotInfo  = keepDepotInfo;
+    DATA.currency   = keepCurrency;
+    DATA.tier       = keepTier;
+    DATA.staffRoles = keepStaffRoles;
+    DATA.deductionReasons = keepDeductionReasons;
+    DATA.auditLog   = keepAuditLog;
     DATA._v = (DATA._v || 0) + 1;
     sv(DATA);
     render();
@@ -10762,9 +10811,27 @@ function clearAll(){
     // meantime. Every other delete in the app pushes via updateData(); this
     // one bypassed that, so push explicitly here too.
     scheduleFbSync();
+    // One audit entry per wiped category, each carrying its full pre-clear
+    // data in `before` — this is what makes the history recoverable even
+    // though the live records themselves are gone.
+    Object.keys(wipeSnapshots).forEach(key=>{
+      const snap = wipeSnapshots[key];
+      let count;
+      if(Array.isArray(snap)){
+        count = snap.length;
+      } else if(key==='commodityReceived'||key==='commodityIssued'||key==='commodityStockCounts'){
+        // Nested objects keyed by commodity id, each holding an array of records.
+        count = Object.values(snap).reduce((sum,arr)=>sum+(Array.isArray(arr)?arr.length:0),0);
+      } else {
+        count = Object.keys(snap).length;
+      }
+      logAuditEvent('DELETE', WIPE_LABELS[key], `${count} record(s) removed via Clear All Data`, snap);
+    });
+    logAuditEvent('DELETE','All Data','Admin cleared all inventory, commodities, and staff records — see individual entries above for full pre-clear snapshots');
     showToast(navigator.onLine ? '🗑 Data cleared — syncing to cloud…' : '🗑 Data cleared locally — will sync once back online');
   });
 }
+
 
 // ── BIOMETRICS (WebAuthn — platform fingerprint only) ────────────────────────
 // Credentials stored ONLY in localStorage. Never sent to Firebase or any server.
