@@ -2934,7 +2934,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v58';
+const SW_VERSION  = 'mdm-v59';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2950,7 +2950,7 @@ const SW_VERSION  = 'mdm-v58';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v58';
+  const VER = 'mdm-v59';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -9368,7 +9368,16 @@ function renderRolesRatesTab(){
 // ── LICENSE STATUS CARD ───────────────────────────────────────────────────────
 function renderPaymentSection() {
   const key     = depotKey();
-  const curTier = currentTier();
+  // "Current plan" here means an actual PAID subscription — not the
+  // pro-equivalent access granted during trial. Using currentTier() directly
+  // would return 'pro' during trial and wrongly mark the Pro card as your
+  // current plan, hiding its "Apply to Upgrade" button. Only 'active' (or
+  // 'expired_grace', which still shows the lapsing paid tier) counts as a
+  // real paid plan; everything else (trial, trial_expired, expired, free,
+  // suspended, pending) means no plan is actually current, so every tier
+  // card — including Pro — should still offer the upgrade button.
+  const eff     = LICENSE.effectiveStatus || LICENSE.status || 'active';
+  const curTier = (eff === 'active' || eff === 'expired_grace') ? currentTier() : null;
   // Pre-filled WhatsApp messages per tier
   const waMsg = t => encodeURIComponent(`Hi, I'd like to upgrade My Depot Master to the ${TIER_META[t].label} plan (K${TIER_META[t].price}/month).\nCompany Key: ${key}`);
 

@@ -25,7 +25,18 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v58 (2026-07-08)
+// Current version: v59 (2026-07-08)
+//
+// v59 changes (2026-07-08):
+//   - Fix: Settings → My Plan wrongly marked the Pro card as your "CURRENT"
+//     plan while on trial (since trial grants pro-equivalent feature access),
+//     which hid the "Apply to Upgrade" button — leaving no way to actually
+//     apply for Pro during the trial. renderPaymentSection() now only treats
+//     a tier as current when there's a real paid subscription (status
+//     'active' or 'expired_grace'); trial/free/expired show no tier as
+//     current, so Starter, Growth, and Pro all keep their upgrade buttons.
+//   - No sw.js fetch/cache logic changes — bump only, so the updated
+//     index.html JS is fetched instead of served from the old cached shell.
 //
 // v58 changes (2026-07-08):
 //   - Fix: "Clear all data" (Settings → Danger Zone) wiped local data but
@@ -381,7 +392,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v58';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v59';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
