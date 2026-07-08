@@ -25,7 +25,17 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v57 (2026-07-08)
+// Current version: v58 (2026-07-08)
+//
+// v58 changes (2026-07-08):
+//   - Fix: "Clear all data" (Settings → Danger Zone) wiped local data but
+//     never pushed the change to the cloud — unlike every other delete in
+//     the app, it didn't call scheduleFbSync(). The old data could sit in
+//     Firebase until the next 5-minute periodic sync or a manual "Upload to
+//     Cloud" tap, and another logged-in account could even pull the stale
+//     un-cleared data back down in the meantime. clearAll() now pushes
+//     immediately, same as every individual record delete.
+//   - No sw.js fetch/cache logic changes — bump only.
 //
 // v57 changes (2026-07-08):
 //   - Fix: multi-account Firebase sync used _v (a per-device local edit
@@ -371,7 +381,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v57';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v58';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
