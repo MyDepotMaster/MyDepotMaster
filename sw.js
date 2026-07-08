@@ -25,7 +25,32 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v56 (2026-07-05)
+// Current version: v57 (2026-07-08)
+//
+// v57 changes (2026-07-08):
+//   - Fix: multi-account Firebase sync used _v (a per-device local edit
+//     counter) to decide which copy of the data was "newer". Since each
+//     device/account increments its own _v independently, a device with more
+//     historical edits could show a higher _v than a device holding the
+//     actual most recent change — so deletes and other edits made from a
+//     data-entry account (e.g. sdc1, sdc2) could be silently discarded by
+//     other logged-in accounts, or even overwritten back into the cloud.
+//     Sync now stamps every write with a Firebase SERVER timestamp
+//     (_syncTs) and compares against that shared clock instead. Falls back
+//     to the old _v comparison only once, for cloud data written before
+//     this fix shipped.
+//   - Added a 60-second background pull while a session is open (previously
+//     the app only pulled from the cloud at login and pushed every 5
+//     minutes, so an already-logged-in account could go a long time without
+//     seeing another account's changes). Skipped automatically while a
+//     modal is open so it never interrupts active data entry.
+//   - Non-admin (data-entry/staff) accounts now get their own Settings tab
+//     — previously hidden from them entirely. Scoped to only what's
+//     relevant for them: display preferences, dashboard widgets,
+//     fingerprint login, stay-signed-in, their own password, help/legal —
+//     not company-wide, billing, or destructive admin controls.
+//   - No sw.js fetch/cache logic changes — bump only, so the updated
+//     index.html JS is fetched instead of served from the old cached shell.
 //
 // v56 changes (2026-07-05):
 //   - Added Depot Copilot: Pro-tier AI assistant (🤖 FAB) for stock/staff
@@ -346,7 +371,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v56';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v57';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 

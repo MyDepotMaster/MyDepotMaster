@@ -1860,8 +1860,18 @@ async function doFbSync() {
     const payload = JSON.parse(JSON.stringify(DATA));
     delete payload.gdrive; // don't store oauth tokens in Firebase
     const now = Date.now();
+    // Fix: _v is a per-device local edit counter and is NOT safe to use for
+    // deciding which copy of the data is more recent across multiple accounts/
+    // devices (each device increments its own _v independently, so a device
+    // with more historical edits can have a higher _v than a device with the
+    // most recent actual change — causing newer changes, like deletes, from
+    // other accounts to be silently discarded/overwritten).
+    // Instead, stamp every write with a Firebase SERVER timestamp (resolved by
+    // Firebase itself, not the device clock), which gives a single shared,
+    // trustworthy clock that every device can compare against.
+    payload._syncTs = {'.sv': 'timestamp'};
     // Fix 4: run both writes in parallel — halves round-trip time vs sequential awaits
-    await Promise.all([
+    const [savedData] = await Promise.all([
       fbSet('depots/' + key + '/data', payload),
       fbSet('depots/' + key + '/meta', {
         lastSync: now,
@@ -1872,6 +1882,11 @@ async function doFbSync() {
       // write so login can verify a password before pulling the full depot.
       fbSet('depots/' + key + '/auth', _buildAuthSnapshot(DATA.users))
     ]);
+    // Firebase's PUT response echoes back the data actually written, with
+    // ".sv" placeholders resolved to the real server epoch millis — capture
+    // that so this device knows the authoritative timestamp of its own push
+    // (no extra round-trip needed).
+    DATA._syncTs = (savedData && savedData._syncTs) || now;
     DATA._lastFbSync = now;
     sv(DATA); // persist updated _lastFbSync to both localStorage and IDB
     updPill();
@@ -1881,7 +1896,15 @@ async function doFbSync() {
 }
 
 // Restore depot data from Firebase after a local wipe or on a new device.
-// Version gate: prefer cloud if _v is higher OR if local has never synced.
+// Version gate: prefer cloud if it is more recent by SERVER timestamp (_syncTs),
+// OR if local has never synced. We deliberately do NOT compare _v here — _v is
+// just a per-device local edit counter (each device increments its own copy
+// independently), so a device with more historical edits can show a higher _v
+// than a device holding the truly most-recent change. Comparing _v across
+// devices caused newer changes (e.g. a delete on a data-entry account) to be
+// silently ignored by other accounts, which could then overwrite the cloud
+// copy and erase that change entirely. _syncTs is resolved by Firebase itself
+// at write time, so it's a single shared clock every device can trust.
 async function fbRestoreData() {
   if (!isFbConfigured() || !navigator.onLine) return false;
   // Use the stored installId directly — do NOT call depotKey() here because
@@ -1897,7 +1920,16 @@ async function fbRestoreData() {
     // Never skip on a device that has no sync history — that is exactly the
     // new-phone scenario where the cloud copy is the authoritative one.
     const localNeverSynced = !DATA._lastFbSync;
-    const cloudIsNewer = (val._v || 0) > (DATA._v || 0);
+    const cloudTs = val._syncTs || 0;
+    const localTs = DATA._syncTs || 0;
+    let cloudIsNewer = cloudTs > localTs;
+    // Backward-compat fallback: data written before this fix shipped won't have
+    // _syncTs yet. If neither side has one, fall back to the old _v comparison
+    // just this once so devices don't get stuck waiting for a timestamp that
+    // will never arrive from old cloud data.
+    if (!cloudTs && !localTs) {
+      cloudIsNewer = (val._v || 0) > (DATA._v || 0);
+    }
     // Restore only if cloud is strictly newer, OR this device has never synced AND
     // has no local data worth keeping (users array empty = fresh install).
     const localIsEmpty = !(DATA.users && DATA.users.length > 0);
@@ -1918,6 +1950,7 @@ async function fbRestoreData() {
     if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) {
       DATA.trialStart = localTrialStart;
     }
+      DATA._syncTs = cloudTs; // remember the server timestamp we just adopted
       DATA._lastFbSync = Date.now(); // mark this device as now synced
       // Ensure the installId is pinned in the separate key after restore
       if (DATA.installId) _persistInstallId(DATA.installId);
@@ -1975,6 +2008,7 @@ async function forceCloudRestore() {
     if (localOnlyUsers.length > 0) DATA.users = [...(DATA.users||[]), ...localOnlyUsers];
     // Keep earliest trialStart
     if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) DATA.trialStart = localTrialStart;
+    DATA._syncTs = val._syncTs || Date.now();
     DATA._lastFbSync = Date.now();
     if (DATA.installId) _persistInstallId(DATA.installId);
     sv(DATA);
@@ -2900,7 +2934,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v56';
+const SW_VERSION  = 'mdm-v57';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2916,7 +2950,7 @@ const SW_VERSION  = 'mdm-v56';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v56';
+  const VER = 'mdm-v57';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -3547,10 +3581,10 @@ function showMainUI() {
   document.getElementById('content').style.display  = 'block';
   document.getElementById('nav').style.display      = 'flex';
   const nb=document.getElementById('nb-books');    if(nb) nb.style.display='flex';
-  const ns=document.getElementById('nb-settings'); if(ns) ns.style.display= USER&&USER.role==='admin'?'flex':'none';
+  const ns=document.getElementById('nb-settings'); if(ns) ns.style.display= USER?'flex':'none';
   const fab=document.getElementById('gsearch-fab'); if(fab) fab.style.display='flex';
   _copilotFabSync();
-  const hms=document.getElementById('hdr-menu-settings-btn'); if(hms) hms.style.display= USER&&USER.role==='admin'?'flex':'none';
+  const hms=document.getElementById('hdr-menu-settings-btn'); if(hms) hms.style.display= USER?'flex':'none';
 }
 
 // Builds the landing-page "starting at" stat and tier-ladder cards straight
@@ -4438,6 +4472,7 @@ async function doLogin(){
               if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) {
                 DATA.trialStart = localTrialStart;
               }
+              DATA._syncTs = val._syncTs || Date.now();
               DATA._lastFbSync = Date.now();
               if (DATA.installId) _persistInstallId(DATA.installId);
               sv(DATA);
@@ -9569,10 +9604,185 @@ function renderLicenseCard(){
     ${showPayment ? renderPaymentSection() : ''}
   </div>`;
 }
+// Settings helper — the Dashboard Widgets visibility toggles. Personal per-user
+// preference, safe to show to every role.
+function _renderDashboardWidgetsCard(){
+  return `
+    <div class="sh">Dashboard Widgets</div>
+    <div class="card">
+      <div style="font-size:17px;color:var(--muted);margin-bottom:14px;line-height:1.7">Choose which sections appear on your Dashboard. Hidden widgets still collect data — they are just not shown.</div>
+      ${[
+        {id:'alerts',        icon:'⚠️', label:'Alerts & Warnings'},
+        {id:'quickactions',  icon:'⚡', label:'Quick Actions'},
+        {id:'today',         icon:'📅', label:'Today Snapshot'},
+        {id:'commodities',   icon:'📦', label:'Commodities'},
+        {id:'inventory',     icon:'🗄️', label:'Inventory Balances'},
+        {id:'staff',         icon:'👷', label:'Staff Summary'},
+        {id:'activity',      icon:'🕐', label:'Recent Activity'},
+        {id:'books',         icon:'📚', label:'Recent Books'},
+      ].map(w=>{
+        const on=isDashWidgetOn(w.id);
+        return `<div class="dw-row">
+          <div class="dw-label"><span>${w.icon}</span>${w.label}</div>
+          <label class="dw-toggle">
+            <input type="checkbox" ${on?'checked':''} onchange="toggleDashWidget('${w.id}',this.checked)"/>
+            <div class="dw-toggle-track"></div>
+            <div class="dw-toggle-thumb"></div>
+          </label>
+        </div>`;
+      }).join('')}
+      <button class="btn bo bsm" style="width:100%;margin-top:12px" onclick="resetDashWidgets()">↺ Show All Widgets</button>
+    </div>`;
+}
+
+// Settings helper — Change Password. Already scoped correctly per role: the
+// account dropdown only lists other users' accounts when USER is admin.
+function _renderChangePasswordCard(){
+  return `
+    <div class="sh">Change Password</div>
+    <div class="card">
+      <div id="pw-msg"></div>
+      <div class="fw"><div class="fl">Account</div><select class="fi" id="pw-target">${DATA.users.filter(u=>USER.role==='admin'||u.username===USER.username).map(u=>`<option value="${esc(u.username)}">${esc(u.username)} (${esc(u.role)})</option>`).join('')}</select></div>
+      <div class="fw"><div class="fl">New Password</div><input class="fi" type="password" id="pw-new"/></div>
+      <div class="fw"><div class="fl">Confirm Password</div><input class="fi" type="password" id="pw-conf"/></div>
+      <button class="btn ba" onclick="changePw()">🔒 Update Password</button>
+    </div>`;
+}
+
+// Settings helper — Help & Documentation. Same for every role.
+function _renderHelpDocsCard(){
+  return `
+    <div class="sh">Help & Documentation</div>
+    <div class="card">
+      <button class="btn bo" style="width:100%;margin-bottom:10px" onclick="showFirstRunChecklist()">🚀 Setup Checklist — View Progress</button>
+      <div style="font-size:18px;color:var(--muted);line-height:1.7;margin-bottom:12px">Download the complete User Manual for step-by-step guidance on all features.</div>
+      <a href="MyDepotMaster_UserManual.pdf" download="MyDepotMaster_UserManual.pdf" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(0,214,143,.08),rgba(0,184,122,.05));border:1px solid rgba(0,214,143,.25);border-radius:10px;padding:13px 14px;text-decoration:none;color:var(--text)">
+        <span style="font-size:31px">📘</span>
+        <div style="flex:1">
+          <div style="font-family:var(--fh);font-size:19px;font-weight:700;color:var(--white)">User Manual (PDF)</div>
+          <div style="font-size:16px;color:var(--muted);margin-top:2px">Complete guide — all features, tips &amp; troubleshooting</div>
+        </div>
+        <span style="font-size:16px;font-weight:700;color:var(--green);white-space:nowrap">⬇ Download</span>
+      </a>
+    </div>`;
+}
+
+// Settings helper — Contact & Support. Same for every role.
+function _renderContactSupportCard(){
+  return `
+    <div class="sh">Contact &amp; Support</div>
+    <div class="card">
+      <div style="font-size:18px;color:var(--muted);margin-bottom:14px;line-height:1.7">For technical support, licensing enquiries or assistance, reach out to the developer:</div>
+      <a href="mailto:mydepotmaster@gmail.com" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;text-decoration:none;color:var(--text)">
+        <span style="font-size:27px">✉️</span>
+        <div>
+          <div style="font-size:16px;color:var(--muted);margin-bottom:2px">EMAIL</div>
+          <div style="font-weight:700;color:var(--blue)">mydepotmaster@gmail.com</div>
+        </div>
+      </a>
+      <a href="tel:+260960271128" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--text)">
+        <span style="font-size:27px">📞</span>
+        <div>
+          <div style="font-size:16px;color:var(--muted);margin-bottom:2px">PHONE / WHATSAPP</div>
+          <div style="font-weight:700;color:var(--green)">+260 960 271 128</div>
+        </div>
+      </a>
+    </div>`;
+}
+
+// Settings helper — Legal (ToS / Privacy). Same for every role.
+function _renderLegalCard(){
+  return `
+    <div class="sh">Legal</div>
+    <div class="card">
+      <div style="font-size:18px;color:var(--muted);line-height:1.7;margin-bottom:12px">Read the Terms of Service and Disclaimer that govern your use of My Depot Master.</div>
+      <button class="btn bo" onclick="showTOS()" style="width:100%">📄 View Terms of Service &amp; Disclaimer</button>
+      <div style="margin-top:10px"></div>
+      <button class="btn bo" onclick="showPrivacyPolicy()" style="width:100%">🔒 View Privacy Policy</button>
+    </div>`;
+}
+
+// Settings helper — read-only Company Information card. Safe for every role
+// since none of the fields here are editable from this view anyway.
+function _renderCompanyInfoCard(){
+  return `
+    <div class="sh">Company Information</div>
+    <div class="card">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:17px;color:var(--muted)">🔒 Company name, district and country are set once during initial setup and cannot be changed. These are used as your unique license identifier.</div>
+      <div class="fw"><div class="fl">Company Name</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).name||'—'}</div></div>
+      <div class="fw"><div class="fl">District</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).district||'—'}</div></div>
+      <div class="fw"><div class="fl">Country</div><div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${(DATA.depotInfo||{}).country||'—'}</div></div>
+    </div>`;
+}
+
 // ══════════════════════════════════════════════════════════
 // SETTINGS
 // ══════════════════════════════════════════════════════════
+// Dispatches to a full settings view for admins, and a trimmed, personal-only
+// view for non-admin (data-entry / staff) accounts. Non-admins previously had
+// no Settings tab at all; now they get one, but scoped to only what's
+// relevant and safe for them — their own display/password/device preferences
+// — not company-wide, billing, or destructive controls.
 function renderSettings(){
+  if (USER && USER.role !== 'admin') return _renderStaffSettings();
+  return _renderAdminSettings();
+}
+
+// Trimmed Settings view for non-admin accounts (data-entry, staff).
+// Deliberately excludes: subscription/license/payment info, company branding,
+// currency & shift-hour company-wide settings, staff/records policy,
+// admin recovery PIN/email, other users' accounts, role permissions table,
+// data export/import/audit tools, manual cloud sync controls, and the
+// Delete Account danger zone — all of that is company-wide or destructive
+// and stays admin-only.
+function _renderStaffSettings(){
+  return `
+    ${statusBanner()}
+    ${_renderCompanyInfoCard()}
+    <div class="sh">Display Preferences</div>
+    <div class="card">
+      <div style="font-size:17px;color:var(--muted);margin-bottom:12px;line-height:1.7">Adjust the text size to suit your screen. Changes apply instantly and are remembered across sessions.</div>
+      <div class="fw">
+        <div class="fl">Text Size</div>
+        <div class="fs-ctrl">
+          <button class="fs-btn" id="fs-btn-minus" onclick="changeFontSize(-${FS_STEP})" title="Decrease font size">A−</button>
+          <div class="fs-divider"></div>
+          <div class="fs-label fs-lbl-all" id="fs-value-label">${_fsLabel(getFontSize())}</div>
+          <div class="fs-divider"></div>
+          <button class="fs-btn" id="fs-btn-plus" onclick="changeFontSize(${FS_STEP})" title="Increase font size">A+</button>
+        </div>
+      </div>
+      <button class="btn bo bsm" style="width:100%;margin-top:4px" onclick="resetFontSize()">↺ Reset to Default (50%)</button>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Theme</div>
+        <div class="theme-toggle">
+          <span class="theme-toggle-label">🎨 Appearance</span>
+          <div class="theme-toggle-pill">
+            <button class="theme-toggle-opt${getThemePref()==='dark'?' active':''}" data-theme="dark" onclick="setTheme('dark')">🌙 Dark</button>
+            <button class="theme-toggle-opt${getThemePref()==='auto'?' active':''}" data-theme="auto" onclick="setTheme('auto')">Auto</button>
+            <button class="theme-toggle-opt${getThemePref()==='light'?' active':''}" data-theme="light" onclick="setTheme('light')">☀️ Light</button>
+          </div>
+        </div>
+        <div style="font-size:16px;color:var(--muted);margin-top:6px;line-height:1.6">Auto follows your device's system setting. Manually choose Dark or Light to override.</div>
+      </div>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Currency</div>
+        <div class="fi" style="opacity:.6;cursor:not-allowed;background:#050e1a">${esc(DATA.currency||'—')}</div>
+        <div style="font-size:16px;color:var(--muted);margin-top:6px;line-height:1.6">Set by your Admin. Applies to all financial figures across the app.</div>
+      </div>
+    </div>
+    ${_renderDashboardWidgetsCard()}
+    ${_renderBioSection()}
+    ${_renderStaySignedInSection()}
+    ${_renderChangePasswordCard()}
+    ${_renderHelpDocsCard()}
+    ${_renderContactSupportCard()}
+    ${_renderLegalCard()}
+    <div style="text-align:center;padding:12px 0 4px;font-size:16px;color:var(--muted)">My Depot Master · © ${new Date().getFullYear()} NEXLITE-DIGITAL-SOLUTIONS-LIMITED (t/a Spike Trading and General Dealers) · General Purpose Business Management Software</div>
+    <div style="height:60px"></div>`;
+}
+
+function _renderAdminSettings(){
   const users=DATA.users.map(u=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
       <div><div style="font-weight:700">${esc(u.username)}</div><span class="bdg ${u.role==='admin'?'bg2':'ba2'}">${esc(u.role)}</span></div>
@@ -11477,6 +11687,24 @@ setTimeout(async ()=>{
 // Periodic FB sync every 5 minutes while online
 setInterval(()=>{ if(ONLINE && USER) scheduleFbSync(); }, 5*60*1000);
 
+// Periodic FB PULL every 60 seconds while online.
+// Fix: pushing local changes every 5 minutes was never enough on its own —
+// nothing was pulling changes made by OTHER accounts/devices (e.g. a data-entry
+// account deleting a record) while this session stayed open. Previously the
+// only pull happened at login, so an admin who stayed signed in could go a
+// long time without seeing another account's edits, and could even overwrite
+// them by pushing their own (now-stale) copy first.
+// Skip the pull if a modal is open so we don't yank the screen out from under
+// someone mid-entry.
+setInterval(()=>{
+  if (!ONLINE || !USER) return;
+  const ovl = document.getElementById('modal-ovl');
+  if (ovl && ovl.style.display === 'flex') return; // don't interrupt active data entry
+  fbRestoreData().then(restored=>{
+    if (restored) { render(); showToast('☁ Synced changes from another device'); }
+  }).catch(()=>{});
+}, 60*1000);
+
 // ══════════════════════════════════════════════════════════
 // ██ BOOKS TAB — In-app document creator (Word / Spreadsheet)
 // Documents are stored as structured JSON in DATA.books[].
@@ -13366,10 +13594,18 @@ async function tabCloudDownload(tab, evt) {
   try {
     const val = await fbGet('depots/' + key + '/data');
     if (!val || !val._v) { showToast('❌ No cloud data found'); return; }
+    // Fix: compare by server timestamp (_syncTs), not the per-device _v
+    // counter — _v does not reliably indicate which copy is chronologically
+    // newer once more than one account/device is writing to this depot.
+    const localTs = DATA._syncTs || 0;
+    const cloudTs = val._syncTs || 0;
+    const cloudHasNewerTs = cloudTs > localTs;
+    const noTsYet = !cloudTs && !localTs;
     const localV = DATA._v || 0;
     const cloudV = val._v || 0;
-    if (cloudV <= localV) { showToast('✅ Already up to date (local v' + localV + ')'); return; }
-    if (!confirm('⬇ Replace local data with cloud copy?\n\nCloud: v' + cloudV + '  ·  Local: v' + localV + '\n\nThis will overwrite unsaved local changes.')) return;
+    const upToDate = noTsYet ? (cloudV <= localV) : !cloudHasNewerTs;
+    if (upToDate) { showToast('✅ Already up to date'); return; }
+    if (!confirm('⬇ Replace local data with cloud copy?\n\nThis will overwrite unsaved local changes.')) return;
     const localTrialStart = DATA.trialStart || 0;
     const localUsers = Array.isArray(DATA.users) ? DATA.users : [];
     DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
@@ -13377,6 +13613,7 @@ async function tabCloudDownload(tab, evt) {
     const localOnlyUsers = localUsers.filter(u=>(u.username||'') && !cloudUsernames.has((u.username||'').toLowerCase()));
     if (localOnlyUsers.length > 0) DATA.users = [...(DATA.users||[]), ...localOnlyUsers];
     if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) DATA.trialStart = localTrialStart;
+    DATA._syncTs = val._syncTs || Date.now();
     DATA._lastFbSync = Date.now();
     if (DATA.installId) _persistInstallId(DATA.installId);
     sv(DATA);
