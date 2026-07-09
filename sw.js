@@ -25,7 +25,21 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v62 (2026-07-09)
+// Current version: v63 (2026-07-09)
+//
+// v63 changes (2026-07-09) — License activation not being picked up:
+//   - ROOT CAUSE: checkLicense() only ever ran at the 3 login call-sites
+//     (password login, quick/biometric login, session auto-restore). A
+//     device that stayed logged in never re-fetched /licenses/{depotKey},
+//     so activating/upgrading a customer in Firebase while their app was
+//     already open went unnoticed until they fully logged out and back in.
+//   - FIX 1: added a 🔄 refresh control on the trial/subscription banner
+//     and on Settings → License & Connection, which calls checkLicense()
+//     immediately and toasts the result (still trial / now active / etc).
+//   - FIX 2: added a throttled automatic re-check (at most once every 5
+//     min) on `visibilitychange`, so simply switching back to the app
+//     after paying picks up the change without any manual action.
+//   - No sw.js fetch/cache logic changes — bump only.
 //
 // v62 changes (2026-07-09) — Approval workflow fixes:
 //   - FIX: a rejected clock-in was still showing a green "🟢 ACTIVE" badge
@@ -434,7 +448,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v62';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v63';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
