@@ -7971,7 +7971,7 @@ function renderStaffLogs(){
   const totQty=approvedArr(logs).filter(l=>l.status!=='open').reduce((a,b)=>a+Number(b.qty!=null?b.qty:b.bags||0),0);
   const totNet=approvedArr(logs).filter(l=>l.status!=='open').reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
   // Open shifts across ALL time (not period-filtered)
-  const allOpenShifts=(DATA.staffLogs||[]).filter(l=>l.status==='open'&&(!l.entryType||l.entryType==='work'));
+  const allOpenShifts=(DATA.staffLogs||[]).filter(l=>l.status==='open'&&!isRejected(l)&&(!l.entryType||l.entryType==='work'));
 
   // Build cumulative totals per staff across ALL logs (career running total up to each entry) — approved only
   const allSorted=approvedArr(DATA.staffLogs).slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
@@ -8225,7 +8225,7 @@ function saveStaff(){if(isReadOnly()){alert("🔒 This account is in read-only m
 
 // Helper: find open shift for a staff member
 function _openShiftFor(staffId){
-  return (DATA.staffLogs||[]).find(l=>String(l.staffId)===String(staffId)&&l.status==='open'&&(!l.entryType||l.entryType==='work'));
+  return (DATA.staffLogs||[]).find(l=>String(l.staffId)===String(staffId)&&l.status==='open'&&!isRejected(l)&&(!l.entryType||l.entryType==='work'));
 }
 
 // Stage 1 — Clock In
@@ -8306,6 +8306,7 @@ function openClockOutForm(logId){
   const log=DATA.staffLogs.find(x=>String(x.id)===String(logId));
   if(!log){alert('Shift record not found.');return;}
   if(log.status!=='open'){alert('This shift is already completed.');return;}
+  if(isRejected(log)){alert('❌ This clock-in was rejected and cannot be clocked out. Ask the staff member to clock in again.');return;}
   const s=DATA.staff.find(x=>String(x.id)===String(log.staffId));
   const staffRole=s?.role||log.role||'';
   const tasks=tasksForRole(staffRole);
@@ -11413,7 +11414,7 @@ function refreshHdrMenuQuickStats(){
     });
     todayIn += (DATA.generalInventory||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.received||0),0);
     todayOut += (DATA.generalIssued||[]).filter(x=>x.date===todayStr).reduce((a,b)=>a+Number(b.issued||0),0);
-    const activeShifts = (DATA.staffLogs||[]).filter(x=>x.status==='open').length;
+    const activeShifts = (DATA.staffLogs||[]).filter(x=>x.status==='open'&&!isRejected(x)).length;
     const staffLogged = (DATA.staffLogs||[]).filter(x=>x.date===todayStr).length;
     const setTxt=(id,val)=>{const el=document.getElementById(id); if(el) el.textContent=val;};
     setTxt('hdr-qs-in', todayIn.toLocaleString());
