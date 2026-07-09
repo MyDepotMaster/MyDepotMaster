@@ -25,7 +25,20 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v61 (2026-07-09)
+// Current version: v62 (2026-07-09)
+//
+// v62 changes (2026-07-09) — Approval workflow fixes:
+//   - FIX: a rejected clock-in was still showing a green "🟢 ACTIVE" badge
+//     and offering admin a "Clock Out" button, contradicting the REJECTED
+//     badge. A rejected staff log is no longer treated as an active shift.
+//   - FIX: rejection reason was only in a hover `title` attribute, invisible
+//     on mobile (no hover). It's now shown as visible text under the
+//     ❌ REJECTED badge on every list (received/issued/stock counts/
+//     transport/staff logs/payments/leave), for staff and admin alike.
+//   - FIX: the Pending Approvals modal kept showing already-actioned
+//     entries until manually closed and reopened. Approve/Reject now
+//     refreshes the list in place immediately.
+//   - No sw.js fetch/cache logic changes — bump only.
 //
 // v61 changes (2026-07-09) — Entry Approval Workflow:
 //   - NEW: every entry created by a non-admin (staff/data-entry) account —
@@ -421,7 +434,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v61';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v62';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
