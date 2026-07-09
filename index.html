@@ -2934,7 +2934,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v60';
+const SW_VERSION  = 'mdm-v61';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2950,7 +2950,7 @@ const SW_VERSION  = 'mdm-v60';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v60';
+  const VER = 'mdm-v61';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -3507,6 +3507,140 @@ function setDateRange(tab,key,val){
 }
 
 function updateData(fn){DATA=fn(DATA);DATA._v=(DATA._v||0)+1;sv(DATA);render();scheduleFbSync();}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ENTRY APPROVAL WORKFLOW
+// Every NEW entry created by a non-admin (staff/data-entry) account is
+// stamped 'pending' instead of joining official company data immediately.
+// It still shows in that account's own lists (badged ⏳ Pending Approval)
+// but is excluded from every balance, stock-availability, sales, and payroll
+// total until an admin approves it from the Pending Approvals screen.
+// Admin-created entries are stamped 'approved' immediately (unaffected).
+// Uses `approvalStatus` (not `status`) so it never collides with existing
+// status fields (transport log status, shift open/completed, etc.).
+// ══════════════════════════════════════════════════════════════════════════
+function stampEntry(rec){
+  if(USER && USER.role!=='admin'){
+    rec.approvalStatus = 'pending';
+    rec.enteredBy      = USER.username || '';
+    rec.enteredByRole  = USER.role || '';
+    rec.enteredAt      = Date.now();
+  } else {
+    rec.approvalStatus = 'approved';
+  }
+  return rec;
+}
+function isApproved(rec){ return !rec || !rec.approvalStatus || rec.approvalStatus==='approved'; }
+function isPending(rec){  return !!rec && rec.approvalStatus==='pending'; }
+function isRejected(rec){ return !!rec && rec.approvalStatus==='rejected'; }
+function approvedArr(arr){ return (arr||[]).filter(isApproved); }
+
+// Small inline badge shown next to a row that isn't (yet) official data
+function approvalBadge(rec){
+  if(isPending(rec))  return ` <span style="display:inline-block;font-size:12px;font-weight:800;background:var(--amber);color:#111;border-radius:20px;padding:1px 8px;margin-left:4px;white-space:nowrap;vertical-align:middle">⏳ PENDING</span>`;
+  if(isRejected(rec)) return ` <span style="display:inline-block;font-size:12px;font-weight:800;background:var(--red);color:#fff;border-radius:20px;padding:1px 8px;margin-left:4px;white-space:nowrap;vertical-align:middle" title="${esc(rec.approvalRejectionReason||'')}">❌ REJECTED</span>`;
+  return '';
+}
+
+// ── Registry of every entry category that goes through approval ────────────
+// flat: DATA[key] is an array. keyed: DATA[key] is {commodityId: [...]}
+const _APPROVAL_CATS = {
+  genRec:    { label:'General — Received',   key:'generalInventory',        keyed:false },
+  genIss:    { label:'General — Issued/Sale',key:'generalIssued',           keyed:false },
+  genSC:     { label:'General — Stock Count',key:'generalStockCounts',      keyed:false },
+  transport: { label:'Transport Log',        key:'transportLog',            keyed:false },
+  staffLog:  { label:'Staff Work Log',       key:'staffLogs',               keyed:false },
+  staffPay:  { label:'Staff Payment',        key:'staffPayments',           keyed:false },
+  leave:     { label:'Leave Entry',          key:'leaveLog',                keyed:false },
+  comRec:    { label:'Commodity Received',   key:'commodityReceived',       keyed:true  },
+  comIss:    { label:'Commodity Issued',     key:'commodityIssued',         keyed:true  },
+  comSC:     { label:'Commodity Stock Count',key:'commodityStockCounts',    keyed:true  }
+};
+
+function _allPendingEntries(){
+  const out=[];
+  Object.keys(_APPROVAL_CATS).forEach(cat=>{
+    const meta=_APPROVAL_CATS[cat];
+    if(!meta.keyed){
+      (DATA[meta.key]||[]).forEach(r=>{ if(isPending(r)) out.push({cat,cid:null,rec:r}); });
+    } else {
+      const obj=DATA[meta.key]||{};
+      Object.keys(obj).forEach(cid=>{
+        (obj[cid]||[]).forEach(r=>{ if(isPending(r)) out.push({cat,cid,rec:r}); });
+      });
+    }
+  });
+  return out.sort((a,b)=>(b.rec.enteredAt||0)-(a.rec.enteredAt||0));
+}
+function pendingApprovalCount(){ return _allPendingEntries().length; }
+
+function _mutateApprovalStatus(cat,cid,id,newStatus,extra){
+  const meta=_APPROVAL_CATS[cat];
+  if(!meta)return;
+  updateData(d=>{
+    const nd={...d};
+    const patch=r=>r.id===id?{...r,approvalStatus:newStatus,...extra}:r;
+    if(!meta.keyed){
+      nd[meta.key]=(nd[meta.key]||[]).map(patch);
+    } else {
+      const obj={...(nd[meta.key]||{})};
+      obj[cid]=(obj[cid]||[]).map(patch);
+      nd[meta.key]=obj;
+    }
+    return nd;
+  });
+}
+function approveEntry(cat,cid,id){
+  _mutateApprovalStatus(cat,cid,id,'approved',{approvedBy:USER.username,approvedAt:Date.now()});
+  logAuditEvent('APPROVE',(_APPROVAL_CATS[cat]||{}).label||cat,`ID:${id}`);
+  showToast('✅ Entry approved — now part of official data');
+}
+function rejectEntry(cat,cid,id){
+  const reason=(prompt('Reason for rejection (optional, shown to the staff member):')||'').trim();
+  _mutateApprovalStatus(cat,cid,id,'rejected',{rejectedBy:USER.username,rejectedAt:Date.now(),approvalRejectionReason:reason});
+  logAuditEvent('REJECT',(_APPROVAL_CATS[cat]||{}).label||cat,`ID:${id}${reason?' · Reason: '+reason:''}`);
+  showToast('❌ Entry rejected');
+}
+
+function renderPendingApprovals(){
+  const items=_allPendingEntries();
+  if(items.length===0){
+    return `<div style="text-align:center;padding:32px 16px"><div style="font-size:36px;margin-bottom:8px">✅</div><div style="font-size:18px;color:var(--muted)">No entries waiting for approval.</div></div>`;
+  }
+  const rows=items.map(({cat,cid,rec})=>{
+    const meta=_APPROVAL_CATS[cat];
+    const comLabel=cid?` · ${esc(getCom(cid).name)}`:'';
+    const when=rec.enteredAt?new Date(rec.enteredAt).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}):'—';
+    // Build a short human-readable summary per category
+    let detail='';
+    if(cat==='genRec')      detail=`${esc(rec.itemName)} · ${Number(rec.received||0).toLocaleString()} units`;
+    else if(cat==='genIss') detail=`${esc(rec.itemName)} · ${Number(rec.issued||0).toLocaleString()} units${rec.sellingPrice?` @ ${cur()}${Number(rec.sellingPrice).toFixed(2)}`:''}`;
+    else if(cat==='genSC')  detail=`${esc(rec.itemName)} · Physical count: ${Number(rec.physicalCount||0).toLocaleString()}`;
+    else if(cat==='comRec') detail=`Batch ${esc(rec.batchName)} · ${Number(rec.received||0).toLocaleString()} received`;
+    else if(cat==='comIss') detail=`Batch ${esc(rec.batchName)} · ${Number(rec.issued||0).toLocaleString()} issued`;
+    else if(cat==='comSC')  detail=`Batch ${esc(rec.batchName)} · Physical count: ${Number(rec.physicalCount||0).toLocaleString()}`;
+    else if(cat==='transport') detail=`${esc(rec.vehicleReg||'—')} · ${esc(rec.origin||'—')} → ${esc(rec.destination||'—')}`;
+    else if(cat==='staffLog'){ const s=(DATA.staff||[]).find(x=>String(x.id)===String(rec.staffId)); detail=`${esc(s?.name||'Staff')} · ${esc(rec.task||rec.entryType||'')}`; }
+    else if(cat==='staffPay'){ const s=(DATA.staff||[]).find(x=>String(x.id)===String(rec.staffId)); detail=`${esc(s?.name||'Staff')} · ${cur()}${Number(rec.amount||0).toFixed(2)}`; }
+    else if(cat==='leave'){ const s=(DATA.staff||[]).find(x=>String(x.id)===String(rec.staffId)); detail=`${esc(s?.name||'Staff')} · ${esc(rec.type||'')} · ${rec.days||1} day(s)`; }
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--surface2)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+        <div style="font-weight:700;color:var(--white)">${meta.label}${comLabel}</div>
+        <div style="font-size:13px;color:var(--muted);white-space:nowrap">${when}</div>
+      </div>
+      <div style="font-size:15px;color:var(--text);margin-bottom:4px">${detail}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Entered by <strong>${esc(rec.enteredBy||'—')}</strong></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bg bsm" style="flex:1" onclick="approveEntry('${cat}',${cid?`'${cid}'`:'null'},'${rec.id}')">✓ Approve</button>
+        <button class="btn bo bsm" style="flex:1;color:var(--red);border-color:var(--red)" onclick="rejectEntry('${cat}',${cid?`'${cid}'`:'null'},'${rec.id}')">✕ Reject</button>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-bottom:10px;font-size:15px;color:var(--muted)">${items.length} entr${items.length===1?'y':'ies'} awaiting approval — excluded from balances and totals until approved.</div>${rows}`;
+}
+function openPendingApprovalsModal(){
+  openModal(`<div class="mtitle">✅ Pending Approvals</div>${renderPendingApprovals()}<div class="mact"><button class="btn bo" onclick="closeModal()">Close</button></div>`);
+}
 
 // ── RENDER MEMOIZATION ───────────────────────────────────────────────────────
 // Skips a full innerHTML rebuild when tab, data version, and active periods
@@ -4976,11 +5110,12 @@ function renderDash(){
   // Dynamic: use first defined commodity for primary dashboard display
   const _coms=DATA.commodities||[];
   const todayStr=today();
-  // Per-commodity stats for dashboard
+  // Per-commodity stats for dashboard — approved entries only (pending/rejected
+  // entries from staff accounts are excluded from official balances)
   const _comStats=_coms.map(comObj=>{
     const cid=comObj.id;
-    const recs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])];
-    const iss=[...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])];
+    const recs=approvedArr([...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])]);
+    const iss=approvedArr([...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])]);
     const rec=recs.reduce((a,b)=>a+Number(b.received||0),0);
     const issued=iss.reduce((a,b)=>a+Number(b.issued||0),0);
     const bal=rec-issued;
@@ -4998,15 +5133,16 @@ function renderDash(){
 
   const todayAllIn=_comStats.reduce((a,c)=>a+c.todayIn,0);
   const todayAllOut=_comStats.reduce((a,c)=>a+c.todayOut,0);
-  const todayGenIn=DATA.generalInventory.filter(x=>x.date===todayStr).length;
-  const todayStaffLogs=DATA.staffLogs.filter(x=>x.date===todayStr).length;
+  const todayGenIn=approvedArr(DATA.generalInventory).filter(x=>x.date===todayStr).length;
+  const todayStaffLogs=approvedArr(DATA.staffLogs).filter(x=>x.date===todayStr).length;
+  const _pendingCount=pendingApprovalCount();
 
   // ── Warnings ──────────────────────────────────────────────────────────────
   const warnings=[];
   // Check variance for all defined commodities
   _comStats.forEach(comObj=>{
     const cid=comObj.id;
-    const allRecs=[...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])]
+    const allRecs=approvedArr([...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])])
     const batchSet=[...new Set(allRecs.map(x=>x.batchName))];
     batchSet.forEach(bn=>{
       const avail=batchAvail(bn);
@@ -5034,12 +5170,12 @@ function renderDash(){
   });
   const warnItems=[...(DATA.inventoryItems||[]).map(_invItemName).filter(Boolean),...new Set(DATA.generalInventory.map(x=>x.itemName))];
   [...new Set(warnItems)].forEach(name=>{
-    const rec=DATA.generalInventory.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.received||0),0);
-    const iss=DATA.generalIssued.filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
+    const rec=approvedArr(DATA.generalInventory).filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=approvedArr(DATA.generalIssued).filter(r=>r.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
     if(iss>rec) warnings.push({icon:'🔴',title:`NEGATIVE BALANCE — ${name}`,msg:`Issued (${iss.toLocaleString()}) exceeds received (${rec.toLocaleString()}). Balance: <strong style="color:var(--red)">${(rec-iss).toLocaleString()}</strong>`});
   });
   // Rejected goods alerts
-  const rejectedEntries=DATA.generalInventory.filter(x=>x.condition==='rejected');
+  const rejectedEntries=approvedArr(DATA.generalInventory).filter(x=>x.condition==='rejected');
   if(rejectedEntries.length>0){
     const rejectedToday=rejectedEntries.filter(x=>x.date===todayStr);
     const msg=rejectedToday.length>0
@@ -5053,8 +5189,8 @@ function renderDash(){
     const itemName=_invItemName(invItem);
     const minStock=_invItemMin(invItem);
     if(!itemName||minStock<=0)return;
-    const rec=DATA.generalInventory.filter(r=>r.itemName===itemName&&r.condition!=='rejected').reduce((a,b)=>a+Number(b.received||0),0);
-    const iss=DATA.generalIssued.filter(r=>r.itemName===itemName).reduce((a,b)=>a+Number(b.issued||0),0);
+    const rec=approvedArr(DATA.generalInventory).filter(r=>r.itemName===itemName&&r.condition!=='rejected').reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=approvedArr(DATA.generalIssued).filter(r=>r.itemName===itemName).reduce((a,b)=>a+Number(b.issued||0),0);
     const bal=rec-iss;
     if(bal<=minStock){
       warnings.push({icon:'🔔',title:`LOW STOCK — ${itemName}`,msg:`Current balance: <strong style="color:var(--amber)">${bal.toLocaleString()} units</strong> · Minimum threshold: <strong>${minStock.toLocaleString()} units</strong>. Reorder required.`});
@@ -5065,20 +5201,24 @@ function renderDash(){
     const itemName=_invItemName(invItem);
     const reserved=_invItemReserved(invItem);
     if(!itemName||reserved<=0)return;
-    const rec=DATA.generalInventory.filter(r=>r.itemName===itemName&&r.condition!=='rejected').reduce((a,b)=>a+Number(b.received||0),0);
-    const iss=DATA.generalIssued.filter(r=>r.itemName===itemName).reduce((a,b)=>a+Number(b.issued||0),0);
+    const rec=approvedArr(DATA.generalInventory).filter(r=>r.itemName===itemName&&r.condition!=='rejected').reduce((a,b)=>a+Number(b.received||0),0);
+    const iss=approvedArr(DATA.generalIssued).filter(r=>r.itemName===itemName).reduce((a,b)=>a+Number(b.issued||0),0);
     const available=(rec-iss)-reserved;
     if(available<0){warnings.push({icon:'🔒',title:`RESERVED STOCK SHORTFALL — ${itemName}`,msg:`Reserved: <strong>${reserved.toLocaleString()}</strong> · Balance: <strong style="color:var(--red)">${(rec-iss).toLocaleString()}</strong> · Shortfall: <strong style="color:var(--red)">${Math.abs(available).toLocaleString()}</strong>`});}
   });
   // Expiry alerts (batches expiring within 30 days or already expired)
   const today30=new Date(); today30.setDate(today30.getDate()+30);
-  const expBatches=DATA.generalInventory.filter(r=>r.expiryDate&&r.condition!=='rejected');
+  const expBatches=approvedArr(DATA.generalInventory).filter(r=>r.expiryDate&&r.condition!=='rejected');
   expBatches.forEach(r=>{
     const exp=new Date(r.expiryDate);
     const daysLeft=Math.ceil((exp-new Date())/(1000*60*60*24));
     if(daysLeft<=0){warnings.push({icon:'🗓',title:`EXPIRED STOCK — ${r.itemName}`,msg:`Batch received ${fmtDate(r.date)} expired on <strong style="color:var(--red)">${fmtDate(r.expiryDate)}</strong> (${Math.abs(daysLeft)} days ago). Qty: <strong>${Number(r.received||0).toLocaleString()}</strong>`});}
     else if(daysLeft<=30){warnings.push({icon:'⏳',title:`EXPIRING SOON — ${r.itemName}`,msg:`Batch expires <strong style="color:var(--amber)">${fmtDate(r.expiryDate)}</strong> (${daysLeft} days). Qty: <strong>${Number(r.received||0).toLocaleString()}</strong>`});}
   });
+  // Pending-approval alert (admin only — nudges admin to review staff entries)
+  if(_pendingCount>0 && USER.role==='admin'){
+    warnings.unshift({icon:'✅',title:`${_pendingCount} ENTRY${_pendingCount>1?'IES':'Y'} AWAITING APPROVAL`,msg:`Staff-entered records are excluded from balances and totals until approved. <span style="color:var(--blue);text-decoration:underline;cursor:pointer" onclick="openPendingApprovalsModal()">Review now →</span>`});
+  }
 
   const warnBlock=warnings.length===0?'':`
     <div style="background:var(--surface);border:1.5px solid var(--red);border-radius:14px;padding:14px 16px;margin-bottom:14px">
@@ -5092,7 +5232,7 @@ function renderDash(){
       </div>`).join('')}
     </div>`;
 
-  const logs=filterPeriod(DATA.staffLogs, PERIOD.dashboard, 'date', 'dashboard');
+  const logs=filterPeriod(approvedArr(DATA.staffLogs), PERIOD.dashboard, 'date', 'dashboard');
   const netEarn=logs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
 
   // General inventory summary
@@ -5525,8 +5665,9 @@ function _doGlobalSearch(q){
 
 function renderGenReceived(){
   const items=filterPeriod(DATA.generalInventory, PERIOD.general, 'date', 'general');
-  // Build all-time cumulative per-item (sorted by date+time asc)
-  const sortedAll=DATA.generalInventory.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  // Build all-time cumulative per-item (sorted by date+time asc) — approved entries only,
+  // so pending/rejected staff entries don't inflate the official running balance
+  const sortedAll=approvedArr(DATA.generalInventory).slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   const runByItem={};const cumMap={};
   // Also track cumulative purchases per item
   const cumPurchByItem={};const cumPurchMap={};
@@ -5536,7 +5677,8 @@ function renderGenReceived(){
     cumPurchByItem[r.itemName]=(cumPurchByItem[r.itemName]||0)+Number(r.received||0)*Number(r.purchasePrice||0);
     cumPurchMap[r.id]=cumPurchByItem[r.itemName];
   });
-  // Sort period items newest first (date+time)
+  // Sort period items newest first (date+time) — still includes pending/rejected so the
+  // entering staff member (and admin) can see them, badged accordingly
   const sorted=items.slice().sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
   const rows=sorted.map(item=>{
     const editable=isWithin24h(item);
@@ -5544,7 +5686,7 @@ function renderGenReceived(){
     const sv=pp>0?pp*Number(item.received||0):null;
     return`<tr>
     <td style="white-space:nowrap">
-      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}</div>
+      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}${approvalBadge(item)}</div>
       <div style="font-size:15px;color:var(--muted)">${item.time||'—'}</div>
     </td>
     <td style="font-weight:600">${esc(item.itemName)}</td>
@@ -5559,11 +5701,11 @@ function renderGenReceived(){
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenRec('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
-  const allTimeRec=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0),0);
-  const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
-  const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
-  const periodPurchases=items.reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
-  const cumPurchases=DATA.generalInventory.reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
+  const allTimeRec=approvedArr(DATA.generalInventory).reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeIss=approvedArr(DATA.generalIssued).reduce((a,b)=>a+Number(b.issued||0),0);
+  const totRec=approvedArr(items).reduce((a,b)=>a+Number(b.received||0),0);
+  const periodPurchases=approvedArr(items).reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
+  const cumPurchases=approvedArr(DATA.generalInventory).reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
   const hasPrices=items.some(r=>Number(r.purchasePrice||0)>0);
   return `
     <div class="card" style="background:var(--surface);border-color:var(--green)">
@@ -5595,7 +5737,7 @@ function renderGenReceived(){
 
 function renderGenIssued(){
   const items=filterPeriod(DATA.generalIssued, PERIOD.general, 'date', 'general');
-  const sortedAll=DATA.generalIssued.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const sortedAll=approvedArr(DATA.generalIssued).slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   const runByItem={};const cumMap={};
   const cumSalesByItem={};const cumSalesMap={};
   sortedAll.forEach(r=>{
@@ -5618,7 +5760,7 @@ function renderGenIssued(){
     const custChip=item.customerName?`<span style="font-size:14px;color:var(--blue);font-weight:700">👤 ${esc(item.customerName)}</span>`:item.customerId?`<span style="font-size:13px;color:var(--muted)">linked</span>`:'<span style="color:var(--muted)">—</span>';
     return`<tr>
     <td style="white-space:nowrap">
-      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}</div>
+      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}${approvalBadge(item)}</div>
       <div style="font-size:15px;color:var(--muted)">${item.time||'—'}</div>
     </td>
     <td style="font-weight:600">${esc(item.itemName)}</td>
@@ -5631,12 +5773,12 @@ function renderGenIssued(){
     <td style="color:var(--blue);text-align:right;font-weight:700;border-left:2px solid var(--border)">${(cumMap[item.id]||0).toLocaleString()}</td>
     <td style="white-space:nowrap"><button class="editbtn" onclick="printSaleReceipt('${item.id}')" title="Print receipt">🧾</button>${USER.role==='admin'?` <button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditGenIss('${item.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delGenIss('${item.id}')">🗑</button>`:''}</td>
   </tr>`;}).join('');
-  const allTimeIss=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0),0);
-  const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
-  const periodSales=items.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
-  const cumSales=DATA.generalIssued.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
-  // Credit/debt summary
-  const creditItems=DATA.generalIssued.filter(x=>x.creditStatus==='credit'||x.creditStatus==='partial');
+  const allTimeIss=approvedArr(DATA.generalIssued).reduce((a,b)=>a+Number(b.issued||0),0);
+  const periodIss=approvedArr(items).reduce((a,b)=>a+Number(b.issued||0),0);
+  const periodSales=approvedArr(items).reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  const cumSales=approvedArr(DATA.generalIssued).reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
+  // Credit/debt summary — approved sales only (pending sales aren't official yet)
+  const creditItems=approvedArr(DATA.generalIssued).filter(x=>x.creditStatus==='credit'||x.creditStatus==='partial');
   const totalOwed=creditItems.reduce((a,b)=>{
     const saleVal=Number(b.issued||0)*Number(b.sellingPrice||0);
     const paid=b.creditStatus==='partial'?Number(b.partialPaid||0):0;
@@ -6139,7 +6281,7 @@ function saveGenRec(){if(isReadOnly()){alert("🔒 This account is in read-only 
   } else if(supNameIn){
     supplierName=supNameIn.value.trim().toUpperCase();
   }
-  const payload={id:uid(),date:document.getElementById('gr-date').value,time:nowTime(),itemName:name,received:effectiveRec,good:effectiveGood,damaged:effectiveDmg,condition:condVal,rejectedQty:condVal==='rejected'?rec:0,rejectionReason:rejectReason,expiryDate:document.getElementById('gr-expiry')?.value||'',notes:uc(document.getElementById('gr-notes').value),purchasePrice:condVal==='rejected'?0:pprice,creditStatus:document.getElementById('gr-credit')?.value||'paid',supplierId,supplierName};
+  const payload=stampEntry({id:uid(),date:document.getElementById('gr-date').value,time:nowTime(),itemName:name,received:effectiveRec,good:effectiveGood,damaged:effectiveDmg,condition:condVal,rejectedQty:condVal==='rejected'?rec:0,rejectionReason:rejectReason,expiryDate:document.getElementById('gr-expiry')?.value||'',notes:uc(document.getElementById('gr-notes').value),purchasePrice:condVal==='rejected'?0:pprice,creditStatus:document.getElementById('gr-credit')?.value||'paid',supplierId,supplierName});
   const totalCost=condVal==='rejected'?0:(rec*pprice);
   if(!confirm(`Confirm Item Received:\n${name} · ${rec} units${pprice>0?` × ${cur()}${pprice.toFixed(2)} = ${cur()}${totalCost.toFixed(2)}`:''}\nCondition: ${condVal.toUpperCase()}${supplierName?`\nSupplier: ${supplierName}`:''}\n\nProceed?`))return;
   updateData(d=>{
@@ -6275,7 +6417,7 @@ function saveGenIss(){if(isReadOnly()){alert("🔒 This account is in read-only 
     const custContact=(DATA.contacts||[]).find(c=>c.id===custSel.value);
     customerName=custContact?custContact.name:'';
   }
-  const payload={id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value),sellingPrice:sprice,creditStatus,partialPaid:partialAmt,customerId,customerName};
+  const payload=stampEntry({id:uid(),date:document.getElementById('gi-date').value,time:nowTime(),itemName:name,issued:qty,notes:uc(document.getElementById('gi-notes').value),sellingPrice:sprice,creditStatus,partialPaid:partialAmt,customerId,customerName});
   const totalRev=qty*sprice;
   const payLabel=creditStatus==='paid'?'✅ Paid':creditStatus==='partial'?`🟶 Partial — ${zm(partialAmt)} paid`:'🔴 Credit';
   const custLine=customerName?`<div style="font-size:15px;color:var(--blue);margin-top:4px">👤 ${esc(customerName)}</div>`:'';
@@ -6329,13 +6471,13 @@ function delGenIss(id){const _r=(DATA.generalIssued||[]).find(x=>x.id===id);if(_
 // ── GENERAL INVENTORY STOCK COUNT ────────────────────────────────────────────
 // Helper: compute system-available for a general inventory item (all-time)
 function itemAvail(itemName){
-  const rec=DATA.generalInventory.filter(r=>r.itemName===itemName).reduce((a,b)=>a+Number(b.received||0),0);
-  const iss=DATA.generalIssued.filter(i=>i.itemName===itemName).reduce((a,b)=>a+Number(b.issued||0),0);
+  const rec=approvedArr(DATA.generalInventory).filter(r=>r.itemName===itemName).reduce((a,b)=>a+Number(b.received||0),0);
+  const iss=approvedArr(DATA.generalIssued).filter(i=>i.itemName===itemName).reduce((a,b)=>a+Number(b.issued||0),0);
   return rec-iss;
 }
 // Helper: latest physical stock count for a general inventory item
 function itemPhysical(itemName){
-  const counts=(DATA.generalStockCounts||[]).filter(c=>c.itemName===itemName);
+  const counts=approvedArr(DATA.generalStockCounts).filter(c=>c.itemName===itemName);
   if(counts.length===0)return null;
   counts.sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
   return counts[0];
@@ -6390,7 +6532,7 @@ function saveGenStockCount(){
   const phys=document.getElementById('gsc-phys').value;
   if(!item){alert('Select an item.');return;}
   if(phys===''||phys===null){alert('Enter the physical unit count.');return;}
-  const payload={id:uid(),itemName:item,date:document.getElementById('gsc-date').value,time:nowTime(),physicalCount:Number(phys),notes:uc(document.getElementById('gsc-notes').value)};
+  const payload=stampEntry({id:uid(),itemName:item,date:document.getElementById('gsc-date').value,time:nowTime(),physicalCount:Number(phys),notes:uc(document.getElementById('gsc-notes').value)});
   updateData(d=>({...d,generalStockCounts:[...(d.generalStockCounts||[]),payload]}));
   GTAB='stockcount';
   closeModal();
@@ -6427,15 +6569,15 @@ function renderGenStockCount(){
   const countRows=counts.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).map(c=>{
     // System available at the time of this count: sum of records on or before count date/time
     const countDT=c.date+(c.time||'00:00');
-    const recAtCount=DATA.generalInventory.filter(r=>r.itemName===c.itemName&&((r.date+( r.time||'00:00'))<=countDT)).reduce((a,b)=>a+Number(b.received||0),0);
-    const issAtCount=DATA.generalIssued.filter(i=>i.itemName===c.itemName&&((i.date+(i.time||'00:00'))<=countDT)).reduce((a,b)=>a+Number(b.issued||0),0);
+    const recAtCount=approvedArr(DATA.generalInventory).filter(r=>r.itemName===c.itemName&&((r.date+( r.time||'00:00'))<=countDT)).reduce((a,b)=>a+Number(b.received||0),0);
+    const issAtCount=approvedArr(DATA.generalIssued).filter(i=>i.itemName===c.itemName&&((i.date+(i.time||'00:00'))<=countDT)).reduce((a,b)=>a+Number(b.issued||0),0);
     const availAtCount=recAtCount-issAtCount;
     const variance=Number(c.physicalCount)-availAtCount;
     const varColor=variance<0?'var(--red)':variance===0?'var(--green)':'var(--amber)';
     const varTxt=(variance>=0?'+':'')+variance.toLocaleString();
     return `<tr>
       <td style="font-weight:600">${esc(c.itemName)}</td>
-      <td style="white-space:nowrap">${fmtDate(c.date)}<br><span style="font-size:15px;color:var(--muted)">${c.time||'&#x2014;'}</span></td>
+      <td style="white-space:nowrap">${fmtDate(c.date)}${approvalBadge(c)}<br><span style="font-size:15px;color:var(--muted)">${c.time||'&#x2014;'}</span></td>
       <td style="color:var(--blue);text-align:right">${availAtCount.toLocaleString()}</td>
       <td style="color:var(--green);text-align:right">${Number(c.physicalCount).toLocaleString()}</td>
       <td style="color:${varColor};font-weight:700;text-align:right">${varTxt}</td>
@@ -6689,15 +6831,15 @@ function getCom(cid){ return (DATA.commodities||[]).find(c=>c.id===cid)||{id:cid
 // Helper: compute system-Available for a batch (all-time, not period-filtered)
 function batchAvail(batchName, cid){
   cid=cid||CCOM;
-  const rec=cRec(cid).filter(r=>r.batchName===batchName).reduce((a,b)=>a+Number(b.received||0),0);
-  const iss=cIss(cid).filter(i=>i.batchName===batchName).reduce((a,b)=>a+Number(b.issued||0),0);
+  const rec=approvedArr(cRec(cid)).filter(r=>r.batchName===batchName).reduce((a,b)=>a+Number(b.received||0),0);
+  const iss=approvedArr(cIss(cid)).filter(i=>i.batchName===batchName).reduce((a,b)=>a+Number(b.issued||0),0);
   return rec-iss;
 }
 
 // Helper: latest physical stock count for a batch
 function batchPhysical(batchName, cid){
   cid=cid||CCOM;
-  const counts=cSC(cid).filter(c=>c.batchName===batchName);
+  const counts=approvedArr(cSC(cid)).filter(c=>c.batchName===batchName);
   if(counts.length===0)return null;
   counts.sort((a,b)=>b.date.localeCompare(a.date));
   return counts[0];
@@ -6756,8 +6898,8 @@ function renderMaizeRec(){
   const com=getCom(CCOM);
   const all=cRec(CCOM);
   const items=filterPeriod(all, PERIOD.maize, 'date', 'maize');
-  const sortedAll=all.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
-  // Build cumulative received qty AND cumulative cost maps (all-time, ordered)
+  const sortedAll=approvedArr(all).slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  // Build cumulative received qty AND cumulative cost maps (all-time, ordered) — approved only
   let runTotal=0, runCost=0;
   const cumMap={}, cumCostMap={};
   sortedAll.forEach(r=>{
@@ -6775,7 +6917,7 @@ function renderMaizeRec(){
     const editable=isWithin24h(item);
     return`<tr>
     <td style="white-space:nowrap">
-      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}</div>
+      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}${approvalBadge(item)}</div>
       <div style="font-size:15px;color:var(--muted)">${item.time||'—'}</div>
     </td>
     <td style="font-weight:600">${esc(item.batchName)}${item.lotId?`<div style="font-size:14px;color:var(--amber);font-family:var(--fm);font-weight:400;margin-top:1px">${esc(item.lotId)}</div>`:''}</td>
@@ -6787,11 +6929,11 @@ function renderMaizeRec(){
     ${USER.role==='admin'?`<td style="color:var(--amber);text-align:right;font-size:16px;border-left:1px solid var(--border)">${cumCostMap[item.id]>0?zm(cumCostMap[item.id]):'—'}</td>`:''}
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeRec('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delMaizeRec('${item.id}')">🗑</button></td>`:''}
   </tr>`;}).join('');
-  const allTimeRec=all.reduce((a,b)=>a+Number(b.received||0),0);
-  const allTimeIss=cIss(CCOM).reduce((a,b)=>a+Number(b.issued||0),0);
-  const allTimeCost=all.reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
+  const allTimeRec=approvedArr(all).reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeIss=approvedArr(cIss(CCOM)).reduce((a,b)=>a+Number(b.issued||0),0);
+  const allTimeCost=approvedArr(all).reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
   const allTimeSV=allTimeCost; // cumulative stock value = total cost of all received
-  const totRec=items.reduce((a,b)=>a+Number(b.received||0),0);
+  const totRec=approvedArr(items).reduce((a,b)=>a+Number(b.received||0),0);
   return `
     <div class="card" style="background:var(--surface);border-color:var(--green)">
       <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
@@ -6837,8 +6979,8 @@ function renderMaizeIss(){
   const all=cIss(CCOM);
   const allRec=cRec(CCOM);
   const items=filterPeriod(all, PERIOD.maize, 'date', 'maize');
-  const sortedAll=all.slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
-  // Build cumulative issued qty AND cumulative revenue maps (all-time, ordered)
+  const sortedAll=approvedArr(all).slice().sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  // Build cumulative issued qty AND cumulative revenue maps (all-time, ordered) — approved only
   let runTotal=0, runRev=0;
   const cumMap={}, cumRevMap={};
   sortedAll.forEach(r=>{
@@ -6855,7 +6997,7 @@ function renderMaizeIss(){
     const editable=isWithin24h(item);
     return`<tr>
     <td style="white-space:nowrap">
-      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}</div>
+      <div style="font-weight:700;font-size:17px">${fmtDate(item.date)}${approvalBadge(item)}</div>
       <div style="font-size:15px;color:var(--muted)">${item.time||'—'}</div>
     </td>
     <td style="font-weight:600">${esc(item.batchName)}</td>
@@ -6870,10 +7012,10 @@ function renderMaizeIss(){
     ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditMaizeIss('${item.id}')`:''}\" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delMaizeIss('${item.id}')">🗑</button></td>`:''}
     <td><button class="editbtn" onclick="openTraceModal('${item.id}','commodity')" title="Trace batch/lot origin">🔍</button></td>
   </tr>`;}).join('');
-  const allTimeIss=all.reduce((a,b)=>a+Number(b.issued||0),0);
-  const allTimeRec=allRec.reduce((a,b)=>a+Number(b.received||0),0);
-  const allTimeRev=all.reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
-  const periodIss=items.reduce((a,b)=>a+Number(b.issued||0),0);
+  const allTimeIss=approvedArr(all).reduce((a,b)=>a+Number(b.issued||0),0);
+  const allTimeRec=approvedArr(allRec).reduce((a,b)=>a+Number(b.received||0),0);
+  const allTimeRev=approvedArr(all).reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
+  const periodIss=approvedArr(items).reduce((a,b)=>a+Number(b.issued||0),0);
   return `
     <div class="card" style="background:var(--surface);border-color:var(--amber)">
       <div class="ctitle" style="margin-bottom:8px">📊 All-Time Cumulative</div>
@@ -7095,7 +7237,7 @@ function saveMaizeRec(){if(isReadOnly()){alert("🔒 This account is in read-onl
   // Reuse existing lotId for same batchName if already received before, else create new
   const existingRec=cRec(CCOM).find(r=>r.batchName===batch&&r.lotId);
   const lotId=existingRec?existingRec.lotId:('LOT-'+uid().toUpperCase().slice(0,8));
-  const payload={id:uid(),batchName:batch,date:document.getElementById('mr-date').value,time:nowTime(),received:rec,unitPrice,supplierId:mSupplierId,supplierName:mSupplierName,lotId};
+  const payload=stampEntry({id:uid(),batchName:batch,date:document.getElementById('mr-date').value,time:nowTime(),received:rec,unitPrice,supplierId:mSupplierId,supplierName:mSupplierName,lotId});
   const cid=CCOM;
   const comName=getCom(cid).name, comUnit=getCom(cid).unit;
   const totalCost=rec*unitPrice;
@@ -7146,7 +7288,7 @@ function saveMaizeIss(){if(isReadOnly()){alert("🔒 This account is in read-onl
   const sourceReceiveId=document.getElementById('mi-src-rec')?.value||'';
   const creditStatus=document.getElementById('mi-credit')?.value||'paid';
   const partialPaid=creditStatus==='partial'?Number(document.getElementById('mi-partial-amt')?.value||0):0;
-  const payload={id:uid(),batchName:batch,date:document.getElementById('mi-date').value,time:nowTime(),transporter:trans,issued:qty,salePrice,sourceReceiveId,creditStatus,partialPaid};
+  const payload=stampEntry({id:uid(),batchName:batch,date:document.getElementById('mi-date').value,time:nowTime(),transporter:trans,issued:qty,salePrice,sourceReceiveId,creditStatus,partialPaid});
   const cid=CCOM;
   const comName=getCom(cid).name, comUnit=getCom(cid).unit;
   const totalRev=qty*salePrice;
@@ -7173,7 +7315,7 @@ function renderTransportLog(){
     const statusLabel=t.status==='completed'?'✅ Delivered':t.status==='in-transit'?'🚛 In Transit':'📋 Scheduled';
     return`<tr>
       <td style="white-space:nowrap">
-        <div style="font-weight:700;font-size:17px">${fmtDate(t.date)}</div>
+        <div style="font-weight:700;font-size:17px">${fmtDate(t.date)}${approvalBadge(t)}</div>
         <div style="font-size:15px;color:var(--muted)">${t.time||'—'}</div>
       </td>
       <td style="font-weight:600">${esc(t.vehicleReg)||'—'}</td>
@@ -7234,7 +7376,7 @@ function saveTransport(){if(isReadOnly()){alert("🔒 This account is in read-on
   if(!driver){alert('Enter driver name.');return;}
   if(!qty){alert('Enter quantity loaded.');return;}
   const com=getCom(CCOM);
-  const payload={
+  const payload=stampEntry({
     id:uid(),
     date:document.getElementById('tl-date').value,
     time:nowTime(),
@@ -7248,7 +7390,7 @@ function saveTransport(){if(isReadOnly()){alert("🔒 This account is in read-on
     destination:uc(document.getElementById('tl-dest').value),
     status:document.getElementById('tl-status').value,
     notes:uc(document.getElementById('tl-notes').value)
-  };
+  });
   if(!confirm(`Confirm Transport Entry:\nVehicle: ${vehicle} · Driver: ${driver}\nBatch: ${batch} · ${qty} ${com.unit}\nRoute: ${payload.origin||'—'} → ${payload.destination||'—'}\n\nProceed?`))return;
   updateData(d=>({...d,transportLog:[...(d.transportLog||[]),payload]}));
   logAuditEvent('CREATE','Transport Log',`Vehicle:${vehicle} · Driver:${driver} · Batch:${batch} · Qty:${qty}`);
@@ -7444,7 +7586,7 @@ function saveStockCount(){if(isReadOnly()){alert("🔒 This account is in read-o
   const batch=document.getElementById('sc-batch').value;
   const phys=Number(document.getElementById('sc-phys').value||0);
   if(!phys&&phys!==0){alert('Enter the physical count.');return;}
-  const payload={id:uid(),batchName:batch,date:document.getElementById('sc-date').value,time:nowTime(),physicalCount:phys,notes:document.getElementById('sc-notes').value};
+  const payload=stampEntry({id:uid(),batchName:batch,date:document.getElementById('sc-date').value,time:nowTime(),physicalCount:phys,notes:document.getElementById('sc-notes').value});
   const cid=CCOM;
   updateData(d=>{const cs={...(d.commodityStockCounts||{})};cs[cid]=[...(cs[cid]||[]),payload];return{...d,commodityStockCounts:cs};});
   MTAB='variance';
@@ -7781,13 +7923,13 @@ function renderStaff(){
 function renderStaffLogs(){
   const logs=filterPeriod(DATA.staffLogs, PERIOD.staff, 'date', 'staff');
   const staffById=Object.fromEntries(DATA.staff.map(s=>[s.id,s]));
-  const totQty=logs.filter(l=>l.status!=='open').reduce((a,b)=>a+Number(b.qty!=null?b.qty:b.bags||0),0);
-  const totNet=logs.filter(l=>l.status!=='open').reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
+  const totQty=approvedArr(logs).filter(l=>l.status!=='open').reduce((a,b)=>a+Number(b.qty!=null?b.qty:b.bags||0),0);
+  const totNet=approvedArr(logs).filter(l=>l.status!=='open').reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
   // Open shifts across ALL time (not period-filtered)
   const allOpenShifts=(DATA.staffLogs||[]).filter(l=>l.status==='open'&&(!l.entryType||l.entryType==='work'));
 
-  // Build cumulative totals per staff across ALL logs (career running total up to each entry)
-  const allSorted=DATA.staffLogs.slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
+  // Build cumulative totals per staff across ALL logs (career running total up to each entry) — approved only
+  const allSorted=approvedArr(DATA.staffLogs).slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
   const cumMap={};
   const runQty={}, runNet={};
   allSorted.forEach(log=>{
@@ -7809,7 +7951,7 @@ function renderStaffLogs(){
       const lbl=typeLabels[log.entryType]||log.entryType.toUpperCase();
       const col=typeColors[log.entryType]||'var(--muted)';
       return `<tr>
-        <td style="white-space:nowrap"><div style='font-size:17px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:15px;color:var(--muted)'>${log.time||'—'}</div></td>
+        <td style="white-space:nowrap"><div style='font-size:17px;font-weight:700'>${fmtDate(log.date)}${approvalBadge(log)}</div><div style='font-size:15px;color:var(--muted)'>${log.time||'—'}</div></td>
         <td style="font-weight:700">${s?.name||'—'}</td>
         <td><span class="tag">${esc(log.role||s?.role||'—')}</span></td>
         <td colspan="6" style="color:${col};font-weight:700">${lbl}${log.absenceNote?' — '+esc(log.absenceNote):''}</td>
@@ -7833,7 +7975,7 @@ function renderStaffLogs(){
       hoursCell=`${hrs}h${ot?` <span style="color:var(--amber);font-size:14px">OT</span>`:''}`;
     }
     return `<tr${isOpen?' style="background:rgba(0,214,143,.03)"':''}>
-      <td style="white-space:nowrap"><div style='font-size:17px;font-weight:700'>${fmtDate(log.date)}</div><div style='font-size:15px;color:var(--muted)'>${log.time||'—'}</div>${isOpen?`<span class="bdg bdg-active" style="margin-top:3px;display:inline-block">🟢 ACTIVE</span>`:''}
+      <td style="white-space:nowrap"><div style='font-size:17px;font-weight:700'>${fmtDate(log.date)}${approvalBadge(log)}</div><div style='font-size:15px;color:var(--muted)'>${log.time||'—'}</div>${isOpen?`<span class="bdg bdg-active" style="margin-top:3px;display:inline-block">🟢 ACTIVE</span>`:''}
       ${isOpen&&USER.role==='admin'?`<div style="margin-top:4px"><button class="clockout-btn" onclick="openClockOutForm('${log.id}')">⏹ Clock Out</button></div>`:''}</td>
       <td style="font-weight:700">${s?.name||'—'}</td>
       <td><span class="tag">${esc(log.role)}</span></td>
@@ -8104,9 +8246,9 @@ function saveClockIn(){
     closeModal();setTimeout(()=>openClockOutForm(existing.id),50);return;
   }
   const timeInTs=Date.now();
-  const payload={id:uid(),staffId:sid,date,role,task,timeIn,timeInTs,status:'open',
+  const payload=stampEntry({id:uid(),staffId:sid,date,role,task,timeIn,timeInTs,status:'open',
     bags:0,qty:0,earnings:0,deduction:0,deductionReason:'',timeOut:'',
-    time:nowTime(),entryType:'work'};
+    time:nowTime(),entryType:'work'});
   updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
   logAuditEvent('CREATE','Work Log (Clock In)',`Staff ID:${sid} · Task:${task} · TimeIn:${timeIn}`);
   closeModal();
@@ -8417,11 +8559,11 @@ function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mod
     // Absence/leave entry
     const absenceNote=uc(document.getElementById('lf-absence-note')?.value||'');
     const logId=uid();
-    const payload={id:logId,staffId:sid,date,entryType,absenceNote,time:nowTime(),status:'completed',timeOutTs:Date.now()};
+    const payload=stampEntry({id:logId,staffId:sid,date,entryType,absenceNote,time:nowTime(),status:'completed',timeOutTs:Date.now()});
     // Fix 12: also mirror leave/sick entries to leaveLog so balance auto-deducts
     const leaveTypes={leave:'leave',sick:'sick',absent:'absent'};
     const leaveType=leaveTypes[entryType]||entryType;
-    const leaveEntry={id:'lv_'+logId,staffId:sid,type:leaveType,date,days:1,note:absenceNote,time:nowTime(),_fromLog:logId};
+    const leaveEntry=stampEntry({id:'lv_'+logId,staffId:sid,type:leaveType,date,days:1,note:absenceNote,time:nowTime(),_fromLog:logId});
     updateData(d=>({
       ...d,
       staffLogs:[...d.staffLogs,payload],
@@ -8446,7 +8588,7 @@ function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mod
   const bagsVal=ru==='bag'?qty:0;
   const timeInTs=Date.now();
   const timeOutTs=Date.now();
-  const payload={id:uid(),staffId:sid,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,overtimeMultiplier:otMult>1?otMult:undefined,deduction:ded,deductions,deductionReason:deductions.map(d=>d.reason).filter(Boolean).join('; '),timeIn,timeOut,timeInTs,timeOutTs,status:'completed',date,time:nowTime(),entryType:'work'};
+  const payload=stampEntry({id:uid(),staffId:sid,role,task,bags:bagsVal,qty,rateUnit:ru,earnings,overtimeMultiplier:otMult>1?otMult:undefined,deduction:ded,deductions,deductionReason:deductions.map(d=>d.reason).filter(Boolean).join('; '),timeIn,timeOut,timeInTs,timeOutTs,status:'completed',date,time:nowTime(),entryType:'work'});
   updateData(d=>({...d,staffLogs:[...d.staffLogs,payload]}));
   logAuditEvent('CREATE','Work Log',`Staff ID:${sid} · Task:${task} · Earnings:${earnings.toFixed(2)}`);
   closeModal();
@@ -8456,12 +8598,12 @@ function saveLog(){if(isReadOnly()){alert("🔒 This account is in read-only mod
 function renderPayments(){
   const staffList=DATA.staff;
   const payments=DATA.staffPayments||[];
-  // Summary by role
+  // Summary by role — approved entries only (pending staff entries aren't official yet)
   const byRole={};
   staffList.forEach(s=>{
-    const sLogs=DATA.staffLogs.filter(l=>String(l.staffId)===String(s.id));
+    const sLogs=approvedArr(DATA.staffLogs).filter(l=>String(l.staffId)===String(s.id));
     const earned=sLogs.reduce((a,b)=>a+(Number(b.earnings||0)-Number(b.deduction||0)),0);
-    const paid=payments.filter(p=>String(p.staffId)===String(s.id)).reduce((a,b)=>a+Number(b.amount||0),0);
+    const paid=approvedArr(payments).filter(p=>String(p.staffId)===String(s.id)).reduce((a,b)=>a+Number(b.amount||0),0);
     if(!byRole[s.role])byRole[s.role]={earned:0,paid:0,count:0};
     byRole[s.role].earned+=earned;byRole[s.role].paid+=paid;byRole[s.role].count++;
   });
@@ -8473,21 +8615,22 @@ function renderPayments(){
     <td style="color:${(v.earned-v.paid)>0?'var(--amber)':'var(--green)'};font-weight:700;text-align:right">${zm(v.earned-v.paid)}</td>
   </tr>`).join('');
 
-  // Per-staff detail
+  // Per-staff detail — show all entries (badged if pending/rejected) but only
+  // accumulate approved amounts into the running earned/paid balance
   const staffDetail=staffList.map(s=>{
     const sLogs=DATA.staffLogs.filter(l=>String(l.staffId)===String(s.id)).sort((a,b)=>a.date.localeCompare(b.date));
     const sPays=payments.filter(p=>String(p.staffId)===String(s.id)).sort((a,b)=>a.date.localeCompare(b.date));
     // Merge and sort all events by date
     const events=[
-      ...sLogs.filter(l=>!l.entryType||l.entryType==='work').map(l=>({type:'earn',date:l.date,id:l.id,amount:Number(l.earnings||0)-Number(l.deduction||0),bags:l.bags,task:l.task,role:l.role})),
-      ...sLogs.filter(l=>l.entryType&&l.entryType!=='work').map(l=>({type:'absent',date:l.date,id:l.id,amount:0,entryType:l.entryType,note:l.absenceNote||''})),
-      ...sPays.map(p=>({type:'pay',date:p.date,id:p.id,amount:Number(p.amount||0),notes:p.notes}))
+      ...sLogs.filter(l=>!l.entryType||l.entryType==='work').map(l=>({type:'earn',date:l.date,id:l.id,amount:Number(l.earnings||0)-Number(l.deduction||0),bags:l.bags,task:l.task,role:l.role,_rec:l})),
+      ...sLogs.filter(l=>l.entryType&&l.entryType!=='work').map(l=>({type:'absent',date:l.date,id:l.id,amount:0,entryType:l.entryType,note:l.absenceNote||'',_rec:l})),
+      ...sPays.map(p=>({type:'pay',date:p.date,id:p.id,amount:Number(p.amount||0),notes:p.notes,_rec:p}))
     ].sort((a,b)=>a.date.localeCompare(b.date)||a.type.localeCompare(b.type));
     let cumEarned=0,cumPaid=0;
     const eRows=events.map(ev=>{
-      if(ev.type==='earn'){cumEarned+=ev.amount;
+      if(ev.type==='earn'){if(isApproved(ev._rec))cumEarned+=ev.amount;
         return `<tr class="pay-row">
-          <td style="white-space:nowrap">${fmtDate(ev.date)}</td>
+          <td style="white-space:nowrap">${fmtDate(ev.date)}${approvalBadge(ev._rec)}</td>
           <td><span class="bdg bg2">WORK</span></td>
           <td style="font-size:17px;color:var(--muted)">${esc(ev.role)} · ${esc(ev.task)} · ${Number(ev.bags||0)} BAGS</td>
           <td style="color:var(--green);font-weight:700;text-align:right">${zm(ev.amount)}</td>
@@ -8501,7 +8644,7 @@ function renderPayments(){
         const absBadgeColor=ev.entryType==='absent'?'br2':ev.entryType==='sick'?'ba2':'bb2';
         const absLabel=ev.entryType==='absent'?'ABSENT':ev.entryType==='sick'?'SICK':'LEAVE';
         return `<tr style="background:rgba(245,158,11,.04)">
-          <td style="white-space:nowrap">${fmtDate(ev.date)}</td>
+          <td style="white-space:nowrap">${fmtDate(ev.date)}${approvalBadge(ev._rec)}</td>
           <td><span class="bdg ${absBadgeColor}" style="font-size:14px">${absLabel}</span></td>
           <td style="font-size:17px;color:var(--muted)">${ev.note?esc(ev.note):'No note'}</td>
           <td style="color:var(--muted);text-align:right">—</td>
@@ -8511,9 +8654,9 @@ function renderPayments(){
           <td style="color:${(cumEarned-cumPaid)>0?'var(--amber)':'var(--green)'};font-weight:700;text-align:right">${zm(cumEarned-cumPaid)}</td>
           <td></td>
         </tr>`;
-      } else {cumPaid+=ev.amount;
+      } else {if(isApproved(ev._rec))cumPaid+=ev.amount;
         return `<tr class="unp-row">
-          <td style="white-space:nowrap">${fmtDate(ev.date)}</td>
+          <td style="white-space:nowrap">${fmtDate(ev.date)}${approvalBadge(ev._rec)}</td>
           <td><span class="bdg bb2">PAID</span></td>
           <td style="font-size:17px;color:var(--muted)">${ev.notes||'PAYMENT'}</td>
           <td style="color:var(--muted);text-align:right">—</td>
@@ -9071,7 +9214,7 @@ function _confirmPayment(){
 function savePayment(sid, amount, date, notes){if(isReadOnly()){alert("🔒 This account is in read-only mode. Contact your administrator.");return;}
   const s=DATA.staff.find(x=>String(x.id)===String(sid));
   if(!confirm(`Confirm Staff Payment:\n${s?s.name:'Staff'} · ${cur()}${Number(amount).toFixed(2)}\nDate: ${fmtDate(date)}${notes?`\nNotes: ${notes}`:''}\n\nProceed?`))return;
-  const payload={id:uid(),staffId:sid,date,amount,notes};
+  const payload=stampEntry({id:uid(),staffId:sid,date,amount,notes});
   updateData(d=>({...d,staffPayments:[...(d.staffPayments||[]),payload]}));
   logAuditEvent('CREATE','Staff Payment',`Staff ID:${sid} · Amount:${amount} · Date:${date}`);
   STAB='payments';
@@ -9295,9 +9438,10 @@ function delStaff(id){requireAdminPassword('delete this staff member',()=>{updat
 // ── LEAVE BALANCE (Fix 7) ─────────────────────────────────────────────────────
 function renderLeave(){
   const leaveLog=DATA.leaveLog||[];
+  const approvedLeaveLog=approvedArr(leaveLog);
   const stdAnnual=Number((DATA.depotInfo||{}).annualLeaveEntitlement||15); // default 15, configurable in Settings → Staff Policy
   const rows=DATA.staff.filter(s=>s.status==='active'||!s.status).map(s=>{
-    const sLeave=leaveLog.filter(l=>String(l.staffId)===String(s.id));
+    const sLeave=approvedLeaveLog.filter(l=>String(l.staffId)===String(s.id));
     const annualUsed=sLeave.filter(l=>l.type==='leave').reduce((a,b)=>a+Number(b.days||1),0);
     const sickUsed=sLeave.filter(l=>l.type==='sick').reduce((a,b)=>a+Number(b.days||1),0);
     const absences=sLeave.filter(l=>l.type==='absent').length;
@@ -9311,7 +9455,7 @@ function renderLeave(){
     const s=DATA.staff.find(x=>String(x.id)===String(l.staffId));
     const typeLabels={leave:'Annual Leave',sick:'Sick Day',absent:'Absent'};
     const typeColors={leave:'var(--green)',sick:'var(--amber)',absent:'var(--red)'};
-    return`<tr><td style="white-space:nowrap">${fmtDate(l.date)}</td><td style="font-weight:700">${s?esc(s.name):'—'}</td><td style="color:${typeColors[l.type]||'var(--muted)'};font-weight:700">${typeLabels[l.type]||l.type}</td><td style="text-align:right">${l.days||1} day${(l.days||1)!==1?'s':''}</td><td style="color:var(--muted);font-size:16px">${esc(l.note||'')}</td>${USER.role==='admin'?`<td><button class="delbtn" onclick="delLeaveEntry('${l.id}')">🗑</button></td>`:'<td></td>'}</tr>`;
+    return`<tr><td style="white-space:nowrap">${fmtDate(l.date)}${approvalBadge(l)}</td><td style="font-weight:700">${s?esc(s.name):'—'}</td><td style="color:${typeColors[l.type]||'var(--muted)'};font-weight:700">${typeLabels[l.type]||l.type}</td><td style="text-align:right">${l.days||1} day${(l.days||1)!==1?'s':''}</td><td style="color:var(--muted);font-size:16px">${esc(l.note||'')}</td>${USER.role==='admin'?`<td><button class="delbtn" onclick="delLeaveEntry('${l.id}')">🗑</button></td>`:'<td></td>'}</tr>`;
   }).join('');
   return `<div style="background:#0d2a4a;border:1px solid var(--blue);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:17px;color:var(--blue);line-height:1.6">ℹ️ Leave tracking — Annual entitlement set to <strong>${stdAnnual} days</strong>.</div>${USER.role==='admin'?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bg bsm" onclick="openLeaveEntryForm()">+ Log Leave / Absence</button></div>`:''}<div class="card" style="padding:0"><div class="ctitle" style="padding:14px 16px;margin-bottom:0">🏖 Leave Balances (Active Staff)</div><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th style="text-align:right">Entitlement</th><th style="text-align:right">Used</th><th style="text-align:right">Balance</th><th style="text-align:right;color:var(--blue)">Sick</th><th style="text-align:right;color:var(--red)">Absences</th><th></th></tr></thead><tbody>${rows.length===0?`<tr><td colspan="8" class="empty">No active staff</td></tr>`:tableRows}</tbody></table></div></div>${recentEntries.length>0?`<div class="card" style="padding:0"><div class="ctitle" style="padding:14px 16px;margin-bottom:0">📋 Recent Leave Log</div><div class="tw"><table><thead><tr><th>Date</th><th>Staff</th><th>Type</th><th style="text-align:right">Days</th><th>Note</th><th></th></tr></thead><tbody>${recentRows}</tbody></table></div></div>`:''}`;
 }
@@ -9329,7 +9473,7 @@ function saveLeaveEntry(){
   const days=Number(document.getElementById('lv-days').value||1);
   const note=uc(document.getElementById('lv-note').value);
   if(!staffId||!date){alert('Select staff and date.');return;}
-  const entry={id:uid(),staffId:staffId,type,date,days,note,time:nowTime()};
+  const entry=stampEntry({id:uid(),staffId:staffId,type,date,days,note,time:nowTime()});
   updateData(d=>({...d,leaveLog:[...(d.leaveLog||[]),entry]}));
   closeModal();
 }
@@ -12876,10 +13020,10 @@ function deleteContact(id){
 // ══════════════════════════════════════════════════════════
 function renderProfitLoss(){
   if(!hasFeature('profit_loss')) return _upgradeGateCard('profit_loss');
-  const items=filterPeriod(DATA.generalIssued, PERIOD.general, 'date', 'general');
-  const recItems=filterPeriod(DATA.generalInventory, PERIOD.general, 'date', 'general');
-  const staffLogs=filterPeriod(DATA.staffLogs, PERIOD.general, 'date', 'general');
-  const staffPays=filterPeriod(DATA.staffPayments||[], PERIOD.general, 'date', 'general');
+  const items=filterPeriod(approvedArr(DATA.generalIssued), PERIOD.general, 'date', 'general');
+  const recItems=filterPeriod(approvedArr(DATA.generalInventory), PERIOD.general, 'date', 'general');
+  const staffLogs=filterPeriod(approvedArr(DATA.staffLogs), PERIOD.general, 'date', 'general');
+  const staffPays=filterPeriod(approvedArr(DATA.staffPayments||[]), PERIOD.general, 'date', 'general');
 
   // ── Revenue (Sales) ──────────────────────────────────────
   const totalRevenue=items.reduce((a,b)=>a+Number(b.issued||0)*Number(b.sellingPrice||0),0);
@@ -12897,7 +13041,7 @@ function renderProfitLoss(){
   let comRevenue=0;
   (DATA.commodities||[]).forEach(comObj=>{
     const cid=comObj.id;
-    const iss=filterPeriod([...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])], PERIOD.general, 'date', 'general');
+    const iss=filterPeriod(approvedArr([...(_allCIss[cid]||[]),...(cid==='maize'?DATA.maizeIssued||[]:[])]), PERIOD.general, 'date', 'general');
     comRevenue+=iss.reduce((a,b)=>a+Number(b.issued||0)*Number(b.salePrice||0),0);
   });
   const totalIncome=totalRevenue+comRevenue;
@@ -12909,7 +13053,7 @@ function renderProfitLoss(){
   allItemNames.forEach(name=>{
     const issQty=items.filter(x=>x.itemName===name).reduce((a,b)=>a+Number(b.issued||0),0);
     // Use weighted average purchase price from all received records for this item
-    const allRec=DATA.generalInventory.filter(r=>r.itemName===name&&Number(r.purchasePrice||0)>0);
+    const allRec=approvedArr(DATA.generalInventory).filter(r=>r.itemName===name&&Number(r.purchasePrice||0)>0);
     const totalCostPerUnit=allRec.length>0
       ? allRec.reduce((a,r)=>a+Number(r.received||0)*Number(r.purchasePrice||0),0)/allRec.reduce((a,r)=>a+Number(r.received||0),0)
       : 0;
@@ -12923,7 +13067,7 @@ function renderProfitLoss(){
   let comPurchases=0;
   (DATA.commodities||[]).forEach(comObj=>{
     const cid=comObj.id;
-    const recs=filterPeriod([...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])], PERIOD.general, 'date', 'general');
+    const recs=filterPeriod(approvedArr([...(_allCRec[cid]||[]),...(cid==='maize'?DATA.maizeReceived||[]:[])]), PERIOD.general, 'date', 'general');
     comPurchases+=recs.reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
   });
   // General inventory period purchases
@@ -13189,7 +13333,7 @@ function renderCashFlow(){
   const period=PERIOD.general;
 
   // ── Aggregate money IN ────────────────────────────────────
-  const genIss=filterPeriod(DATA.generalIssued,period,'date','general');
+  const genIss=filterPeriod(approvedArr(DATA.generalIssued),period,'date','general');
   const genSalesIn=genIss.reduce((a,b)=>{
     const sv=Number(b.issued||0)*Number(b.sellingPrice||0);
     if(!b.creditStatus||b.creditStatus==='paid') return a+sv;
@@ -13207,7 +13351,7 @@ function renderCashFlow(){
   const _allCIss=DATA.commodityIssued||{};
   let comCashIn=0,comCreditOut=0;
   (DATA.commodities||[]).forEach(com=>{
-    const iss=filterPeriod([...(_allCIss[com.id]||[]),...(com.id==='maize'?DATA.maizeIssued||[]:[])],period,'date','general');
+    const iss=filterPeriod(approvedArr([...(_allCIss[com.id]||[]),...(com.id==='maize'?DATA.maizeIssued||[]:[])]),period,'date','general');
     iss.forEach(b=>{
       const sv=Number(b.issued||0)*Number(b.salePrice||0);
       if(!b.creditStatus||b.creditStatus==='paid'){comCashIn+=sv;}
@@ -13220,17 +13364,17 @@ function renderCashFlow(){
   const totalOutstanding=genCreditOut+comCreditOut;
 
   // ── Aggregate money OUT ───────────────────────────────────
-  const genRec=filterPeriod(DATA.generalInventory,period,'date','general');
+  const genRec=filterPeriod(approvedArr(DATA.generalInventory),period,'date','general');
   const stockPurchases=genRec.filter(r=>r.condition!=='rejected').reduce((a,b)=>a+Number(b.received||0)*Number(b.purchasePrice||0),0);
 
   const _allCRec=DATA.commodityReceived||{};
   let comPurchases=0;
   (DATA.commodities||[]).forEach(com=>{
-    const recs=filterPeriod([...(_allCRec[com.id]||[]),...(com.id==='maize'?DATA.maizeReceived||[]:[])],period,'date','general');
+    const recs=filterPeriod(approvedArr([...(_allCRec[com.id]||[]),...(com.id==='maize'?DATA.maizeReceived||[]:[])]),period,'date','general');
     comPurchases+=recs.reduce((a,b)=>a+Number(b.received||0)*Number(b.unitPrice||0),0);
   });
 
-  const staffPayouts=filterPeriod(DATA.staffPayments||[],period,'date','general').reduce((a,b)=>a+Number(b.amount||0),0);
+  const staffPayouts=filterPeriod(approvedArr(DATA.staffPayments||[]),period,'date','general').reduce((a,b)=>a+Number(b.amount||0),0);
   const totalCashOut=stockPurchases+comPurchases+staffPayouts;
   const netCashFlow=totalCashIn-totalCashOut;
 

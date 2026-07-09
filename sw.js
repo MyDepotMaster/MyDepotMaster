@@ -25,7 +25,27 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v60 (2026-07-08)
+// Current version: v61 (2026-07-09)
+//
+// v61 changes (2026-07-09) — Entry Approval Workflow:
+//   - NEW: every entry created by a non-admin (staff/data-entry) account —
+//     general received/issued, general stock counts, commodity
+//     received/issued/stock counts, transport log, staff clock-in/work log,
+//     staff payments, and leave/absence entries — is now stamped 'pending'
+//     instead of joining official company data immediately.
+//   - Pending entries still show in the account that created them (and to
+//     admin) with a ⏳ PENDING badge, but are excluded from every balance,
+//     stock-availability, sales, credit/debt, payroll, P&L and Cash Flow
+//     calculation until approved.
+//   - Admin gets a "Pending Approvals" screen (banner on Dashboard when
+//     items are waiting → openPendingApprovalsModal()) to Approve or
+//     Reject each entry, with an optional rejection reason shown to the
+//     staff member (❌ REJECTED badge).
+//   - Admin-created entries are approved immediately — no change to admin
+//     workflow.
+//   - Edits to existing records were already admin-only before this change
+//     and remain so; this release only affects newly created entries.
+//   - No sw.js fetch/cache logic changes — bump only.
 //
 // v60 changes (2026-07-08):
 //   - Cleanup: removed a dead `waMsg` per-tier WhatsApp message builder in
@@ -401,7 +421,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v60';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v61';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 
