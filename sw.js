@@ -25,7 +25,24 @@
 //   - On activate the SW posts NEW_VERSION → index.html clears the webview
 //     cache and navigates to the stamped URL.
 //
-// Current version: v63 (2026-07-09)
+// Current version: v64 (2026-07-09)
+//
+// v64 changes (2026-07-09) — Crash fix (Staff tab blank/Display Error):
+//   - ROOT CAUSE: in renderStaffLogs(), the per-staff cumulative running-
+//     total map (cumMap) was rebuilt from approved entries only (v61
+//     approval workflow). But the fallback used when a log had no entry
+//     in that map — i.e. any PENDING log — was `{cumBags:0,cumNet:0}`,
+//     while the render code actually reads `cum.cumQty` and `cum.cumUnit`.
+//     Neither key existed on the fallback, so `cum.cumQty.toLocaleString()`
+//     threw "Cannot read properties of undefined (reading 'toLocaleString')"
+//     the moment any pending staff log existed — blanking the Staff tab
+//     (and, via the app shell/SW interaction, sometimes the whole page).
+//   - FIX: fallback corrected to `{cumQty:0,cumNet:0,cumUnit:''}` to match
+//     what's actually read.
+//   - Audited all other cumulative maps (general/commodity received &
+//     issued) for the same class of bug — none found; their fallbacks are
+//     plain `||0` against numbers, which is safe.
+//   - No sw.js fetch/cache logic changes — bump only.
 //
 // v63 changes (2026-07-09) — License activation not being picked up:
 //   - ROOT CAUSE: checkLicense() only ever ran at the 3 login call-sites
@@ -448,7 +465,7 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const CACHE     = 'mdm-v63';   // ← bump this whenever you deploy a new version
+const CACHE     = 'mdm-v64';   // ← bump this whenever you deploy a new version
 const SHELL     = './';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap';
 

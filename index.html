@@ -2968,7 +2968,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v63';
+const SW_VERSION  = 'mdm-v64';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2984,7 +2984,7 @@ const SW_VERSION  = 'mdm-v63';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v63';
+  const VER = 'mdm-v64';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -8004,7 +8004,7 @@ function renderStaffLogs(){
       </tr>`;
     }
     const net=Number(log.earnings||0)-Number(log.deduction||0);
-    const cum=cumMap[log.id]||{cumBags:0,cumNet:0};
+    const cum=cumMap[log.id]||{cumQty:0,cumNet:0,cumUnit:''};
     const editable=isWithin24h(log);
     const isOpen=log.status==='open'&&!isRejected(log);
     // Hours worked calculation
