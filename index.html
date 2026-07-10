@@ -2063,28 +2063,25 @@ async function testFirebaseConnection() {
   if (btn) { btn.disabled = false; btn.textContent = '🔌 Test Connection'; }
 }
 
-// Load cached license from localStorage — validates HMAC integrity.
-// Applies the cached license immediately (so offline boot reflects the last
-// confirmed status, e.g. an activated subscription, instead of the hardcoded
-// default), then verifies the signature in the background. If the cache was
-// tampered with in DevTools, it is discarded and reset to a safe trial state.
+// Load cached license from localStorage — validates HMAC integrity
+// If the cache was tampered with in DevTools, it is discarded.
 function loadCachedLicense() {
   try {
     const raw = localStorage.getItem(LICENSE_CACHE_KEY);
     if (!raw) return;
     const wrapper = JSON.parse(raw);
     if (!wrapper || !wrapper.data || !wrapper.sig) return;
+    // Async integrity check — apply cached data immediately, then verify
     const c = JSON.parse(wrapper.data);
     if (c) {
-      LICENSE = c;
+      // Don't tentatively apply cached license — checkLicense sets it correctly.
+      // Just verify integrity; if tampered, clear the cache silently.
       hmac256('mdm_lic', wrapper.data).then(expected => {
         if (wrapper.sig !== expected) {
           // Signature mismatch — cache was tampered; clear it and force re-check
           console.warn('[MDM] License cache integrity failure — discarding.');
           localStorage.removeItem(LICENSE_CACHE_KEY);
-          const trialStart = DATA.trialStart || Date.now();
-          LICENSE = { status: 'trial', effectiveStatus: 'trial', tier: TRIAL_TIER, suspendedMsg: '', checkedAt: 0, trialStart, activeUntil: 0, trialDaysLeft: trialDaysRemaining(trialStart) };
-          applyLicenseMode();
+          // Keep LICENSE as active — checkLicense already set it correctly
         }
       }).catch(()=>{});
     }
@@ -2356,30 +2353,6 @@ function checkLicense(callback) {
 
   // Helper: apply local fallback when Firebase is unreachable
   function applyLocalFallback() {
-    // If the last confirmed check (from a previous online session) found a
-    // paid/active subscription — or a suspended/pending state — honor that
-    // status while offline instead of re-deriving from the original trial
-    // clock. Re-deriving from trialStart is only correct for depots that
-    // have never been activated (still on the free trial).
-    const cached = LICENSE && LICENSE.checkedAt ? LICENSE : null;
-    if (cached && cached.status && cached.status !== 'trial') {
-      if (cached.effectiveStatus === 'active') {
-        // Extend an active subscription through a bounded offline grace
-        // window so a depot doesn't lose access just for being offline.
-        const withinGrace = !cached.activeUntil || now <= cached.activeUntil + LICENSE_GRACE_MS;
-        LICENSE = { ...cached, effectiveStatus: withinGrace ? 'active' : 'expired_grace', checkedAt: now };
-      } else {
-        // suspended / pending_approval / expired / expired_grace — keep as last known
-        LICENSE = { ...cached, checkedAt: now };
-      }
-      if (DATA.tier !== LICENSE.tier) { DATA.tier = LICENSE.tier; sv(DATA); }
-      saveCachedLicense(LICENSE);
-      applyLicenseMode();
-      if (callback) callback();
-      return;
-    }
-
-    // No confirmed non-trial status cached — fall back to trial-clock math.
     const msElapsed = now - trialStart;
     const trialOver = msElapsed > TRIAL_MS;
     const daysLeft = Math.max(0, Math.ceil((TRIAL_MS - msElapsed) / (24*60*60*1000)));
@@ -2995,7 +2968,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v65';
+const SW_VERSION  = 'mdm-v64';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -3011,7 +2984,7 @@ const SW_VERSION  = 'mdm-v65';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v65';
+  const VER = 'mdm-v64';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -11921,7 +11894,6 @@ setTimeout(async ()=>{
     updateConnStatus();
     await bioCheckAndShowBtn(); // await so hw check completes before any UI transitions
     await initData();
-    loadCachedLicense(); // restore last known license status immediately (offline-safe)
 
     // ── REINSTALL RECOVERY ──────────────────────────────────────────────
     // If local data is empty (fresh install / cleared storage) but a separate
