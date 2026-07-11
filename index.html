@@ -1831,6 +1831,28 @@ async function fbDelete(path) {
   return true;
 }
 
+// ── FIREBASE SYNC MUTEX ───────────────────────────────────────────────────
+// Serializes every cloud pull (fbRestoreData) and push (doFbSync,
+// flushOfflineQueue) so they can never run concurrently.
+//
+// Bug this prevents: fbRestoreData() used to be fired-and-forgotten right
+// before scheduleFbSync()'s 2.5s debounce push. On a slow connection the
+// pull could still be in flight when the push fired — and the push always
+// stamps a fresh Firebase SERVER timestamp on whatever is in local DATA at
+// that moment, however stale. That stale push would then look newer than
+// the genuinely newer cloud copy it hadn't finished pulling down yet,
+// silently overwriting other devices' work and propagating to everyone who
+// synced afterward. Running every pull/push through this single queue
+// guarantees a pull that was already started completes — and is applied to
+// local DATA — before any push can read DATA and send it back up.
+let _fbOpChain = Promise.resolve();
+function _fbSerial(fn) {
+  const run = () => Promise.resolve().then(fn).catch(e => { console.warn('[MDM] FB sync op failed', e); });
+  const next = _fbOpChain.then(run, run);
+  _fbOpChain = next;
+  return next;
+}
+
 // ── FIREBASE DATA SYNC ───────────────────────────────────────────────────────
 // Saves the full depot DATA object to Firebase under depots/{key}
 // Strips non-serialisable fields and enforces a debounce so rapid edits
@@ -1852,12 +1874,16 @@ function scheduleFbSync() {
   _fbSyncTimer = setTimeout(()=>{ doFbSync(); }, 2500); // 2.5s debounce
 }
 
-async function doFbSync() {
+// Public entry point — always goes through the mutex (see _fbSerial above).
+function doFbSync() { return _fbSerial(_doFbSyncImpl); }
+
+async function _doFbSyncImpl() {
   if (!isFbConfigured() || !navigator.onLine) return;
   const key = depotKey();
   if (!key || key === 'MDM-????-????-????') return;
   try {
     // Save a clean copy
+
     const payload = JSON.parse(JSON.stringify(DATA));
     delete payload.gdrive; // don't store oauth tokens in Firebase
     const now = Date.now();
@@ -1906,7 +1932,8 @@ async function doFbSync() {
 // silently ignored by other accounts, which could then overwrite the cloud
 // copy and erase that change entirely. _syncTs is resolved by Firebase itself
 // at write time, so it's a single shared clock every device can trust.
-async function fbRestoreData() {
+async function fbRestoreData() { return _fbSerial(_fbRestoreDataImpl); }
+async function _fbRestoreDataImpl() {
   if (!isFbConfigured() || !navigator.onLine) return false;
   // Use the stored installId directly — do NOT call depotKey() here because
   // that would generate a brand-new random ID on a device that has never synced,
@@ -2000,19 +2027,21 @@ async function forceCloudRestore() {
       if (btn) { btn.disabled = false; btn.textContent = '⬇ Download from Cloud'; }
       return;
     }
-    const localTrialStart = DATA.trialStart || 0;
-    const localUsers = Array.isArray(DATA.users) ? DATA.users : [];
-    DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
-    // Merge local-only users not present in cloud
-    const cloudUsernames = new Set((DATA.users||[]).map(u=>(u.username||'').toLowerCase()));
-    const localOnlyUsers = localUsers.filter(u=>(u.username||'') && !cloudUsernames.has((u.username||'').toLowerCase()));
-    if (localOnlyUsers.length > 0) DATA.users = [...(DATA.users||[]), ...localOnlyUsers];
-    // Keep earliest trialStart
-    if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) DATA.trialStart = localTrialStart;
-    DATA._syncTs = val._syncTs || Date.now();
-    DATA._lastFbSync = Date.now();
-    if (DATA.installId) _persistInstallId(DATA.installId);
-    sv(DATA);
+    await _fbSerial(async () => {
+      const localTrialStart = DATA.trialStart || 0;
+      const localUsers = Array.isArray(DATA.users) ? DATA.users : [];
+      DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), val);
+      // Merge local-only users not present in cloud
+      const cloudUsernames = new Set((DATA.users||[]).map(u=>(u.username||'').toLowerCase()));
+      const localOnlyUsers = localUsers.filter(u=>(u.username||'') && !cloudUsernames.has((u.username||'').toLowerCase()));
+      if (localOnlyUsers.length > 0) DATA.users = [...(DATA.users||[]), ...localOnlyUsers];
+      // Keep earliest trialStart
+      if (localTrialStart > 0 && (!DATA.trialStart || localTrialStart < DATA.trialStart)) DATA.trialStart = localTrialStart;
+      DATA._syncTs = val._syncTs || Date.now();
+      DATA._lastFbSync = Date.now();
+      if (DATA.installId) _persistInstallId(DATA.installId);
+      sv(DATA);
+    });
     render();
     showToast('✅ Data downloaded from cloud');
     updateLastSyncDisplay();
@@ -2063,25 +2092,28 @@ async function testFirebaseConnection() {
   if (btn) { btn.disabled = false; btn.textContent = '🔌 Test Connection'; }
 }
 
-// Load cached license from localStorage — validates HMAC integrity
-// If the cache was tampered with in DevTools, it is discarded.
+// Load cached license from localStorage — validates HMAC integrity.
+// Applies the cached license immediately (so offline boot reflects the last
+// confirmed status, e.g. an activated subscription, instead of the hardcoded
+// default), then verifies the signature in the background. If the cache was
+// tampered with in DevTools, it is discarded and reset to a safe trial state.
 function loadCachedLicense() {
   try {
     const raw = localStorage.getItem(LICENSE_CACHE_KEY);
     if (!raw) return;
     const wrapper = JSON.parse(raw);
     if (!wrapper || !wrapper.data || !wrapper.sig) return;
-    // Async integrity check — apply cached data immediately, then verify
     const c = JSON.parse(wrapper.data);
     if (c) {
-      // Don't tentatively apply cached license — checkLicense sets it correctly.
-      // Just verify integrity; if tampered, clear the cache silently.
+      LICENSE = c;
       hmac256('mdm_lic', wrapper.data).then(expected => {
         if (wrapper.sig !== expected) {
           // Signature mismatch — cache was tampered; clear it and force re-check
           console.warn('[MDM] License cache integrity failure — discarding.');
           localStorage.removeItem(LICENSE_CACHE_KEY);
-          // Keep LICENSE as active — checkLicense already set it correctly
+          const trialStart = DATA.trialStart || Date.now();
+          LICENSE = { status: 'trial', effectiveStatus: 'trial', tier: TRIAL_TIER, suspendedMsg: '', checkedAt: 0, trialStart, activeUntil: 0, trialDaysLeft: trialDaysRemaining(trialStart) };
+          applyLicenseMode();
         }
       }).catch(()=>{});
     }
@@ -2353,6 +2385,30 @@ function checkLicense(callback) {
 
   // Helper: apply local fallback when Firebase is unreachable
   function applyLocalFallback() {
+    // If the last confirmed check (from a previous online session) found a
+    // paid/active subscription — or a suspended/pending state — honor that
+    // status while offline instead of re-deriving from the original trial
+    // clock. Re-deriving from trialStart is only correct for depots that
+    // have never been activated (still on the free trial).
+    const cached = LICENSE && LICENSE.checkedAt ? LICENSE : null;
+    if (cached && cached.status && cached.status !== 'trial') {
+      if (cached.effectiveStatus === 'active') {
+        // Extend an active subscription through a bounded offline grace
+        // window so a depot doesn't lose access just for being offline.
+        const withinGrace = !cached.activeUntil || now <= cached.activeUntil + LICENSE_GRACE_MS;
+        LICENSE = { ...cached, effectiveStatus: withinGrace ? 'active' : 'expired_grace', checkedAt: now };
+      } else {
+        // suspended / pending_approval / expired / expired_grace — keep as last known
+        LICENSE = { ...cached, checkedAt: now };
+      }
+      if (DATA.tier !== LICENSE.tier) { DATA.tier = LICENSE.tier; sv(DATA); }
+      saveCachedLicense(LICENSE);
+      applyLicenseMode();
+      if (callback) callback();
+      return;
+    }
+
+    // No confirmed non-trial status cached — fall back to trial-clock math.
     const msElapsed = now - trialStart;
     const trialOver = msElapsed > TRIAL_MS;
     const daysLeft = Math.max(0, Math.ceil((TRIAL_MS - msElapsed) / (24*60*60*1000)));
@@ -2968,7 +3024,7 @@ function copyNum(num) {
 // requests and serve the cached shell when the device is offline.
 // The blob-URL SW trick is removed — it cannot intercept navigate requests
 // on Android Chrome, which is why the app previously failed offline.
-const SW_VERSION  = 'mdm-v64';
+const SW_VERSION  = 'mdm-v67';
 
 // ── MEDIAN UPDATE HANDLER ────────────────────────────────────────────────────
 // Problem: Median's webview caches the HTML shell itself, so when a new version
@@ -2984,7 +3040,7 @@ const SW_VERSION  = 'mdm-v64';
   }
 
   // Step 2: Check if the URL already has our version stamp
-  const VER = 'mdm-v64';
+  const VER = 'mdm-v67';
   const url = new URL(location.href);
   const currentVer = url.searchParams.get('_mv');
 
@@ -3132,7 +3188,8 @@ function enqueueOfflineWrite(path, data) {
   _saveOfflineQueue();
 }
 
-async function flushOfflineQueue() {
+async function flushOfflineQueue() { return _fbSerial(_flushOfflineQueueImpl); }
+async function _flushOfflineQueueImpl() {
   if (!navigator.onLine || !isFbConfigured() || _offlineQueue.length === 0) return;
   const toFlush = [..._offlineQueue];
   _offlineQueue = [];
@@ -3163,6 +3220,7 @@ async function flushOfflineQueue() {
 
 // Hook into the existing online event to flush queued writes
 window.addEventListener('online', () => {
+  if (location.hash === '#recover') return; // recovery mode never auto-syncs
   ONLINE = true;
   updPill();
   updateConnStatus();
@@ -11883,10 +11941,114 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── END BACK BUTTON HANDLER ──────────────────────────────────────────────────
 
 
-showLanding();
+// ── RECOVERY TOOL ────────────────────────────────────────────────────────
+// Reachable only via index.html#recover. Renders a standalone screen that
+// reads this device's local depot data directly and lets you (a) download
+// it as a backup file, or (b) deliberately push it to Firebase as the
+// authoritative copy — with an explicit confirmation, no auto-login, and no
+// pull-then-push race, since normal boot never runs in this mode.
+function showRecoveryTool() {
+  document.title = 'MDM Recovery Tool';
+  const raw = localStorage.getItem(LK);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;inset:0;background:#0a0a0a;color:#eee;font-family:system-ui,-apple-system,sans-serif;padding:20px;overflow:auto;z-index:999999;box-sizing:border-box;';
+
+  if (!raw) {
+    wrap.innerHTML = '<h2>🛟 Recovery Tool</h2><p style="color:#f66">No local depot data found on this device (nothing stored under key "'+esc(LK)+'").</p>';
+    document.body.innerHTML = '';
+    document.body.appendChild(wrap);
+    return;
+  }
+
+  let parsed = null, parseErr = null;
+  try { parsed = JSON.parse(raw); } catch(e) { parseErr = e.message; }
+
+  if (parseErr || !parsed) {
+    wrap.innerHTML = '<h2>🛟 Recovery Tool</h2>' +
+      '<p style="color:#f66">Local data exists but failed to parse as JSON: ' + esc(parseErr||'unknown error') + '</p>' +
+      '<p>Copy the raw text below out manually as a last resort (select all, copy):</p>' +
+      '<textarea style="width:100%;height:300px;background:#111;color:#9f9;font-family:monospace;font-size:12px;" readonly>' + esc(raw) + '</textarea>';
+    document.body.innerHTML = '';
+    document.body.appendChild(wrap);
+    return;
+  }
+
+  const di = parsed.depotInfo || {};
+  const counts = [];
+  Object.keys(parsed).forEach(k => { if (Array.isArray(parsed[k])) counts.push(k + ': ' + parsed[k].length); });
+
+  wrap.innerHTML =
+    '<h2 style="margin-top:0">🛟 MDM Recovery Tool</h2>' +
+    '<p style="color:#7dd3fc">This screen is separate from the normal app. It will not contact Firebase or change anything unless you tap a button below.</p>' +
+    '<div style="background:#151515;border:1px solid #333;border-radius:8px;padding:14px;margin:14px 0;line-height:1.7">' +
+      '<div><strong>Depot:</strong> ' + esc(di.name || '(unnamed)') + (di.district||di.country ? ' — ' + esc([di.district,di.country].filter(Boolean).join(', ')) : '') + '</div>' +
+      '<div><strong>Install ID:</strong> ' + esc(parsed.installId || '(none)') + '</div>' +
+      '<div><strong>Tier:</strong> ' + esc(String(parsed.tier || '(unknown)')) + '</div>' +
+      '<div><strong>Version (_v):</strong> ' + esc(String(parsed._v ?? '(none)')) + '</div>' +
+      '<div><strong>Last cloud sync recorded on this device:</strong> ' + (parsed._lastFbSync ? esc(new Date(parsed._lastFbSync).toLocaleString()) : 'never') + '</div>' +
+      '<div><strong>Collections found:</strong> ' + esc(counts.join(' · ') || '(none)') + '</div>' +
+    '</div>' +
+    '<p>Check these numbers match the data you expect before doing anything else.</p>' +
+    '<button id="rt-download" style="font-size:16px;padding:14px 18px;margin:6px 0;display:block;width:100%;background:#2563eb;color:#fff;border:none;border-radius:8px;">📥 Download Backup File (.json)</button>' +
+    '<button id="rt-push" style="font-size:16px;padding:14px 18px;margin:6px 0;display:block;width:100%;background:#dc2626;color:#fff;border:none;border-radius:8px;">☁️ Push This Copy to Firebase (Overwrite Cloud)</button>' +
+    '<div id="rt-status" style="margin-top:14px;white-space:pre-wrap;font-family:monospace;font-size:13px;color:#9f9;"></div>';
+  document.body.innerHTML = '';
+  document.body.appendChild(wrap);
+
+  document.getElementById('rt-download').onclick = () => {
+    const blob = new Blob([raw], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mdm-recovery-backup-' + Date.now() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  document.getElementById('rt-push').onclick = async () => {
+    const statusEl = document.getElementById('rt-status');
+    if (!navigator.onLine) {
+      statusEl.textContent = '❌ You are offline — connect to the internet first. Download the backup file above regardless, as a safety copy.';
+      return;
+    }
+    const key = parsed.installId;
+    if (!key || key === 'MDM-????-????-????') {
+      statusEl.textContent = '❌ No valid install ID found in this data — cannot push.';
+      return;
+    }
+    if (!confirm('This will OVERWRITE the cloud copy for install ID ' + key + ' with the data shown above.\n\nOnly proceed if you have confirmed this is the correct, good copy.\n\nContinue?')) return;
+    statusEl.textContent = '⏳ Pushing to Firebase…';
+    try {
+      const payload = JSON.parse(raw);
+      delete payload.gdrive;
+      payload._syncTs = {'.sv':'timestamp'};
+      const [savedData] = await Promise.all([
+        fbSet('depots/' + key + '/data', payload),
+        fbSet('depots/' + key + '/meta', { lastSync: Date.now(), depotName: (payload.depotInfo||{}).name || '', version: payload._v || 0 }),
+        fbSet('depots/' + key + '/auth', _buildAuthSnapshot(payload.users))
+      ]);
+      statusEl.textContent = '✅ Pushed successfully.\nServer timestamp adopted: ' + JSON.stringify((savedData||{})._syncTs) + '\n\nOther devices can now reconnect — they will pull this copy down on their next sync.';
+    } catch(e) {
+      statusEl.textContent = '❌ Push failed: ' + (e.message || e);
+    }
+  };
+}
+
 // Fix 5: use an async IIFE so bioCheckAndShowBtn() is properly awaited.
 // Without await the fingerprint button can flash visible then disappear
 // because the async hw check resolves after the sync code has already run.
+if (location.hash === '#recover') {
+  // ── RECOVERY MODE ─────────────────────────────────────────────────────
+  // Reached via index.html#recover. Deliberately bypasses EVERY normal boot
+  // step below — no auto-login, no fbRestoreData(), no checkLicense(), no
+  // periodic sync timers — so opening this screen can never pull, push, or
+  // otherwise touch this device's local data on its own. It only acts when
+  // you explicitly click a button. Safe to open while offline.
+  showRecoveryTool();
+} else {
+showLanding();
 setTimeout(async ()=>{
   try{
     applyFontSize(getFontSize());
@@ -11894,6 +12056,7 @@ setTimeout(async ()=>{
     updateConnStatus();
     await bioCheckAndShowBtn(); // await so hw check completes before any UI transitions
     await initData();
+    loadCachedLicense(); // restore last known license status immediately (offline-safe)
 
     // ── REINSTALL RECOVERY ──────────────────────────────────────────────
     // If local data is empty (fresh install / cleared storage) but a separate
@@ -11957,9 +12120,10 @@ setTimeout(async ()=>{
     showLanding();
   }
 }, 0);
+} // end of normal-boot else branch (recovery mode skips all of the above)
 
 // Periodic FB sync every 5 minutes while online
-setInterval(()=>{ if(ONLINE && USER) scheduleFbSync(); }, 5*60*1000);
+setInterval(()=>{ if(location.hash!=='#recover' && ONLINE && USER) scheduleFbSync(); }, 5*60*1000);
 
 // Periodic FB PULL every 60 seconds while online.
 // Fix: pushing local changes every 5 minutes was never enough on its own —
@@ -11971,6 +12135,7 @@ setInterval(()=>{ if(ONLINE && USER) scheduleFbSync(); }, 5*60*1000);
 // Skip the pull if a modal is open so we don't yank the screen out from under
 // someone mid-entry.
 setInterval(()=>{
+  if (location.hash === '#recover') return;
   if (!ONLINE || !USER) return;
   const ovl = document.getElementById('modal-ovl');
   if (ovl && ovl.style.display === 'flex') return; // don't interrupt active data entry
