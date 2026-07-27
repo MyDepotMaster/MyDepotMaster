@@ -6756,20 +6756,36 @@ function renderGenItemNamesTab(){
 }
 
 // ── EDIT HELPERS ─────────────────────────────────────────────────────────────
-function _editWindowMs(){
+function _editWindowMs(staffScope){
   // Admin-configurable edit window (Settings → Staff Policy). Default 24 h.
+  if(staffScope){
+    const di=DATA.depotInfo||{};
+    // staffEditWindowHours: 0 = "Never" (unlimited — staff records never lock).
+    // null/undefined = not set, falls back to the general Record Edit Window.
+    const raw=di.staffEditWindowHours;
+    const h=raw!=null?Number(raw):Number(di.editWindowHours||24);
+    if(h===0)return Infinity;
+    return h*60*60*1000;
+  }
   const h=Number((DATA.depotInfo||{}).editWindowHours||24);
   return h*60*60*1000;
 }
-function _editWindowLabel(){
+function _editWindowLabel(staffScope){
+  if(staffScope){
+    const di=DATA.depotInfo||{};
+    const raw=di.staffEditWindowHours;
+    const h=raw!=null?Number(raw):Number(di.editWindowHours||24);
+    if(h===0)return'unlimited';
+    return h<24?h+'h':h===24?'24h':(h/24)+'d';
+  }
   const h=Number((DATA.depotInfo||{}).editWindowHours||24);
   return h<24?h+'h':h===24?'24h':(h/24)+'d';
 }
-function isWithin24h(record){
+function isWithin24h(record,staffScope){
   // For completed staff logs, use timeOutTs (clock-out timestamp) as the edit window anchor.
   // This way the 24h window starts when the shift was clocked out, not when it was created.
   if(record&&record.timeOutTs&&(record.status==='completed'||record.entryType==='work')){
-    return(Date.now()-record.timeOutTs)<_editWindowMs();
+    return(Date.now()-record.timeOutTs)<_editWindowMs(staffScope);
   }
   // New uid format: "base36timestamp-randomsuffix"
   // Old uid format: numeric float (Date.now()+Math.random())
@@ -6783,7 +6799,7 @@ function isWithin24h(record){
     base=Number(id);
   }
   if(!base||isNaN(base))base=Date.now();
-  return(Date.now()-base)<_editWindowMs();
+  return(Date.now()-base)<_editWindowMs(staffScope);
 }
 
 // ── EDIT: General Received ───────────────────────────────────────────────────
@@ -8064,7 +8080,7 @@ function renderStaffLogs(){
     }
     const net=Number(log.earnings||0)-Number(log.deduction||0);
     const cum=cumMap[log.id]||{cumQty:0,cumNet:0,cumUnit:''};
-    const editable=isWithin24h(log);
+    const editable=isWithin24h(log,true);
     const isOpen=log.status==='open'&&!isRejected(log);
     // Hours worked calculation
     const stdHrs=Number((DATA.depotInfo||{}).standardShiftHours||8);
@@ -8091,7 +8107,7 @@ function renderStaffLogs(){
       <td style="font-size:16px;color:var(--muted);white-space:nowrap">${log.timeIn||'—'}–${isOpen?'<span style="color:var(--green)">…</span>':log.timeOut||'—'}<br><span style="color:var(--blue)">${isOpen?'':hoursCell}</span></td>
       <td style="color:var(--blue);font-weight:700;text-align:right;border-left:2px solid var(--border)">${isOpen?'—':cum.cumQty.toLocaleString()}<br><span style="font-size:14px;color:var(--muted);font-weight:400">${cum.cumUnit}</span></td>
       <td style="color:var(--purple);font-weight:700;text-align:right">${isOpen?'—':zm(cum.cumNet)}</td>
-      ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
+      ${USER.role==='admin'?`<td style="white-space:nowrap"><button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`openEditLog('${log.id}')`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel(true)+')'}">✏️</button> <button class="delbtn" onclick="delLog('${log.id}')">🗑</button></td>`:''}
     </tr>`;}).join('');
 
   return `
@@ -8911,14 +8927,14 @@ function openStaffDetail(id){
     </div>`;
   }).join('');
   const recentLogs=sLogs.slice(0,5).map(l=>{
-    const editable=isWithin24h(l);
+    const editable=isWithin24h(l,true);
     return`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:17px;font-weight:700">${fmtDate(l.date)} <span style="color:var(--muted);font-weight:400;font-size:16px">${l.task}</span></div>
           <div style="font-size:16px;color:var(--muted)">${(()=>{const q=l.qty!=null?l.qty:l.bags;const ul=l.rateUnit&&l.rateUnit!=='bag'?taskRateUnitLabel(l.role||'',l.task||''):'bags';return Number(q||0).toLocaleString()+' '+ul;})()}· ${zm(Number(l.earnings||0)-Number(l.deduction||0))} net</div>
         </div>
-        ${USER.role==='admin'?`<button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`closeModal();setTimeout(()=>openEditLog('${l.id}'),50)`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel()+')'}">✏️</button>`:''}
+        ${USER.role==='admin'?`<button class="${editable?'editbtn':'editbtn disabled'}" onclick="${editable?`closeModal();setTimeout(()=>openEditLog('${l.id}'),50)`:''}" title="${editable?'Edit':'Edit window closed (>'+_editWindowLabel(true)+')'}">✏️</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -9266,7 +9282,7 @@ function _renderWarningsModal(id){
         <span style="font-size:16px;font-weight:700;color:${w.severity==='final'?'var(--red)':w.severity==='written'?'var(--amber)':'var(--muted)'}">${w.severity==='verbal'?'🗣 VERBAL WARNING':w.severity==='written'?'📝 WRITTEN WARNING':'🛑 FINAL WARNING'}</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:16px;color:var(--muted)">${fmtDate(w.date)}</span>
-          ${isWithin24h(w)?`<button class="delbtn" onclick="delStaffWarning('${w.id}','${id}')">🗑</button>`:''}
+          ${isWithin24h(w,true)?`<button class="delbtn" onclick="delStaffWarning('${w.id}','${id}')">🗑</button>`:''}
         </div>
       </div>
       <div style="font-size:17px;color:var(--text);line-height:1.5">${esc(w.incident)}</div>
@@ -9341,7 +9357,7 @@ function savePayment(sid, amount, date, notes){if(isReadOnly()){alert("🔒 This
   STAB='payments';
   render();
 }
-function delPayment(id){const _r=(DATA.staffPayments||[]).find(p=>String(p.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}requireAdminPassword('delete this payment record',()=>{logAuditEvent('DELETE','Staff Payment',`ID:${id} · Amount:${_r?_r.amount:''} · Staff:${_r?_r.staffId:''}`,_r);updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));});}
+function delPayment(id){const _r=(DATA.staffPayments||[]).find(p=>String(p.id)===String(id));if(_r&&!isWithin24h(_r,true)){alert('🔒 This record is older than the '+_editWindowLabel(true)+' edit window and cannot be deleted.');return;}requireAdminPassword('delete this payment record',()=>{logAuditEvent('DELETE','Staff Payment',`ID:${id} · Amount:${_r?_r.amount:''} · Staff:${_r?_r.staffId:''}`,_r);updateData(d=>({...d,staffPayments:(d.staffPayments||[]).filter(p=>String(p.id)!==String(id))}));});}
 
 // ── PAYSLIP GENERATOR (Fix 5) ────────────────────────────────────────────────
 function generatePayslip(staffId, periodMonth, periodYear){
@@ -9452,14 +9468,14 @@ ${_getBrandedHeader('Payslip — '+s.name)}
   showToast('🧾 Opening payslip PDF for '+s.name);
 }
 
-function delLog(id){const _r=(DATA.staffLogs||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}requireAdminPassword('delete this work log',()=>{logAuditEvent('DELETE','Work Log',`ID:${id} · Staff:${_r?_r.staffId:''} · Task:${_r?_r.task:''}`,_r);updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));});}
+function delLog(id){const _r=(DATA.staffLogs||[]).find(l=>String(l.id)===String(id));if(_r&&!isWithin24h(_r,true)){alert('🔒 This record is older than the '+_editWindowLabel(true)+' edit window and cannot be deleted.');return;}requireAdminPassword('delete this work log',()=>{logAuditEvent('DELETE','Work Log',`ID:${id} · Staff:${_r?_r.staffId:''} · Task:${_r?_r.task:''}`,_r);updateData(d=>({...d,staffLogs:d.staffLogs.filter(l=>String(l.id)!==String(id))}));});}
 
 // ── EDIT: Staff Work Log ─────────────────────────────────────────────────────
 function openEditLog(id){
   if(!requireAdmin('edit records'))return;
   const log=DATA.staffLogs.find(x=>String(x.id)===String(id));
   if(!log){alert('Record not found.');return;}
-  if(!isWithin24h(log)){alert('⏰ Editing is only allowed within '+_editWindowLabel()+' of entry.');return;}
+  if(!isWithin24h(log,true)){alert('⏰ Editing is only allowed within '+_editWindowLabel(true)+' of entry.');return;}
   requireAdminPassword('edit this record', ()=>_doOpenEditLog(id));
 }
 function _doOpenEditLog(id){
@@ -9600,7 +9616,7 @@ function saveLeaveEntry(){
 }
 function delLeaveEntry(id){
   const _r=(DATA.leaveLog||[]).find(l=>String(l.id)===String(id));
-  if(_r&&!isWithin24h(_r)){alert('🔒 This record is older than the '+_editWindowLabel()+' edit window and cannot be deleted.');return;}
+  if(_r&&!isWithin24h(_r,true)){alert('🔒 This record is older than the '+_editWindowLabel(true)+' edit window and cannot be deleted.');return;}
   requireAdminPassword('delete this leave entry',()=>{
     // Fix 12: if this entry was auto-mirrored from a staffLog, remove both
     const fromLogId=_r?._fromLog;
@@ -10204,6 +10220,20 @@ function _renderAdminSettings(){
         </div>
         <div style="font-size:16px;color:var(--muted);margin-top:6px;line-height:1.6">How long after entry an Admin can edit or delete a record. After this window, records are permanent.</div>
         <div id="edit-window-msg" style="margin-top:6px"></div>
+      </div>
+
+      <div class="fw" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="fl">Staff Records Edit Window ${mdmTip('Overrides the general Record Edit Window above for staff work logs, payments, leave entries, and disciplinary warnings. Choose \'Never Lock\' so Admins can always edit or delete these records.')}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="fi" id="staff-edit-window-input" style="flex:1">
+            <option value="use-global"${((DATA.depotInfo||{}).staffEditWindowHours==null)?' selected':''}>Use general setting (${_editWindowLabel()})</option>
+            ${[6,12,24,48,72,168].map(h=>`<option value="${h}"${Number((DATA.depotInfo||{}).staffEditWindowHours)===h?' selected':''}>${h<24?h+'h':(h/24)+' day'+(h>24?'s':'')}</option>`).join('')}
+            <option value="0"${Number((DATA.depotInfo||{}).staffEditWindowHours)===0?' selected':''}>Never lock (always editable)</option>
+          </select>
+          <button class="btn bg bsm" style="width:auto" onclick="saveStaffEditWindow()">Save</button>
+        </div>
+        <div style="font-size:16px;color:var(--muted);margin-top:6px;line-height:1.6">Only applies to staff work logs, payments, leave entries, and warnings. All other records keep using the general Record Edit Window above.</div>
+        <div id="staff-edit-window-msg" style="margin-top:6px"></div>
       </div>
 
       <div class="fw" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
@@ -11677,6 +11707,18 @@ function saveEditWindow(){
   updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),editWindowHours:val}}));
   const label=val<24?val+'h':(val/24)+' day'+(val>24?'s':'');
   if(msg)msg.innerHTML='<div class="ok-msg">✅ Edit window set to '+label+'.</div>';
+  setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
+}
+function saveStaffEditWindow(){
+  if(!requireAdmin('change staff edit window'))return;
+  const raw=document.getElementById('staff-edit-window-input')?.value;
+  const msg=document.getElementById('staff-edit-window-msg');
+  const valid=['use-global',0,6,12,24,48,72,168].map(String);
+  if(!valid.includes(String(raw))){if(msg)msg.innerHTML='<div class="err-box">Invalid selection.</div>';return;}
+  const val=raw==='use-global'?null:Number(raw);
+  updateData(d=>({...d,depotInfo:{...(d.depotInfo||{}),staffEditWindowHours:val}}));
+  const label=val==null?'the general setting':val===0?'never lock (always editable)':val<24?val+'h':(val/24)+' day'+(val>24?'s':'');
+  if(msg)msg.innerHTML='<div class="ok-msg">✅ Staff records edit window set to '+label+'.</div>';
   setTimeout(()=>{if(msg)msg.innerHTML='';},3000);
 }
 
