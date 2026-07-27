@@ -12936,7 +12936,7 @@ function exportCSV_StaffEarnings(){
 }
 function exportCSV_StaffRoster(){
   const rows=[_csvRow(['Name','Role','Phone','Status','Contract Type','Emergency Contact','Emergency Phone','Date of Hire'])];
-  DATA.staff.forEach(s=>rows.push(_csvRow([s.name,s.role||'',s.phone||'',s.status||'active',s.contractType||'',s.emergencyContact||'',s.emergencyPhone||'',s.dateOfHire||''])));
+  DATA.staff.forEach(s=>rows.push(_csvRow([s.name,s.role||'',s.phone||'',s.status||'active',s.contractType||'',s.emergencyContactName||'',s.emergencyContactPhone||'',s.dateJoined||''])));
   _csvDownload(rows,_csvFilename('Staff_Roster'));
 }
 
