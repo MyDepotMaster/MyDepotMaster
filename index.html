@@ -3382,6 +3382,7 @@ async function initData(){
 let DATA=ld(); // immediate sync load from localStorage
 migrateShiftLogStatus();  // Two-Stage Shift Log: tag legacy logs as completed
 let USER=null;
+let STAFF_MODAL_PIN=false; // when true, staff profile modal stays open across actions instead of auto-closing
 let TAB='dashboard';
 let ONLINE=navigator.onLine;
 let PERIOD={dashboard:'monthly',general:'monthly',maize:'monthly',staff:'monthly'};
@@ -8872,6 +8873,18 @@ function renderStaffList(){
     ${DATA.staff.length===0?`<div class="card"><div class="empty">No staff registered yet.<br>Use "+ Add Staff" to register.</div></div>`:sections}`;
 }
 
+function toggleStaffModalPin(id,checked){
+  STAFF_MODAL_PIN=checked;
+  const ovl=document.getElementById('modal-ovl');
+  if(ovl)ovl.onclick=checked?null:e=>{if(e.target===ovl)closeModal();};
+}
+// Runs a staff action; if the "keep window open" pin is on, the modal stays open and
+// refreshes to show the updated status instead of closing.
+function staffModalAction(id,fn){
+  fn();
+  if(STAFF_MODAL_PIN){setTimeout(()=>openStaffDetail(id),50);}
+  else{closeModal();}
+}
 function openStaffDetail(id){
   const s=DATA.staff.find(x=>String(x.id)===String(id));
   if(!s)return;
@@ -8911,10 +8924,10 @@ function openStaffDetail(id){
   }).join('');
   const actionBtns=USER.role==='admin'?(
     (s.status==='terminated'||s.status==='resigned'||s.status==='expelled')
-      ?`<button class="btn bg" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button>`
+      ?`<button class="btn bg" onclick="staffModalAction('${s.id}',()=>setStaffStatus('${s.id}','active'))">↩ Reinstate</button>`
       :s.status==='suspended'
-        ?`<div style="display:flex;gap:8px"><button class="btn bg" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','active')">↩ Reinstate</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button></div>`
-        :`<div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="closeModal();setStaffStatus('${s.id}','suspended')">⏸ Suspend</button><button class="btn bo" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','resigned')">🚪 Resigned</button><button class="btn br" style="flex:1" onclick="closeModal();setStaffStatusReason('${s.id}','terminated')">⛔ Terminate</button></div>`
+        ?`<div style="display:flex;gap:8px"><button class="btn bg" style="flex:1" onclick="staffModalAction('${s.id}',()=>setStaffStatus('${s.id}','active'))">↩ Reinstate</button><button class="btn br" style="flex:1" onclick="staffModalAction('${s.id}',()=>setStaffStatusReason('${s.id}','terminated'))">⛔ Terminate</button></div>`
+        :`<div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="staffModalAction('${s.id}',()=>setStaffStatus('${s.id}','suspended'))">⏸ Suspend</button><button class="btn bo" style="flex:1" onclick="staffModalAction('${s.id}',()=>setStaffStatusReason('${s.id}','resigned'))">🚪 Resigned</button><button class="btn br" style="flex:1" onclick="staffModalAction('${s.id}',()=>setStaffStatusReason('${s.id}','terminated'))">⛔ Terminate</button></div>`
   ):'';
   const editDetailsBtn=USER.role==='admin'?`<button class="btn bo bsm" style="width:100%;margin-bottom:8px" onclick="closeModal();setTimeout(()=>openEditStaffDetails('${s.id}'),50)">✏️ Edit Details</button>`:'';
   const removePhotoBtn=(USER.role==='admin'&&s.photoDataUrl)?`<button class="btn bo bsm" style="width:100%;margin-bottom:8px;color:var(--red);border-color:rgba(192,57,43,.4)" onclick="removeStaffPhoto('${s.id}')">🗑 Remove Photo</button>`:'';
@@ -8958,7 +8971,11 @@ function openStaffDetail(id){
     <button class="btn bo bsm" style="width:100%;margin-bottom:8px;color:var(--green);border-color:rgba(0,214,143,.4)" onclick="printStaffIdCard('${s.id}')">🪪 Print ID Card</button>
     ${USER.role==='admin'?`<button class="btn bo bsm" style="width:100%;margin-bottom:8px" onclick="closeModal();setTimeout(()=>openStaffWarnings('${s.id}'),50)">⚠️ Disciplinary / Warnings</button>`:''}
     ${actionBtns?`<div style="margin-top:14px">${actionBtns}</div>`:''}
-    <div style="margin-top:10px"><button class="btn bo" onclick="closeModal()">Close</button></div>`);
+    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;padding:8px 2px">
+      <input type="checkbox" id="staff-modal-pin" ${STAFF_MODAL_PIN?'checked':''} onchange="toggleStaffModalPin('${s.id}',this.checked)" style="width:18px;height:18px;flex-shrink:0">
+      <label for="staff-modal-pin" style="font-size:16px;color:var(--muted)">📌 Keep this window open (don't auto-close after actions or tapping outside)</label>
+    </div>
+    <div style="margin-top:10px"><button class="btn bo" onclick="closeModal()">Close</button></div>`,STAFF_MODAL_PIN);
 }
 
 // ── EDIT STAFF DETAILS ───────────────────────────────────────────────────────
